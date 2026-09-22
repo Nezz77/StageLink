@@ -1,0 +1,10 @@
+{
+  "description": "Connect customers, artists, and equipment renters for live event bookings with an AI-powered marketplace that streamlines event planning and management.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
