@@ -26,7 +26,7 @@ function RoleSwitcher({ currentRole, onSwitch }: { currentRole: Role; onSwitch: 
   const [open, setOpen] = useState(false);
   const roles: Role[] = ['visitor', 'customer', 'artist', 'renter', 'admin'];
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className={`fixed bottom-6 right-6 z-50 ${currentRole !== 'visitor' ? 'sl-app-controls' : ''}`}>
       {open && (
         <div className="card mb-3 p-2 w-52 animate-slide-up">
           <div className="text-xs text-slate-500 font-medium px-2 py-1 mb-1">Switch Role (Demo)</div>
@@ -88,18 +88,10 @@ export default function App() {
       </AnimatePresence>
 
       {isLoaded && (
-        <div className="min-h-screen transition-colors duration-500 ease-in-out" style={{ background: 'var(--color-bg)' }}>
+        <div className={`min-h-screen transition-colors duration-500 ease-in-out ${view === 'booking' ? 'sl-chat-open' : ''}`} style={{ background: 'var(--color-bg)' }}>
           {/* Booking Chat accessible to customer/artist */}
           {(role === 'customer' || role === 'artist') && view === 'booking' ? (
-            <>
-              <BookingChat />
-              <button
-                onClick={() => setView('main')}
-                className="fixed top-20 left-6 z-50 btn-ghost text-xs flex items-center gap-1"
-              >
-                ← Back to Dashboard
-              </button>
-            </>
+            <BookingChat onBack={() => setView('main')} />
           ) : role === 'visitor' ? (
             <>
               <LandingPage onAuth={setAuthMode} />
@@ -113,10 +105,10 @@ export default function App() {
             </>
           ) : role === 'customer' ? (
             <>
-              <CustomerDashboard />
+              <CustomerDashboard onOpenChat={() => setView('booking')} />
               <button
                 onClick={() => setView('booking')}
-                className="fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
+                className="sl-chat-shortcut fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
                 style={{ borderRadius: 12 }}
               >
                 <Icon.MessageCircle className="w-4 h-4" />
@@ -128,7 +120,7 @@ export default function App() {
               <ArtistDashboard />
               <button
                 onClick={() => setView('booking')}
-                className="fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
+                className="sl-chat-shortcut fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
                 style={{ borderRadius: 12 }}
               >
                 <Icon.MessageCircle className="w-4 h-4" />

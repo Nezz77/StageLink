@@ -1,0 +1,83 @@
+/* Motion only. Scoped to authenticated workspaces; no visitor styles or colors. */
+@media (prefers-reduced-motion: no-preference) {
+  .sl-dashboard .sl-sidebar { animation: workspace-rail-in .55s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-dashboard .sl-topbar, .bc-studio .bc-masthead { animation: workspace-header-in .5s ease backwards; }
+  .sl-dashboard .sl-intro .sl-eyebrow, .bc-studio .bc-intro .bc-eyebrow { animation: workspace-rise .45s .06s backwards; }
+  .sl-dashboard .sl-intro h1, .bc-studio .bc-intro h1 { animation: workspace-rise .65s .1s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-dashboard .sl-intro p, .bc-studio .bc-intro > p { animation: workspace-rise .6s .16s backwards; }
+  .sl-dashboard .sl-intro-action { animation: workspace-rise .6s .2s backwards; }
+
+  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight) {
+    animation: workspace-card-in .55s cubic-bezier(.22,1,.36,1) backwards;
+  }
+  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(2) { animation-delay: .055s; }
+  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(3) { animation-delay: .11s; }
+  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(4) { animation-delay: .165s; }
+  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(n+5) { animation-delay: .2s; }
+  .sl-dashboard .sl-main .rounded-t { transform-origin: bottom; animation: workspace-chart-grow .75s .12s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-dashboard .sl-lineup-item { animation: workspace-rise .5s backwards; }
+  .sl-dashboard .sl-lineup-item:nth-child(2n) { animation-delay: .08s; }
+  .sl-dashboard .sl-feedback { animation: workspace-notice-in .3s ease-out backwards; }
+  .sl-dashboard .sl-dialog[open] { animation: workspace-dialog-in .28s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-dashboard .sl-dialog[open]::backdrop { animation: workspace-fade .25s ease backwards; }
+  .sl-dashboard .sl-save-button[aria-pressed="true"] svg { animation: workspace-heart-pop .38s cubic-bezier(.2,.8,.2,1); }
+
+  .sl-dashboard :is(.sl-nav-item,.btn-primary,.btn-ghost,.sl-save-button),
+  .bc-studio :is(.bc-tabs > button,.bc-contact,.bc-back,.bc-send,.btn-primary,.btn-ghost,.bc-icon-button) {
+    transition-property: translate, scale, background, border-color, color, box-shadow, opacity;
+    transition-duration: .22s;
+    transition-timing-function: cubic-bezier(.22,1,.36,1);
+  }
+  .sl-dashboard :is(.btn-primary,.btn-ghost,.sl-nav-item,.sl-save-button):active,
+  .bc-studio :is(.bc-send,.bc-contact,.bc-tabs > button,.bc-back,.btn-primary,.btn-ghost):active { scale: .97; }
+  .sl-dashboard .sl-nav-icon, .bc-studio .bc-send svg { transition: translate .25s, rotate .25s; }
+  .sl-dashboard .sl-nav-item.is-active .sl-nav-icon { animation: workspace-icon-settle .4s ease-out; }
+  .sl-dashboard .sl-operations-strip button span, .sl-dashboard .sl-text-link span,
+  .bc-studio .bc-journey button span { display: inline-block; transition: translate .25s; }
+
+  .bc-studio .bc-inbox { animation: workspace-rail-in .5s cubic-bezier(.22,1,.36,1) backwards; }
+  .bc-studio .bc-thread { animation: workspace-card-in .55s .07s cubic-bezier(.22,1,.36,1) backwards; }
+  .bc-studio .bc-event-column { animation: workspace-card-in .6s .14s cubic-bezier(.22,1,.36,1) backwards; }
+  .bc-studio .bc-event-column.is-open { animation: workspace-card-in .35s ease backwards; }
+  .bc-studio .bc-messages { animation: workspace-fade .28s ease backwards; }
+  .bc-studio .bc-message { animation: workspace-message-in .32s cubic-bezier(.22,1,.36,1) backwards; }
+  .bc-studio .bc-message.is-mine { animation-name: workspace-message-out; }
+  .bc-studio .bc-quote { animation: workspace-card-in .45s .05s backwards; }
+  .bc-studio .bc-attachment { animation: workspace-rise .25s ease backwards; }
+  .bc-studio .bc-journey li { animation: workspace-rise .45s backwards; }
+  .bc-studio .bc-journey li:nth-child(2) { animation-delay: .05s; }
+  .bc-studio .bc-journey li:nth-child(3) { animation-delay: .1s; }
+  .bc-studio .bc-journey li:nth-child(4) { animation-delay: .15s; }
+  .bc-studio .bc-journey li:nth-child(5) { animation-delay: .2s; }
+  .bc-studio .bc-journey li.is-done > span { transition: background .3s, border-color .3s; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .sl-dashboard :is(.sl-talent-card,.sl-stat,.sl-lineup-item), .bc-studio .bc-event-pass {
+    transition: translate .3s cubic-bezier(.22,1,.36,1), border-color .3s, box-shadow .3s;
+  }
+  .sl-dashboard :is(.sl-talent-card,.sl-stat):hover { translate: 0 -4px; }
+  .sl-dashboard .sl-access-pass { transition: rotate .45s cubic-bezier(.22,1,.36,1), translate .45s; }
+  .sl-dashboard .sl-access-pass:hover { rotate: 3deg; translate: 0 -4px; }
+  .sl-dashboard .sl-nav-item:hover .sl-nav-icon { translate: 2px 0; }
+  .sl-dashboard .sl-operations-strip button:hover span, .sl-dashboard .sl-text-link:hover span,
+  .bc-studio .bc-journey button:hover span { translate: 3px -2px; }
+  .bc-studio .bc-contact:hover { translate: 2px 0; }
+  .bc-studio .bc-send:hover:not(:disabled) svg { translate: 2px -2px; rotate: -7deg; }
+  .bc-studio .bc-event-pass:hover { translate: 0 -3px; }
+}
+@keyframes workspace-rise { from { opacity: 0; translate: 0 9px; } to { opacity: 1; translate: 0 0; } }
+@keyframes workspace-card-in { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
+@keyframes workspace-rail-in { from { opacity: 0; translate: -10px 0; } to { opacity: 1; translate: 0 0; } }
+@keyframes workspace-header-in { from { opacity: 0; translate: 0 -6px; } to { opacity: 1; translate: 0 0; } }
+@keyframes workspace-chart-grow { from { scale: 1 .08; opacity: .25; } to { scale: 1 1; opacity: 1; } }
+@keyframes workspace-notice-in { from { opacity: 0; translate: 0 -5px; } to { opacity: 1; translate: 0 0; } }
+@keyframes workspace-dialog-in { from { opacity: 0; scale: .96; translate: 0 12px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+@keyframes workspace-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes workspace-heart-pop { 0% { scale: .8; } 55% { scale: 1.24; } 100% { scale: 1; } }
+@keyframes workspace-icon-settle { 0% { scale: .85; } 60% { scale: 1.1; } 100% { scale: 1; } }
+@keyframes workspace-message-in { from { opacity: 0; translate: -7px 5px; } to { opacity: 1; translate: 0 0; } }
+@keyframes workspace-message-out { from { opacity: 0; translate: 7px 5px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .sl-dashboard *, .sl-dashboard *::before, .sl-dashboard *::after,
+  .bc-studio *, .bc-studio *::before, .bc-studio *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

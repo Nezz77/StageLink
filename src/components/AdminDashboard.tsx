@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DashboardShell, { DashboardIntro } from './DashboardShell';
 import { Icon } from './Icons';
 
 const chartData = [
@@ -10,7 +11,7 @@ const chartData = [
   { month: 'Sep', gmv: 420, users: 980, revenue: 50 },
   { month: 'Oct', gmv: 510, users: 1120, revenue: 61 },
 ];
-const maxGMV = Math.max(...chartData.map(d => d.gmv));
+
 
 const pendingVerifications = [
   { id: 'VRF-881', name: 'Carlos Mendes', type: 'Artist', category: 'Live Band', submitted: 'Oct 10, 2026', doc: 'Government ID + Tax Form', img: 'photo-1493225457124-a3eb161ffa5f' },
@@ -46,65 +47,16 @@ const navItems = [
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('analytics');
+  const [metric, setMetric] = useState<'gmv' | 'users' | 'revenue'>('gmv');
+  const metricMax = Math.max(...chartData.map(item => item[metric]));
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
-      {/* Sidebar */}
-      <aside className="w-16 flex flex-col items-center py-5 gap-2 flex-shrink-0 sticky top-0 h-screen z-10"
-        style={{ background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}>
-        <div className="mb-4 flex items-center justify-center">
-          <img src="/stagelink-logo.png" alt="StageLink" className="w-11 h-11 object-contain" style={{ filter: 'drop-shadow(0 0 6px rgba(124,58,237,0.5))' }} />
-        </div>
-
-        <div className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-1 w-full text-center" style={{ fontSize: 9 }}>ADMIN</div>
-
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            title={item.label}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${activeTab === item.id
-              ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
-              : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
-              }`}
-          >
-            <item.icon className="w-4.5 h-4.5" />
-            <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-slate-800 text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl border border-slate-700">
-              {item.label}
-            </span>
-            {activeTab === item.id && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r bg-rose-500" />
-            )}
-            {/* Notification badge for disputes */}
-            {item.id === 'disputes' && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full text-white text-xs flex items-center justify-center font-bold" style={{ fontSize: 9 }}>2</span>
-            )}
-            {item.id === 'verification' && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full text-white text-xs flex items-center justify-center font-bold" style={{ fontSize: 9 }}>3</span>
-            )}
-          </button>
-        ))}
-
-        <div className="flex-1" />
-        <div className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-1 w-full text-center" style={{ fontSize: 9 }}>ADMIN</div>
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold cursor-pointer hover:scale-105 transition-transform">AD</div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6">
+    <DashboardShell role="admin" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab}>
         {activeTab === 'analytics' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-white">Platform Analytics</h1>
-                <p className="text-slate-500 text-sm mt-0.5">Real-time overview of StageLink marketplace performance.</p>
-              </div>
-              <span className="badge badge-emerald flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Systems Operational
-              </span>
-            </div>
-
+            <DashboardIntro eyebrow="PLATFORM OPERATIONS · OCTOBER 2026" title="A pulse on" emphasis="every performance." description="The people, bookings, and business behind the StageLink community." action={<span className="sl-status"><i /> Systems operational</span>} />
+            <div className="sl-operations-strip"><span><Icon.Shield className="w-4 h-4" /> On your radar</span><button onClick={() => setActiveTab('verification')}>03 verification requests <span>↗</span></button><button onClick={() => setActiveTab('disputes')}>02 disputes to review <span>↗</span></button></div>
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
@@ -113,7 +65,7 @@ export default function AdminDashboard() {
                 { label: 'Monthly Revenue', value: '$61K', icon: Icon.TrendingUp, color: 'text-emerald-400', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)', change: '+12%' },
                 { label: 'Open Disputes', value: '2', icon: Icon.AlertCircle, color: 'text-rose-400', bg: 'rgba(244,63,94,0.1)', border: 'rgba(244,63,94,0.2)', change: '' },
               ].map(s => (
-                <div key={s.label} className="p-4 rounded-2xl flex items-center gap-3"
+                <div key={s.label} className="sl-stat p-4 rounded-2xl flex items-center gap-3"
                   style={{ background: s.bg, border: `1px solid ${s.border}` }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -132,20 +84,20 @@ export default function AdminDashboard() {
               {/* GMV Chart */}
               <div className="col-span-12 lg:col-span-8 card p-5">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="font-semibold text-white text-sm">Monthly GMV ($K)</h2>
+                  <h2 className="font-semibold text-white text-sm">Monthly {metric === 'gmv' ? 'GMV ($K)' : metric === 'users' ? 'new users' : 'revenue ($K)'}</h2>
                   <div className="flex gap-2">
-                    {['GMV', 'Users', 'Revenue'].map((m, i) => (
-                      <button key={m} className={`text-xs px-3 py-1 rounded-lg border transition-all ${i === 0 ? 'bg-violet-500/10 border-violet-500 text-violet-300' : 'border-slate-700 text-slate-500 hover:text-slate-300'}`}>{m}</button>
+                    {(['gmv', 'users', 'revenue'] as const).map(m => (
+                      <button key={m} onClick={() => setMetric(m)} aria-pressed={metric === m} className={`text-xs px-3 py-1 rounded-lg border transition-all ${metric === m ? 'bg-violet-500/10 border-violet-500 text-violet-300' : 'border-slate-700 text-slate-500 hover:text-slate-300'}`}>{m === 'gmv' ? 'GMV' : m === 'users' ? 'Users' : 'Revenue'}</button>
                     ))}
                   </div>
                 </div>
                 <div className="flex items-end gap-3 h-40">
                   {chartData.map((d, i) => (
                     <div key={d.month} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full rounded-t transition-all hover:opacity-80"
+                      <div title={`${d.month}: ${d[metric]}${metric === 'users' ? ' users' : 'K dollars'}`} role="img" aria-label={`${d.month}: ${d[metric]}${metric === 'users' ? ' users' : 'K dollars'}`} className="w-full rounded-t transition-all hover:opacity-80"
                         style={{
-                          height: `${(d.gmv / maxGMV) * 130}px`,
-                          background: i === chartData.length - 1 ? 'linear-gradient(to top, #7c3aed, #a78bfa)' : 'rgba(124,58,237,0.3)',
+                          height: `${(d[metric] / metricMax) * 130}px`,
+                          background: i === chartData.length - 1 ? 'linear-gradient(to top, rgba(var(--sl-accent-rgb), .35), var(--sl-accent))' : 'rgba(var(--sl-accent-rgb), .18)',
                           minHeight: 4
                         }} />
                       <span className="text-xs text-slate-500 font-mono">{d.month}</span>
@@ -177,10 +129,10 @@ export default function AdminDashboard() {
               {/* Platform Metrics */}
               <div className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: 'Artists on Platform', value: '89,200+' },
-                  { label: 'Events Booked', value: '340+' },
-                  { label: 'Cities Covered', value: '< 2 hrs' },
-                  { label: 'Avg. Response Time', value: '4.8 ★' },
+                  { label: 'Events Booked', value: '89,200+' },
+                  { label: 'Cities Covered', value: '340+' },
+                  { label: 'Avg. Response Time', value: '< 2 hrs' },
+                  { label: 'Average Rating', value: '4.8 ★' },
                 ].map(m => (
                   <div key={m.label} className="card-2 p-4 text-center">
                     <div className="font-display text-2xl font-bold text-white mb-1">{m.value}</div>
@@ -202,7 +154,7 @@ export default function AdminDashboard() {
               {pendingVerifications.map(v => (
                 <div key={v.id} className="card p-5 flex items-center gap-5">
                   {v.img ? (
-                    <img src={`https://images.unsplash.com/${v.img}?w=56&h=56&fit=crop`} alt={v.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                    <img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }} src={`https://images.unsplash.com/${v.img}?w=56&h=56&fit=crop`} alt={v.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
                       <Icon.Briefcase className="w-5 h-5 text-slate-500" />
@@ -294,6 +246,7 @@ export default function AdminDashboard() {
                     <div className="text-xs text-slate-500">Temporarily disable public access to the platform</div>
                   </div>
                   <button
+                    role="switch" aria-label="Maintenance Mode" aria-checked={maintenanceMode}
                     onClick={() => setMaintenanceMode(!maintenanceMode)}
                     className={`relative w-12 h-6 rounded-full transition-colors ${maintenanceMode ? 'bg-rose-500' : 'bg-slate-700'}`}
                   >
@@ -342,7 +295,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </DashboardShell>
   );
 }
