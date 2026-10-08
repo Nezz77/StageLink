@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Icon, Stars } from './Icons';
+import { Icon } from './Icons';
+import DashboardShell, { DashboardIntro, GlassSurface } from './DashboardShell';
 import BrowseArtistsPage from './BrowseArtistsPage';
 import BookingPaymentStatus from './BookingPaymentStatus';
 
 const trendingArtists = [
   { id: 1, name: 'Aria Nova', category: 'Solo Vocalist', rating: 4.9, price: '$450/hr', image: 'photo-1516450360452-9312f5e86fc7', verified: true },
   { id: 2, name: 'The Midnight Collective', category: 'Live Band', rating: 4.8, price: '$1,200/event', image: 'photo-1470225620780-dba8ba36b745', verified: true },
-  { id: 3, name: 'DJ Neon Pulse', category: 'DJ', rating: 4.7, price: '$600/hr', image: 'photo-1571266028243-e4733b0f0bb0', verified: true },
+  { id: 3, name: 'DJ Neon Pulse', category: 'DJ', rating: 4.7, price: '$600/hr', image: 'photo-1493225457124-a3eb161ffa5f', verified: true },
   { id: 4, name: 'Luna Dance Co.', category: 'Dance Troupe', rating: 4.9, price: '$800/event', image: 'photo-1504609813442-a8924e83f76e', verified: true },
   { id: 5, name: 'Marco Strings', category: 'Solo Violinist', rating: 5.0, price: '$350/hr', image: 'photo-1493225457124-a3eb161ffa5f', verified: true },
 ];
@@ -15,218 +15,68 @@ const trendingArtists = [
 const recommendedArtists = [
   { id: 6, name: 'Sunset Brass', category: 'Brass Quartet', rating: 4.6, price: '$950/event', image: 'photo-1511192336575-5a79af67a629', verified: true },
   { id: 7, name: 'Crystal Voices', category: 'Acapella Group', rating: 4.9, price: '$700/event', image: 'photo-1516450360452-9312f5e86fc7', verified: false },
-  { id: 8, name: 'Electric Dreams', category: 'Synth Pop Duo', rating: 4.8, price: '$550/hr', image: 'photo-1571266028243-e4733b0f0bb0', verified: true },
+  { id: 8, name: 'Electric Dreams', category: 'Synth Pop Duo', rating: 4.8, price: '$550/hr', image: 'photo-1493225457124-a3eb161ffa5f', verified: true },
   { id: 9, name: 'The Jazz Cats', category: 'Jazz Trio', rating: 4.7, price: '$800/event', image: 'photo-1470225620780-dba8ba36b745', verified: true },
 ];
 
-export default function CustomerDashboard({ onOpenBooking }: { onOpenBooking: () => void }) {
-  const [activeTab, setActiveTab] = useState<'home' | 'saved' | 'booking' | 'profile' | 'browse'>('home');
+type CustomerTab = 'home' | 'saved' | 'booking' | 'profile' | 'browse';
+const navItems = [
+  { id: 'home', label: 'Discover', icon: Icon.Home },
+  { id: 'saved', label: 'Saved artists', icon: Icon.Heart },
+  { id: 'booking', label: 'My bookings', icon: Icon.Calendar },
+  { id: 'profile', label: 'My profile', icon: Icon.User },
+];
 
-  if (activeTab === 'browse') {
-    return (
-      <div className="bg-[#07090f] min-h-screen">
-        <BrowseArtistsPage />
-        <button 
-          onClick={() => setActiveTab('home')} 
-          className="fixed bottom-6 left-6 btn-primary rounded-full px-6 py-3 z-50 shadow-xl"
-        >
-          <Icon.ChevronLeft className="w-5 h-5 inline mr-2" /> Back to Dashboard
-        </button>
+export default function CustomerDashboard({ onOpenChat, onOpenBooking }: { onOpenChat?: () => void, onOpenBooking?: () => void }) {
+  const [activeTab, setActiveTab] = useState<CustomerTab>('home');
+  const [savedIds, setSavedIds] = useState<number[]>([]);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profile, setProfile] = useState({ name: 'Jordan Rivera', email: 'jordan.rivera@example.com', city: 'Los Angeles, CA' });
+  const navigate = (tab: string) => setActiveTab(tab as CustomerTab);
+  const toggleSaved = (id: number) => setSavedIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id]);
+  const artistCard = (artist: typeof recommendedArtists[number], index: number) => (
+    <article className="card sl-talent-card" key={artist.id}>
+      <div className="sl-talent-photo">
+        <img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }} loading="lazy" src={`https://images.unsplash.com/${artist.image}?w=500&h=500&fit=crop&auto=format`} alt={artist.name} />
+        <span className="sl-talent-number">SELECT / 0{index + 1}</span>
+        <button className="sl-save-button" aria-label={`${savedIds.includes(artist.id) ? 'Unsave' : 'Save'} ${artist.name}`} aria-pressed={savedIds.includes(artist.id)} onClick={() => toggleSaved(artist.id)}><Icon.Heart filled={savedIds.includes(artist.id)} /></button>
       </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen relative bg-[#07090f] overflow-x-hidden">
-      {/* Fixed Background Video */}
-      {activeTab === 'home' && (
-        <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute top-0 left-0 w-full h-full object-cover opacity-60"
-            src="/Stage-Link-Background.mp4"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#07090f]/80 to-[#07090f]"></div>
-        </div>
-      )}
-
-      {/* Nav */}
-      <motion.nav
-        className="sticky top-0 z-50 app-header bg-[#07090f]/80 backdrop-blur-md border-b border-slate-800"
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/stagelink-logo.png" alt="StageLink" className="h-10 w-auto object-contain" style={{ filter: 'drop-shadow(0 0 8px rgba(124,58,237,0.4))' }} />
-          </div>
-          <div className="hidden md:flex items-center gap-8">
-            {['home', 'saved', 'booking', 'profile'].map(tab => (
-              <span
-                key={tab}
-                onClick={() => setActiveTab(tab as any)}
-                className={`text-sm font-semibold tracking-wider uppercase cursor-pointer transition-all ${
-                  activeTab === tab 
-                    ? 'text-violet-400 drop-shadow-[0_0_8px_rgba(124,58,237,0.8)]' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {tab}
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-amber-500 flex items-center justify-center text-white text-sm font-bold cursor-pointer shadow-[0_0_15px_rgba(124,58,237,0.4)] hover:scale-105 transition-transform border-2 border-white/10">JR</div>
-          </div>
-        </div>
-      </motion.nav>
-
-      <AnimatePresence mode="wait">
-        {activeTab === 'home' && (
-          <motion.div
-            key="home"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
-            className="relative z-10"
-          >
-            {/* Hero Section */}
-            <div className="pt-24 pb-16 px-6 text-center max-w-4xl mx-auto">
-              <h1 className="font-display text-5xl md:text-6xl font-black text-white mb-4 leading-tight drop-shadow-2xl">
-                Good evening, Jordan 👋
-              </h1>
-              <p className="text-slate-300 text-lg md:text-xl font-medium drop-shadow-lg">
-                Discover your next big performer and track your active bookings.
-              </p>
-            </div>
-
-            {/* Recommended Artists Section */}
-            <section className="py-12 px-6">
-              <div className="max-w-7xl mx-auto">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="font-display text-3xl font-bold text-white mb-1">Recommended for You</h2>
-                    <p className="text-slate-500 text-sm">Curated picks based on your recent searches</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {recommendedArtists.map((artist, i) => (
-                    <motion.div
-                      key={artist.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.1 }}
-                      className="card overflow-hidden group cursor-pointer hover:border-violet-500/40 transition-all bg-slate-900/50 backdrop-blur-md border-slate-800 hover:-translate-y-1 shadow-lg"
-                    >
-                      <div className="h-48 relative overflow-hidden">
-                        <img src={`https://images.unsplash.com/${artist.image}?w=400&h=300&fit=crop`} alt={artist.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div style={{ background: 'linear-gradient(to top, rgba(7,9,15,0.95), transparent)' }} className="absolute inset-0" />
-                        <div className="absolute bottom-3 left-4 right-4">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="badge badge-violet text-[10px] py-0.5">{artist.category}</span>
-                            <div className="flex items-center gap-1"><Stars rating={Math.floor(artist.rating)} /></div>
-                          </div>
-                          <div className="font-display font-bold text-white text-lg leading-tight truncate">{artist.name}</div>
-                        </div>
-                      </div>
-                      <div className="p-4 flex items-center justify-between bg-[#0b0e17]">
-                        <span className="font-mono text-amber-400 text-sm font-bold">{artist.price}</span>
-                        <button className="btn-primary text-xs py-1.5 px-4" onClick={() => setActiveTab('browse')}>Book</button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* Available Artists Section */}
-            <section className="py-12 px-6">
-              <div className="max-w-7xl mx-auto">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="font-display text-3xl font-bold text-white mb-1">Available Artists</h2>
-                    <p className="text-slate-500 text-sm">Explore our trending talent pool</p>
-                  </div>
-                </div>
-                <div className="flex flex-col md:flex-row h-[400px] w-full gap-4">
-                  {trendingArtists.map((artist, i) => (
-                    <div key={artist.id} onClick={() => setActiveTab('browse')} className="relative group overflow-hidden rounded-3xl flex-1 hover:flex-[3] transition-all duration-700 ease-in-out cursor-pointer shadow-lg border border-slate-800/50 hover:border-violet-500/50">
-                      <img
-                        src={`https://images.unsplash.com/${artist.image}?w=800&h=800&fit=crop&auto=format`}
-                        alt={artist.name}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/20 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-500" />
-
-                      {/* Content (Visible on Hover) */}
-                      <div className="absolute inset-0 p-6 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">
-                        <div className="translate-y-8 group-hover:translate-y-0 transition-transform duration-500">
-                          <span className="badge badge-violet mb-2 inline-block text-xs">{artist.category}</span>
-                          <div className="flex items-center gap-2 mb-1 overflow-hidden">
-                            <h3 className="font-display text-xl font-bold text-white whitespace-nowrap overflow-hidden text-ellipsis">{artist.name}</h3>
-                            {artist.verified && <Icon.CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />}
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-slate-300 mb-4 whitespace-nowrap overflow-hidden text-ellipsis">
-                            <span className="flex items-center gap-1 shrink-0"><Icon.Star className="w-4 h-4 text-amber-400" /> {artist.rating}</span>
-                            <span className="font-mono text-amber-400 font-bold shrink-0">{artist.price}</span>
-                          </div>
-                          <button className="btn-primary w-full text-sm shrink-0 whitespace-nowrap">View Profile</button>
-                        </div>
-                      </div>
-
-                      {/* Vertical Label (Visible when NOT hovered) */}
-                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:group-hover:opacity-0 transition-opacity duration-300 w-full px-2">
-                        <div className="flex flex-col items-center gap-3">
-                          <span className="w-8 h-8 rounded-full bg-slate-900/80 border border-slate-700/50 backdrop-blur-md flex items-center justify-center text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
-                            <Icon.Star className="w-4 h-4" />
-                          </span>
-                          <h3 className="font-display font-bold text-white text-sm md:text-base text-center drop-shadow-md line-clamp-2 w-full px-1">{artist.name}</h3>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* Explore More Button */}
-            <div className="flex justify-center pb-24 pt-8 relative z-10">
-              <button 
-                onClick={() => setActiveTab('browse')}
-                className="btn-primary px-10 py-5 text-lg font-bold flex items-center gap-3 shadow-[0_0_30px_rgba(124,58,237,0.5)] hover:shadow-[0_0_50px_rgba(124,58,237,0.8)] transition-all hover:scale-105 hover:-translate-y-1"
-              >
-                <Icon.Search className="w-6 h-6" />
-                Explore More Artists
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Other Tabs */}
-        {activeTab === 'booking' && <div className="relative z-10 mx-auto max-w-3xl px-4 py-10 pb-32"><h1 className="mb-6 font-display text-3xl text-white">My booking</h1><BookingPaymentStatus onPay={onOpenBooking} /><button onClick={onOpenBooking} className="btn-ghost mt-4">Open booking & quotation →</button></div>}
-        {activeTab !== 'home' && activeTab !== 'booking' && (
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="max-w-7xl mx-auto px-6 py-12 relative z-10"
-          >
-             <h1 className="font-display text-4xl font-bold text-white capitalize mb-8">{activeTab}</h1>
-             <div className="card p-12 text-center border-slate-800 bg-slate-900/50 backdrop-blur-sm">
-               <Icon.LayoutDashboard className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-               <h3 className="text-xl text-white font-medium mb-2">Coming Soon</h3>
-               <p className="text-slate-400">The {activeTab} section is currently under development.</p>
-             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      <div className="sl-talent-details">
+        <div className="sl-talent-meta"><span>{artist.category}</span><span>★ {artist.rating.toFixed(1)}</span></div>
+        <h3>{artist.name}</h3>
+        <div className="sl-talent-footer"><span>{artist.price}</span><button className="btn-ghost" onClick={() => setActiveTab('browse')}>Explore ↗</button></div>
+      </div>
+    </article>
   );
+
+  return <DashboardShell role="customer" navItems={navItems} activeTab={activeTab} onNavigate={navigate}>
+    <div key={activeTab} className="animate-slide-up">
+      {activeTab === 'home' && <>
+        <DashboardIntro eyebrow="YOUR BACKSTAGE PASS" title="Good evening," emphasis="Jordan." description="A little inspiration. A little planning. An unforgettable night." action={<button className="btn-ghost sl-action" onClick={() => setActiveTab('booking')}><Icon.Calendar className="w-4 h-4" /> My bookings</button>} />
+        <section className="sl-discovery-hero" aria-label="Discover your next performer">
+          <div><div className="sl-eyebrow">THE NIGHT STARTS WITH YOU</div><h2>Find your<br /><em>main character.</em></h2><p>From intimate sets to full-stage spectacles. Discover the talent that makes your event feel like yours.</p><button className="btn-primary sl-action" onClick={() => setActiveTab('browse')}><Icon.Search className="w-4 h-4" /> Find a performer <span>↗</span></button></div>
+          <GlassSurface className="sl-event-ticket"><div className="sl-eyebrow">YOUR NEXT GREAT NIGHT</div><h3>One stage.<br />Endless possibilities.</h3><p>Live music, movement, and a room full of moments worth keeping.</p><div className="sl-ticket-bottom"><span>ADMIT ONE<br />YOUR IMAGINATION</span><Icon.Music /></div></GlassSurface>
+        </section>
+        <section aria-labelledby="curated-title"><div className="sl-section-heading"><div><h2 id="curated-title">In the spotlight</h2><p>A handpicked lineup for your next occasion.</p></div><button className="sl-text-link" onClick={() => setActiveTab('browse')}>All artists <span>↗</span></button></div><div className="sl-artist-grid">{recommendedArtists.map(artistCard)}</div></section>
+        <section aria-labelledby="lineup-title"><div className="sl-section-heading"><div><h2 id="lineup-title">Your next headliner</h2><p>Meet the artists making a little noise.</p></div><span className="sl-eyebrow">THE SHORTLIST / 05</span></div><div className="sl-lineup">{trendingArtists.map((artist, index) => <button className="sl-lineup-item" key={artist.id} onClick={() => setActiveTab('browse')}><span>0{index + 1}</span><img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }} loading="lazy" src={`https://images.unsplash.com/${artist.image}?w=120&h=120&fit=crop&auto=format`} alt="" /><span><strong>{artist.name}</strong><small>{artist.category} · ★ {artist.rating}</small></span><span>↗</span></button>)}</div></section>
+      </>}
+      {activeTab === 'saved' && <>
+        <DashboardIntro eyebrow="YOUR PERSONAL LINEUP" title="Keep them" emphasis="on the list." description={`${savedIds.length} saved artists. Your next great lineup starts with a shortlist.`} />
+        {savedIds.length ? <div className="sl-artist-grid">{recommendedArtists.filter(artist => savedIds.includes(artist.id)).map(artistCard)}</div> : <div className="card sl-empty-state"><Icon.Heart /><h2>A little room for favorites.</h2><p>Tap the heart on an artist in Discover to keep them here for your next event.</p><button className="btn-primary" onClick={() => setActiveTab('home')}>Discover artists ↗</button></div>}
+      </>}
+      {activeTab === 'booking' && <>
+        <DashboardIntro eyebrow="YOUR EVENT DESK" title="Great nights," emphasis="in the making." description="Keep your event conversations close and your next performance closer." />
+        <BookingPaymentStatus onPay={onOpenBooking} />
+        <div className="card sl-empty-state mt-8"><Icon.Calendar /><h2>Let’s get the show started.</h2><p>Browse the talent, find your fit, and open a conversation to plan the details.</p><div className="flex justify-center gap-3 flex-wrap"><button className="btn-primary" onClick={() => setActiveTab('browse')}>Find a performer ↗</button><button className="btn-ghost" onClick={onOpenChat}>Open booking chat</button><button onClick={onOpenBooking} className="btn-ghost">Open checkout →</button></div></div>
+      </>}
+      {activeTab === 'profile' && <>
+        <DashboardIntro eyebrow="THE PERSON BEHIND THE EVENT" title="Make it" emphasis="personal." description="The details that help artists get to know you." />
+        <form className="card p-6 max-w-2xl" onSubmit={event => { event.preventDefault(); setProfileSaved(true); }}>
+          {profileSaved && <p role="status" className="sl-feedback">Profile updated for this demo session.</p>}
+          <div className="space-y-5">{([['name', 'Full name'], ['email', 'Email'], ['city', 'City']] as const).map(([key,label]) => <label className="block text-sm text-slate-400" key={key}>{label}<input className="input mt-2" type={key === 'email' ? 'email' : 'text'} required value={profile[key]} onChange={event => { setProfileSaved(false); setProfile({ ...profile, [key]: event.target.value }); }} /></label>)}<button className="btn-primary" type="submit">Save profile ↗</button></div>
+        </form>
+      </>}
+      {activeTab === 'browse' && <><button className="btn-ghost mb-6" onClick={() => setActiveTab('home')}>← Back to Discover</button><BrowseArtistsPage /></>}
+    </div>
+  </DashboardShell>;
 }

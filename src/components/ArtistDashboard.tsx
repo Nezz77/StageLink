@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import DashboardShell, { DashboardIntro } from './DashboardShell';
 import { Icon, Stars } from './Icons';
 import BookingPaymentStatus from './BookingPaymentStatus';
 
@@ -37,21 +38,28 @@ const incomingRequests = [
 
 function AIListingModal({ onClose }: { onClose: () => void }) {
   const [keywords, setKeywords] = useState('');
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const trigger = document.activeElement as HTMLElement | null;
+    dialog?.showModal();
+    return () => { dialog?.close(); trigger?.focus(); };
+  }, []);
   const [generated, setGenerated] = useState(false);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+    <dialog ref={dialogRef} className="sl-dialog" aria-labelledby="listing-dialog-title" onCancel={event => { event.preventDefault(); onClose(); }}>
       <div className="card w-full max-w-lg mx-4 animate-slide-up">
         <div className="p-5 border-b border-slate-800 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Icon.Zap className="w-5 h-5 text-violet-400" />
-            <h3 className="font-display text-lg font-bold text-white">AI Auto-Generate Listing</h3>
+            <h3 id="listing-dialog-title" className="font-display text-lg font-bold text-white">AI Auto-Generate Listing</h3>
           </div>
-          <button onClick={onClose}><Icon.X className="w-5 h-5 text-slate-400" /></button>
+          <button aria-label="Close listing generator" onClick={onClose}><Icon.X className="w-5 h-5 text-slate-400" /></button>
         </div>
         <div className="p-5 space-y-4">
           <div>
             <label className="text-xs text-slate-400 font-medium block mb-1.5">Enter keywords about your act</label>
-            <input className="input" placeholder="e.g. soul vocalist, jazz standards, wedding, intimate" value={keywords} onChange={e => setKeywords(e.target.value)} />
+            <input aria-label="Keywords about your act" className="input" placeholder="e.g. soul vocalist, jazz standards, wedding, intimate" value={keywords} onChange={e => setKeywords(e.target.value)} />
           </div>
           {!generated ? (
             <button className="btn-primary w-full flex items-center gap-2 justify-center" onClick={() => setGenerated(true)}>
@@ -75,7 +83,7 @@ function AIListingModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 
@@ -90,66 +98,27 @@ const navItems = [
 
 export default function ArtistDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [requests, setRequests] = useState(incomingRequests);
+  const [notice, setNotice] = useState('');
+  const [profileValues, setProfileValues] = useState<Record<string, string>>({});
+  const respondToRequest = (id: string, accepted: boolean) => {
+    setRequests(items => items.filter(item => item.id !== id));
+    setNotice(`${id} ${accepted ? 'accepted' : 'declined'} in this demo session.`);
+  };
   const [showAIModal, setShowAIModal] = useState(false);
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
+    <DashboardShell role="artist" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab}>
+      {notice && <p role="status" className="sl-feedback">{notice}</p>}
       {showAIModal && <AIListingModal onClose={() => setShowAIModal(false)} />}
 
-      {/* Sidebar */}
-      <aside className="w-16 flex flex-col items-center py-5 gap-2 flex-shrink-0 sticky top-0 h-screen z-10"
-        style={{ background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}>
-        <div className="mb-4 flex items-center justify-center">
-          <img src="/stagelink-logo.png" alt="StageLink" className="w-11 h-11 object-contain" style={{ filter: 'drop-shadow(0 0 6px rgba(124,58,237,0.5))' }} />
-        </div>
-
-        <div className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-1 w-full text-center" style={{ fontSize: 9 }}>MAIN</div>
-
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            title={item.label}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${activeTab === item.id
-              ? 'bg-amber-500/20 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-              : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
-              }`}
-          >
-            <item.icon className="w-4.5 h-4.5" />
-            <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-slate-800 text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl border border-slate-700">
-              {item.label}
-            </span>
-            {activeTab === item.id && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r bg-amber-500" />
-            )}
-          </button>
-        ))}
-
-        <div className="flex-1" />
-        <div className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-1 w-full text-center" style={{ fontSize: 9 }}>ME</div>
-        <div className="w-9 h-9 rounded-full overflow-hidden cursor-pointer hover:scale-105 transition-transform border-2 border-amber-500/40">
-          <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=36&h=36&fit=crop" alt="Aria Nova" className="w-full h-full object-cover" />
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6">
         {activeTab === 'overview' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-white">Welcome back, Aria 🎵</h1>
-                <p className="text-slate-500 text-sm mt-0.5">You have 2 new booking requests and your profile is performing well.</p>
-              </div>
-              <button className="btn-primary flex items-center gap-2" onClick={() => setShowAIModal(true)}>
-                <Icon.Zap className="w-4 h-4" /> AI Generate Gig
-              </button>
-            </div>
-
+            <DashboardIntro eyebrow="YOUR ARTIST STUDIO · OCTOBER 2026" title="The stage is" emphasis="yours, Aria." description="Your next booking. Your next big moment. All in one place." action={<button className="btn-primary sl-action" onClick={() => setShowAIModal(true)}><Icon.Zap className="w-4 h-4" /> AI Generate Gig <span>↗</span></button>} />
             <div className="grid grid-cols-12 gap-5">
               {/* Profile Hero Card */}
-              <div className="col-span-12 lg:col-span-5 rounded-2xl overflow-hidden relative" style={{ minHeight: 260 }}>
-                <img
+              <div className="sl-spotlight sl-artist-spotlight col-span-12 lg:col-span-5 rounded-2xl overflow-hidden relative" style={{ minHeight: 260 }}>
+                <img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }}
                   src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=320&fit=crop"
                   alt="Aria Nova"
                   className="w-full h-full object-cover absolute inset-0"
@@ -184,7 +153,7 @@ export default function ArtistDashboard() {
                   { label: 'Active Gigs', value: '2', icon: Icon.Music, color: 'text-emerald-400', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)', change: '' },
                   { label: 'Bookings This Month', value: '7', icon: Icon.Calendar, color: 'text-rose-400', bg: 'rgba(244,63,94,0.1)', border: 'rgba(244,63,94,0.2)', change: '+3' },
                 ].map(s => (
-                  <div key={s.label} className="flex items-center gap-4 p-4 rounded-2xl"
+                  <div key={s.label} className="sl-stat flex items-center gap-4 p-4 rounded-2xl"
                     style={{ background: s.bg, border: `1px solid ${s.border}` }}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -202,16 +171,17 @@ export default function ArtistDashboard() {
               </div>
 
               {/* Incoming Requests */}
-              <div className="col-span-12 lg:col-span-5 card p-5">
+              <div className="sl-request-panel col-span-12 lg:col-span-5 card p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-lg bg-rose-500/20 flex items-center justify-center">
                     <Icon.Bell className="w-3.5 h-3.5 text-rose-400" />
                   </div>
                   <h2 className="font-semibold text-white text-sm">Incoming Requests</h2>
-                  <span className="badge badge-rose ml-auto">{incomingRequests.length} new</span>
+                  <span className="badge badge-rose ml-auto">{requests.length} new</span>
                 </div>
                 <div className="space-y-3">
-                  {incomingRequests.map(req => (
+                  {requests.length === 0 && <p className="text-sm text-slate-400 py-4">All caught up. No pending requests.</p>}
+                  {requests.map(req => (
                     <div key={req.id} className="card-2 p-4">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-slate-500 font-mono">{req.id}</span>
@@ -222,8 +192,8 @@ export default function ArtistDashboard() {
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-amber-400 font-bold text-sm">{req.offer}</span>
                         <div className="flex gap-2">
-                          <button className="btn-ghost text-xs py-1.5 px-3">Decline</button>
-                          <button className="btn-primary text-xs py-1.5 px-3">Accept</button>
+                          <button onClick={() => respondToRequest(req.id, false)} className="btn-ghost text-xs py-1.5 px-3">Decline</button>
+                          <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-1.5 px-3">Accept</button>
                         </div>
                       </div>
                     </div>
@@ -270,7 +240,7 @@ export default function ArtistDashboard() {
                       <div className="w-full rounded-t transition-all hover:opacity-80"
                         style={{
                           height: `${(d.amount / maxEarnings) * 80}px`,
-                          background: i === earningsData.length - 1 ? 'linear-gradient(to top, #f59e0b, #fcd34d)' : 'rgba(245,158,11,0.25)',
+                          background: i === earningsData.length - 1 ? 'linear-gradient(to top, rgba(var(--sl-accent-rgb), .35), var(--sl-accent))' : 'rgba(var(--sl-accent-rgb), .18)',
                           minHeight: 4
                         }} />
                       <span className="text-xs text-slate-600 font-mono" style={{ fontSize: 9 }}>{d.month}</span>
@@ -363,7 +333,7 @@ export default function ArtistDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {portfolioItems.map((item, i) => (
                 <div key={i} className="group relative rounded-2xl overflow-hidden aspect-square cursor-pointer">
-                  <img src={`https://images.unsplash.com/${item.src}?w=300&h=300&fit=crop`} alt={item.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }} src={`https://images.unsplash.com/${item.src}?w=300&h=300&fit=crop`} alt={item.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end">
                     <div className="p-3 w-full">
                       {item.type === 'video' && <Icon.Play className="w-8 h-8 text-white mx-auto mb-2" />}
@@ -407,7 +377,7 @@ export default function ArtistDashboard() {
                     <div className="w-full rounded-t transition-all hover:opacity-80"
                       style={{
                         height: `${(d.amount / maxEarnings) * 160}px`,
-                        background: i === earningsData.length - 1 ? 'linear-gradient(to top, #f59e0b, #fcd34d)' : 'rgba(245,158,11,0.25)',
+                        background: i === earningsData.length - 1 ? 'linear-gradient(to top, rgba(var(--sl-accent-rgb), .35), var(--sl-accent))' : 'rgba(var(--sl-accent-rgb), .18)',
                         minHeight: 4
                       }} />
                     <span className="text-xs text-slate-500 font-mono">{d.month}</span>
@@ -424,7 +394,7 @@ export default function ArtistDashboard() {
             <div className="card p-6 mb-4">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 border-2 border-amber-500/40">
-                  <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=64&h=64&fit=crop" alt="Aria Nova" className="w-full h-full object-cover" />
+                  <img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }} src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=64&h=64&fit=crop" alt="Aria Nova" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <div className="font-display text-xl font-bold text-white">Aria Nova</div>
@@ -436,19 +406,18 @@ export default function ArtistDashboard() {
                 {[['Artist Name', 'Aria Nova'], ['Genre', 'Soul / Jazz'], ['Phone', '+1 (555) 201-8847'], ['City', 'Los Angeles, CA']].map(([label, val]) => (
                   <div key={label}>
                     <label className="text-xs text-slate-400 font-medium block mb-1.5">{label}</label>
-                    <input className="input" defaultValue={val} />
+                    <input aria-label={label} className="input" value={profileValues[label] ?? val} onChange={event => setProfileValues(values => ({ ...values, [label]: event.target.value }))} />
                   </div>
                 ))}
               </div>
               <div className="mt-4">
                 <label className="text-xs text-slate-400 font-medium block mb-1.5">Bio</label>
-                <textarea className="input resize-none h-24" defaultValue="Award-winning vocalist Aria Nova brings a rare fusion of classical training and contemporary soul to every stage. Featured at The Ritz Carlton, Four Seasons Beverly Hills, and Sundance Film Festival." />
+                <textarea aria-label="Bio" className="input resize-none h-24" value={profileValues.Bio ?? "Award-winning vocalist Aria Nova brings a rare fusion of classical training and contemporary soul to every stage. Featured at The Ritz Carlton, Four Seasons Beverly Hills, and Sundance Film Festival."} onChange={event => setProfileValues(values => ({ ...values, Bio: event.target.value }))} />
               </div>
             </div>
-            <button className="btn-primary">Save Changes</button>
+            <button className="btn-primary" onClick={() => setNotice('Profile changes kept for this demo session.')}>Save Changes</button>
           </div>
         )}
-      </main>
-    </div>
+    </DashboardShell>
   );
 }

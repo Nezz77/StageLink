@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+
+# Git
+.git/
+.gitattributes
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dev files
+*.local
+.env.local
+.env.development
+
+# Figma tooling (not needed in container)
+.figma/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/
+.idea/

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DashboardShell, { DashboardIntro } from './DashboardShell';
 import { Icon } from './Icons';
 
 const inventory = [
@@ -41,61 +42,25 @@ const navItems = [
 
 export default function RenterDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [category, setCategory] = useState('All');
+  const [requests, setRequests] = useState(incomingRequests);
+  const [notice, setNotice] = useState('');
+  const [profileValues, setProfileValues] = useState<Record<string, string>>({});
+  const respondToRequest = (id: string, accepted: boolean) => {
+    setRequests(items => items.filter(item => item.id !== id));
+    setNotice(`${id} ${accepted ? 'accepted' : 'declined'} in this demo session.`);
+  };
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
-      {/* Sidebar */}
-      <aside className="w-16 flex flex-col items-center py-5 gap-2 flex-shrink-0 sticky top-0 h-screen z-10"
-        style={{ background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}>
-        <div className="mb-4 flex items-center justify-center">
-          <img src="/stagelink-logo.png" alt="StageLink" className="w-11 h-11 object-contain" style={{ filter: 'drop-shadow(0 0 6px rgba(124,58,237,0.5))' }} />
-        </div>
-
-        <div className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-1 w-full text-center" style={{ fontSize: 9 }}>MAIN</div>
-
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            title={item.label}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group ${activeTab === item.id
-              ? 'bg-sky-500/20 text-sky-400 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
-              : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
-              }`}
-          >
-            <item.icon className="w-4.5 h-4.5" />
-            <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-slate-800 text-white text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl border border-slate-700">
-              {item.label}
-            </span>
-            {activeTab === item.id && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r bg-sky-500" />
-            )}
-          </button>
-        ))}
-
-        <div className="flex-1" />
-        <div className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-1 w-full text-center" style={{ fontSize: 9 }}>ME</div>
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold cursor-pointer hover:scale-105 transition-transform">AV</div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6">
+    <DashboardShell role="renter" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab}>
+      {notice && <p role="status" className="sl-feedback">{notice}</p>}
         {activeTab === 'overview' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="font-display text-2xl font-bold text-white">AudioVault Rentals 🎛️</h1>
-                <p className="text-slate-500 text-sm mt-0.5">2 active rentals · 2 new requests · 2 items available</p>
-              </div>
-              <button className="btn-primary flex items-center gap-2">
-                <Icon.Plus className="w-4 h-4" /> Add Equipment
-              </button>
-            </div>
-
+            <DashboardIntro eyebrow="RENTAL OPERATIONS · OCTOBER 2026" title="Behind the" emphasis="great nights." description="Your equipment, out in the world. Keep every production moving." action={<button className="btn-primary sl-action" onClick={() => setActiveTab('inventory')}><Icon.Package className="w-4 h-4" /> Manage inventory <span>↗</span></button>} />
             <div className="grid grid-cols-12 gap-5">
               {/* Hero Equipment Card */}
-              <div className="col-span-12 lg:col-span-7 rounded-2xl overflow-hidden relative" style={{ minHeight: 260 }}>
-                <img
+              <div className="sl-spotlight sl-equipment-spotlight col-span-12 lg:col-span-7 rounded-2xl overflow-hidden relative" style={{ minHeight: 260 }}>
+                <img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }}
                   src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=320&fit=crop"
                   alt="Equipment"
                   className="w-full h-full object-cover absolute inset-0"
@@ -138,7 +103,7 @@ export default function RenterDashboard() {
                   { label: 'Active Rentals', value: '2', icon: Icon.Repeat, color: 'text-sky-400', bg: 'rgba(14,165,233,0.1)', border: 'rgba(14,165,233,0.2)' },
                   { label: 'Total Equipment', value: '5 items', icon: Icon.Package, color: 'text-violet-400', bg: 'rgba(124,58,237,0.1)', border: 'rgba(124,58,237,0.2)' },
                 ].map(s => (
-                  <div key={s.label} className="flex items-center gap-4 p-4 rounded-2xl flex-1"
+                  <div key={s.label} className="sl-stat flex items-center gap-4 p-4 rounded-2xl flex-1"
                     style={{ background: s.bg, border: `1px solid ${s.border}` }}>
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -180,10 +145,11 @@ export default function RenterDashboard() {
               <div className="col-span-12 lg:col-span-5 card p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <h2 className="font-semibold text-white text-sm">New Requests</h2>
-                  <span className="badge badge-violet ml-auto">{incomingRequests.length} new</span>
+                  <span className="badge badge-violet ml-auto">{requests.length} new</span>
                 </div>
                 <div className="space-y-3">
-                  {incomingRequests.map(req => (
+                  {requests.length === 0 && <p className="text-sm text-slate-400 py-4">All caught up. No pending requests.</p>}
+                  {requests.map(req => (
                     <div key={req.id} className="card-2 p-4">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-slate-500 font-mono">{req.id}</span>
@@ -194,8 +160,8 @@ export default function RenterDashboard() {
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-amber-400 font-bold text-sm">{req.budget}</span>
                         <div className="flex gap-2">
-                          <button className="btn-ghost text-xs py-1.5 px-3">Decline</button>
-                          <button className="btn-primary text-xs py-1.5 px-3">Accept</button>
+                          <button onClick={() => respondToRequest(req.id, false)} className="btn-ghost text-xs py-1.5 px-3">Decline</button>
+                          <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-1.5 px-3">Accept</button>
                         </div>
                       </div>
                     </div>
@@ -213,12 +179,12 @@ export default function RenterDashboard() {
               <button className="btn-primary flex items-center gap-2"><Icon.Plus className="w-4 h-4" /> Add Item</button>
             </div>
             <div className="flex gap-2 mb-6">
-              {['All', 'Audio', 'Lighting', 'LED / Video'].map((cat, i) => (
-                <button key={cat} className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${i === 0 ? 'bg-violet-500/10 border-violet-500 text-violet-300' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>{cat}</button>
+              {['All', 'Audio', 'Lighting', 'LED / Video'].map(cat => (
+                <button key={cat} onClick={() => setCategory(cat)} aria-pressed={category === cat} className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${category === cat ? 'bg-violet-500/10 border-violet-500 text-violet-300' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>{cat}</button>
               ))}
             </div>
             <div className="space-y-3">
-              {inventory.map(item => (
+              {inventory.filter(item => category === 'All' || item.category === category).map(item => (
                 <div key={item.id} className="card p-5 flex items-center gap-5 hover:border-sky-500/30 transition-colors">
                   <div className={`w-3 h-3 rounded-full flex-shrink-0 ${item.status === 'available' ? 'bg-emerald-400' : item.status === 'rented' ? 'bg-amber-400' : 'bg-rose-400'}`} />
                   <div className="flex-1 min-w-0">
@@ -264,7 +230,8 @@ export default function RenterDashboard() {
           <div className="animate-slide-up max-w-4xl mx-auto">
             <h1 className="font-display text-2xl font-bold text-white mb-6">Rental Requests</h1>
             <div className="space-y-4">
-              {incomingRequests.map(req => (
+              {requests.length === 0 && <p className="text-sm text-slate-400 py-4">All caught up. No pending requests.</p>}
+                  {requests.map(req => (
                 <div key={req.id} className="card p-5 flex items-center gap-5">
                   <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
                     <Icon.Bell className="w-5 h-5 text-amber-400" />
@@ -275,8 +242,8 @@ export default function RenterDashboard() {
                   </div>
                   <span className="font-mono text-amber-400 font-bold flex-shrink-0">{req.budget}</span>
                   <div className="flex gap-2 flex-shrink-0">
-                    <button className="btn-ghost text-xs py-2 px-3">Decline</button>
-                    <button className="btn-primary text-xs py-2 px-3">Accept</button>
+                    <button onClick={() => respondToRequest(req.id, false)} className="btn-ghost text-xs py-2 px-3">Decline</button>
+                    <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-2 px-3">Accept</button>
                   </div>
                 </div>
               ))}
@@ -308,7 +275,7 @@ export default function RenterDashboard() {
                     <div className="w-full rounded-t transition-all hover:opacity-80"
                       style={{
                         height: `${(d.amount / maxRevenue) * 160}px`,
-                        background: i === revenueData.length - 1 ? 'linear-gradient(to top, #0ea5e9, #38bdf8)' : 'rgba(14,165,233,0.25)',
+                        background: i === revenueData.length - 1 ? 'linear-gradient(to top, rgba(var(--sl-accent-rgb), .35), var(--sl-accent))' : 'rgba(var(--sl-accent-rgb), .18)',
                         minHeight: 4
                       }} />
                     <span className="text-xs text-slate-500 font-mono">{d.month}</span>
@@ -335,15 +302,14 @@ export default function RenterDashboard() {
                 {[['Business Name', 'AudioVault Rentals'], ['Owner', 'Samuel Park'], ['Phone', '+1 (555) 440-2291'], ['City', 'Los Angeles, CA']].map(([label, val]) => (
                   <div key={label}>
                     <label className="text-xs text-slate-400 font-medium block mb-1.5">{label}</label>
-                    <input className="input" defaultValue={val} />
+                    <input aria-label={label} className="input" value={profileValues[label] ?? val} onChange={event => setProfileValues(values => ({ ...values, [label]: event.target.value }))} />
                   </div>
                 ))}
               </div>
             </div>
-            <button className="btn-primary">Save Changes</button>
+            <button className="btn-primary" onClick={() => setNotice('Profile changes kept for this demo session.')}>Save Changes</button>
           </div>
         )}
-      </main>
-    </div>
+    </DashboardShell>
   );
 }
