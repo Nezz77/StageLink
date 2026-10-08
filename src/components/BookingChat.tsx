@@ -3,6 +3,9 @@ import { Icon } from './Icons';
 import { useReducedMotion } from 'motion/react';
 import { GlassSurface } from './DashboardShell';
 import '../booking-chat.css';
+import PaymentCheckout from './PaymentCheckout';
+import { useBooking } from '../lib/BookingContext';
+import { amounts, bookingDetails } from '../lib/booking';
 
 const initialMessages = [
   { id: 1, from: 'other', sender: 'Aria Nova', text: 'Hi Jordan! I saw your corporate gala brief. I would love to perform at your TechVentures event. What musical style are you envisioning for the evening?', time: '2:14 PM', read: true },
@@ -83,71 +86,20 @@ function NegotiationCard({ onClose, onAccept, onCounter }: { onClose: () => void
   );
 }
 
-function CheckoutPanel({ paid, onPaid }: { paid: boolean; onPaid: () => void }) {
+function CheckoutTab({ onViewTracker }: { onViewTracker: () => void }) {
+  const { booking, act } = useBooking();
+  const { feeCents } = amounts(booking.quoteCents);
   return (
-    <div className="card p-5">
-      <h3 className="font-display font-bold text-white mb-2">Demo Checkout</h3><p className="text-xs text-slate-400 mb-5">Preview only. No payment is processed.</p>
-      <div className="space-y-3 mb-4">
-        <div className="card-2 p-3">
-          <div className="text-xs text-slate-500 font-medium mb-2">Booking: BK-2901</div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-slate-400">Aria Nova — 3hr Performance</span>
-            <span className="text-white font-mono">$2,250</span>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-slate-400">Service fee (5%)</span>
-            <span className="text-white font-mono">$112.50</span>
-          </div>
-          <div className="border-t border-slate-700 mt-2 pt-2 flex justify-between font-bold">
-            <span className="text-white">Advance Deposit (30%)</span>
-            <span className="text-amber-400 font-mono">$708.75</span>
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs text-slate-400 font-medium mb-2">Payment Milestones</div>
-          <div className="space-y-2">
-            {[
-              { label: 'Advance Deposit (30%)', amount: '$708.75', when: 'Due now', paid: false },
-              { label: 'Mid-booking (40%)', amount: '$945.00', when: '7 days before event', paid: false },
-              { label: 'Final Balance (30%)', amount: '$708.75', when: 'Post-event', paid: false },
-            ].map(m => (
-              <div key={m.label} className="flex items-center gap-3 text-xs">
-                <div className={`w-2 h-2 rounded-full ${m.paid ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                <span className="text-slate-300 flex-1">{m.label}</span>
-                <span className="font-mono text-amber-400">{m.amount}</span>
-                <span className="text-slate-500">{m.when}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <input className="input" placeholder="Card number" defaultValue="4242 4242 4242 4242" />
-          <div className="grid grid-cols-2 gap-3">
-            <input className="input" placeholder="MM / YY" defaultValue="09/28" />
-            <input className="input" placeholder="CVV" defaultValue="•••" />
-          </div>
-        </div>
-      </div>
-
-      {!paid ? (
-        <button className="btn-primary w-full flex items-center gap-2 justify-center py-3" onClick={onPaid}>
-          <Icon.CreditCard className="w-4 h-4" />
-          Pay Advance $708.75
-        </button>
-      ) : (
-        <div className="text-center animate-fade-in py-2">
-          <Icon.CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
-          <p className="text-emerald-300 font-semibold mb-1">Payment Confirmed!</p>
-          <p className="text-xs text-slate-500 mb-3">Booking BK-2901 is now active</p>
-          <button className="btn-ghost text-xs flex items-center gap-1 mx-auto">
-            <Icon.Download className="w-3.5 h-3.5" />
-            Download Invoice PDF
-          </button>
-        </div>
-      )}
-    </div>
+    <PaymentCheckout
+      bookingId={bookingDetails.id}
+      artist={bookingDetails.artist}
+      event={bookingDetails.event}
+      quoteCents={booking.quoteCents}
+      feeCents={feeCents}
+      onPaid={() => act({ type: 'pay', quoteVersion: booking.quoteVersion, totalCents: booking.quoteCents + feeCents })}
+      onBack={() => {}}
+      onViewBooking={onViewTracker}
+    />
   );
 }
 
@@ -159,8 +111,8 @@ const conversations = [
 ];
 const tabLabels: Record<string, string> = { chat: 'Conversations', checkout: 'Checkout', tracker: 'Booking journey', saved: 'Saved collection', invoices: 'Invoices' };
 
-export default function BookingChat({ onBack }: { onBack: () => void }) {
-  const [activeTab, setActiveTab] = useState('chat');
+export default function BookingChat({ onBack, initialTab = 'chat' }: { onBack: () => void; initialTab?: string }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [activeContact, setActiveContact] = useState('aria');
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
@@ -263,8 +215,8 @@ export default function BookingChat({ onBack }: { onBack: () => void }) {
           </div>
         )}
         {activeTab === 'checkout' && (
-          <div className="animate-slide-up max-w-lg">
-            <CheckoutPanel paid={depositPaid} onPaid={() => { setDepositPaid(true); setQuoteAccepted(true); }} />
+          <div className="animate-slide-up w-full pb-12">
+            <CheckoutTab onViewTracker={() => setActiveTab('tracker')} />
           </div>
         )}
 
