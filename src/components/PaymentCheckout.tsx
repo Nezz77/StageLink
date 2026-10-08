@@ -121,7 +121,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                 transition={{ duration: reduceMotion ? 0 : 0.7, ease: [0.22, 1, 0.36, 1] }}
                 className="relative h-full w-full [transform-style:preserve-3d]"
               >
-                <div aria-hidden={flipped} className="absolute inset-0 overflow-hidden rounded-[20px] border border-white/15 bg-gradient-to-br from-[#30204c] via-[#171529] to-[#090d17] p-[6%] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_25px_45px_-18px_rgba(0,0,0,0.7)] [backface-visibility:hidden]">
+                <div aria-hidden={flipped} className="absolute inset-0 overflow-hidden rounded-[20px] border border-white/15 bg-gradient-to-br from-[#1a4fad] via-[#0f2d7a] to-[#071440] p-[6%] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_25px_45px_-18px_rgba(0,0,0,0.7)] [backface-visibility:hidden]">
                   <div className="pointer-events-none absolute -right-[20%] -top-[70%] aspect-square w-full rounded-full border-[25px] border-white/[0.025] ring-[30px] ring-white/[0.025]" />
                   <div className="pointer-events-none absolute -left-[10%] bottom-[-100%] aspect-square w-full rounded-full border border-violet-200/15 ring-[40px] ring-violet-200/[0.04]" />
                   <div className="relative flex items-start justify-between">
@@ -139,7 +139,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                     <span className="ml-2 text-2xl font-black italic tracking-tighter text-amber-100 sm:text-3xl">VISA</span>
                   </div>
                 </div>
-                <div aria-hidden={!flipped} className="absolute inset-0 overflow-hidden rounded-[20px] border border-white/15 bg-gradient-to-br from-[#30204c] to-[#090d17] text-white shadow-xl [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                <div aria-hidden={!flipped} className="absolute inset-0 overflow-hidden rounded-[20px] border border-white/15 bg-gradient-to-br from-[#1a4fad] to-[#071440] text-white shadow-xl [backface-visibility:hidden] [transform:rotateY(180deg)]">
                   <div className="mt-[10%] h-[22%] bg-black/90" />
                   <div className="mx-[7%] mt-[7%] flex h-[18%] items-center rounded-sm bg-slate-100 px-3 text-slate-800"><span className="flex-1 truncate font-serif italic text-slate-400">{fields.name || 'CODEXR'}</span><span className="border-l border-slate-300 pl-3 font-mono text-sm">{fields.cvv || '•••'}</span></div>
                   <div className="mx-[7%] mt-2 text-right text-[8px] tracking-widest text-slate-400">SECURITY CODE</div>
