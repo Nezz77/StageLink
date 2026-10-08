@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icon, Stars } from './Icons';
 import BrowseArtistsPage from './BrowseArtistsPage';
+import BookingPaymentStatus from './BookingPaymentStatus';
 
 const trendingArtists = [
   { id: 1, name: 'Aria Nova', category: 'Solo Vocalist', rating: 4.9, price: '$450/hr', image: 'photo-1516450360452-9312f5e86fc7', verified: true },
@@ -18,7 +19,7 @@ const recommendedArtists = [
   { id: 9, name: 'The Jazz Cats', category: 'Jazz Trio', rating: 4.7, price: '$800/event', image: 'photo-1470225620780-dba8ba36b745', verified: true },
 ];
 
-export default function CustomerDashboard() {
+export default function CustomerDashboard({ onOpenBooking }: { onOpenBooking: () => void }) {
   const [activeTab, setActiveTab] = useState<'home' | 'saved' | 'booking' | 'profile' | 'browse'>('home');
 
   if (activeTab === 'browse') {
@@ -29,7 +30,7 @@ export default function CustomerDashboard() {
           onClick={() => setActiveTab('home')} 
           className="fixed bottom-6 left-6 btn-primary rounded-full px-6 py-3 z-50 shadow-xl"
         >
-          <Icon.ArrowLeft className="w-5 h-5 inline mr-2" /> Back to Dashboard
+          <Icon.ChevronLeft className="w-5 h-5 inline mr-2" /> Back to Dashboard
         </button>
       </div>
     );
@@ -208,7 +209,8 @@ export default function CustomerDashboard() {
         )}
 
         {/* Other Tabs */}
-        {activeTab !== 'home' && activeTab !== 'browse' && (
+        {activeTab === 'booking' && <div className="relative z-10 mx-auto max-w-3xl px-4 py-10 pb-32"><h1 className="mb-6 font-display text-3xl text-white">My booking</h1><BookingPaymentStatus onPay={onOpenBooking} /><button onClick={onOpenBooking} className="btn-ghost mt-4">Open booking & quotation →</button></div>}
+        {activeTab !== 'home' && activeTab !== 'booking' && (
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 20 }}

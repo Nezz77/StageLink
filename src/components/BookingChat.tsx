@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from './Icons';
+import PaymentCheckout from './PaymentCheckout';
+import BookingPaymentStatus from './BookingPaymentStatus';
+import { useBooking } from '../lib/BookingContext';
+import { amounts, bookingDetails, bookingStatus, canRespond, money } from '../lib/booking';
 
 const messages = [
   { id: 1, from: 'other', sender: 'Aria Nova', text: 'Hi Jordan! I saw your corporate gala brief. I would love to perform at your TechVentures event. What musical style are you envisioning for the evening?', time: '2:14 PM', read: true },
@@ -9,154 +13,71 @@ const messages = [
   { id: 5, from: 'other', sender: 'Aria Nova', text: 'October 18 is open! I\'ve just sent you a custom quotation for review.', time: '2:26 PM', read: false },
 ];
 
-const bookingSteps = [
-  { label: 'Request Sent', done: true, date: 'Oct 10' },
-  { label: 'In Negotiation', done: true, active: true, date: 'Oct 12' },
-  { label: 'Confirmed', done: false, date: '—' },
-  { label: 'Deposit Paid', done: false, date: '—' },
-  { label: 'Event Complete', done: false, date: '—' },
-];
-
-function NegotiationCard({ onClose }: { onClose: () => void }) {
-  const [mode, setMode] = useState<'view' | 'counter' | 'accepted'>('view');
+function NegotiationCard({ onAccepted }: { onAccepted: () => void }) {
+  const { booking, actor, act } = useBooking();
+  const [countering, setCountering] = useState(false);
+  const [counter, setCounter] = useState('2000');
+  const [error, setError] = useState('');
+  const respond = canRespond(booking, actor);
+  const accepted = booking.quoteStatus === 'accepted';
   return (
     <div className="card p-4 border-violet-500/40 animate-fade-in">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
         <Icon.FileText className="w-4 h-4 text-violet-400" />
-        <span className="text-sm font-semibold text-white">Custom Quotation from Aria Nova</span>
-        <span className="badge badge-violet ml-auto">Pending</span>
+        <span className="text-sm font-semibold text-white">{booking.quoteVersion > 1 ? 'Negotiated quotation' : 'Custom quotation from Aria Nova'}</span>
+        <span className="badge badge-violet">{bookingStatus(booking)}</span>
       </div>
       <div className="card-2 p-3 mb-3 space-y-2">
         {[
-          ['Event', 'TechVentures Corporate Gala'],
-          ['Date', 'October 18, 2026 — 7:00 PM'],
-          ['Duration', '3 hours (incl. setup)'],
-          ['Performance', 'Solo Jazz-Soul Vocalist + backing track'],
-        ].map(([k, v]) => (
-          <div key={k} className="flex justify-between text-sm">
-            <span className="text-slate-400">{k}</span><span className="text-white">{v}</span>
-          </div>
-        ))}
-        <div className="border-t border-slate-700 pt-2 flex justify-between">
-          <span className="text-slate-400 text-sm">Total</span>
-          <span className="font-mono font-bold text-amber-400 text-lg">$2,250</span>
-        </div>
+          ['Event', bookingDetails.event], ['Date', bookingDetails.date],
+          ['Performance', bookingDetails.performance],
+        ].map(([label, value]) => <div key={label} className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-sm"><span className="text-slate-400">{label}</span><span className="text-white">{value}</span></div>)}
+        <div className="border-t border-slate-700 pt-2 flex justify-between gap-3"><span className="text-slate-400 text-sm">Performance fee</span><span className="font-mono font-bold text-amber-400 text-lg">{money(booking.quoteCents)}</span></div>
+        <p className="text-[11px] text-slate-500">A 5% StageLink service fee is added at checkout.</p>
       </div>
-      {mode === 'view' && (
-        <div className="flex gap-2">
-          <button className="flex-1 py-2 rounded-lg text-sm font-semibold bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 transition-all" onClick={() => setMode('accepted')}>
-            ✓ Accept Quote
-          </button>
-          <button className="flex-1 py-2 rounded-lg text-sm font-semibold bg-slate-700/50 border border-slate-600 text-slate-300 hover:bg-slate-700 transition-all" onClick={() => setMode('counter')}>
-            ↕ Counter Offer
-          </button>
-          <button className="px-3 py-2 rounded-lg text-sm text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition-all" onClick={onClose}>
-            Decline
-          </button>
-        </div>
-      )}
-      {mode === 'counter' && (
-        <div className="animate-fade-in space-y-3">
-          <div>
-            <label className="text-xs text-slate-400 font-medium block mb-1">Your Counter Offer</label>
-            <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span><input className="input pl-7 font-mono" defaultValue="2000" /></div>
-          </div>
-          <textarea className="input resize-none h-16 text-sm" placeholder="Optional note to Aria..." />
-          <div className="flex gap-2">
-            <button className="btn-ghost flex-1 text-sm" onClick={() => setMode('view')}>Back</button>
-            <button className="btn-primary flex-1 text-sm">Send Counter</button>
-          </div>
-        </div>
-      )}
-      {mode === 'accepted' && (
-        <div className="text-center py-2 animate-fade-in">
-          <Icon.CheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-          <p className="text-sm text-emerald-300 font-semibold">Quote Accepted! Proceeding to checkout...</p>
-        </div>
-      )}
+      {respond && !countering && <div className="flex flex-wrap gap-2">
+        <button className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 transition-all" onClick={() => { if (act({ type: 'accept' }) && actor === 'customer') onAccepted(); }}>✓ {actor === 'artist' ? 'Accept Counter Offer' : 'Accept Quote'}</button>
+        <button className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold bg-slate-700/50 border border-slate-600 text-slate-300 hover:bg-slate-700 transition-all" onClick={() => { setCounter(String(booking.quoteCents / 100)); setCountering(true); }}>↕ Counter Offer</button>
+        <button className="px-3 py-2 rounded-lg text-sm text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition-all" onClick={() => act({ type: 'decline' })}>Decline</button>
+      </div>}
+      {respond && countering && <form className="space-y-3" onSubmit={e => {
+        e.preventDefault();
+        const value = counter.trim();
+        const cents = Math.round(Number(value) * 100);
+        if (!/^\d+(\.\d{1,2})?$/.test(value) || cents < 100 || cents > 100_000_000) { setError('Enter an amount from $1 to $1,000,000, with at most two decimals.'); return; }
+        if (act({ type: 'counter', amountCents: cents })) { setCountering(false); setError(''); }
+      }}>
+        <label htmlFor="counter-amount" className="block text-xs text-slate-400">Counter offer (USD)</label>
+        <input id="counter-amount" inputMode="decimal" className="input font-mono" value={counter} onChange={e => setCounter(e.target.value)} aria-invalid={!!error} aria-describedby={error ? 'counter-error' : undefined} />
+        {error && <p id="counter-error" role="alert" className="text-xs text-rose-300">{error}</p>}
+        <div className="flex gap-2"><button type="button" className="btn-ghost flex-1 text-sm" onClick={() => setCountering(false)}>Back</button><button className="btn-primary flex-1 text-sm" type="submit">Send Counter</button></div>
+      </form>}
+      {!respond && !accepted && <p className="text-xs leading-relaxed text-slate-400">{booking.quoteStatus === 'declined' ? 'This quotation was declined. Payment is unavailable.' : `The ${booking.quoteStatus === 'awaiting_artist' ? 'artist' : 'customer'} needs to approve this quote before payment is available.`}</p>}
+      {accepted && <div className="text-sm text-emerald-300"><p>✓ Quote agreed at {money(booking.quoteCents)}.</p>{actor === 'customer' && booking.payment === 'unpaid' ? <button onClick={onAccepted} className="btn-primary mt-3 w-full text-sm">Continue to payment →</button> : <p className="mt-2 text-xs text-slate-400">{bookingStatus(booking)}</p>}</div>}
     </div>
   );
 }
 
-function CheckoutPanel() {
-  const [paid, setPaid] = useState(false);
-  return (
-    <div className="card p-5">
-      <h3 className="font-display font-bold text-white mb-4">Secure Checkout</h3>
-      <div className="space-y-3 mb-4">
-        <div className="card-2 p-3">
-          <div className="text-xs text-slate-500 font-medium mb-2">Booking: BK-2901</div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-slate-400">Aria Nova — 3hr Performance</span>
-            <span className="text-white font-mono">$2,250</span>
-          </div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-slate-400">Service fee (5%)</span>
-            <span className="text-white font-mono">$112.50</span>
-          </div>
-          <div className="border-t border-slate-700 mt-2 pt-2 flex justify-between font-bold">
-            <span className="text-white">Advance Deposit (30%)</span>
-            <span className="text-amber-400 font-mono">$697.75</span>
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs text-slate-400 font-medium mb-2">Payment Milestones</div>
-          <div className="space-y-2">
-            {[
-              { label: 'Advance Deposit (30%)', amount: '$697.75', when: 'Due now', paid: false },
-              { label: 'Mid-booking (40%)', amount: '$930.00', when: '7 days before event', paid: false },
-              { label: 'Final Balance (30%)', amount: '$697.75', when: 'Post-event', paid: false },
-            ].map(m => (
-              <div key={m.label} className="flex items-center gap-3 text-xs">
-                <div className={`w-2 h-2 rounded-full ${m.paid ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                <span className="text-slate-300 flex-1">{m.label}</span>
-                <span className="font-mono text-amber-400">{m.amount}</span>
-                <span className="text-slate-500">{m.when}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <input className="input" placeholder="Card number" defaultValue="4242 4242 4242 4242" />
-          <div className="grid grid-cols-2 gap-3">
-            <input className="input" placeholder="MM / YY" defaultValue="09/28" />
-            <input className="input" placeholder="CVV" defaultValue="•••" />
-          </div>
-        </div>
-      </div>
-
-      {!paid ? (
-        <button className="btn-primary w-full flex items-center gap-2 justify-center py-3" onClick={() => setPaid(true)}>
-          <Icon.CreditCard className="w-4 h-4" />
-          Pay Advance $697.75
-        </button>
-      ) : (
-        <div className="text-center animate-fade-in py-2">
-          <Icon.CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
-          <p className="text-emerald-300 font-semibold mb-1">Payment Confirmed!</p>
-          <p className="text-xs text-slate-500 mb-3">Booking BK-2901 is now active</p>
-          <button className="btn-ghost text-xs flex items-center gap-1 mx-auto">
-            <Icon.Download className="w-3.5 h-3.5" />
-            Download Invoice PDF
-          </button>
-        </div>
-      )}
-    </div>
-  );
+function CheckoutPanel({ onBack, onViewBooking }: { onBack: () => void; onViewBooking: () => void }) {
+  const { booking, actor, act } = useBooking();
+  // Keep the checkout mounted through its success animation after the ledger updates.
+  const [alreadyPaid] = useState(booking.payment !== 'unpaid');
+  const agreed = booking.quoteStatus === 'accepted';
+  if (actor !== 'customer' || alreadyPaid) return <div className="mx-auto max-w-2xl"><BookingPaymentStatus /></div>;
+  if (!agreed) return <div className="card mx-auto max-w-lg p-8 text-center"><Icon.Shield className="mx-auto mb-4 h-9 w-9 text-violet-400" /><h1 className="font-display text-2xl text-white">Agree on the performance first</h1><p className="mt-3 text-sm leading-relaxed text-slate-400">Both sides must agree to the quote before checkout. {bookingStatus(booking)}.</p><button onClick={onBack} className="btn-primary mt-6">Return to quotation</button></div>;
+  return <PaymentCheckout bookingId={bookingDetails.id} artist={bookingDetails.artist} event={bookingDetails.event} quoteCents={booking.quoteCents} feeCents={amounts(booking.quoteCents).feeCents} onPaid={() => act({ type: 'pay', quoteVersion: booking.quoteVersion, totalCents: amounts(booking.quoteCents).totalCents })} onBack={onBack} onViewBooking={onViewBooking} />;
 }
 
-export default function BookingChat() {
-  const [activeTab, setActiveTab] = useState('chat');
+export default function BookingChat({ onBack, initialTab = 'chat' }: { onBack: () => void; initialTab?: 'chat' | 'checkout' }) {
+  const { booking } = useBooking();
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [input, setInput] = useState('');
-  const [showNegotiation, setShowNegotiation] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const tabs = ['chat', 'checkout', 'tracker', 'saved', 'invoices'];
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (activeTab !== 'chat') window.scrollTo({ top: 0 });
   }, [activeTab]);
 
   const handleSend = () => {
@@ -168,12 +89,12 @@ export default function BookingChat() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
-      <div style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }} className="px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }} className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-4 min-w-0">
           <div className="flex items-center gap-2">
             <img src="/stagelink-logo.png" alt="StageLink" className="h-9 w-auto object-contain" style={{ filter: 'drop-shadow(0 0 6px rgba(124,58,237,0.35))' }} />
           </div>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {tabs.map(t => (
               <button key={t} onClick={() => setActiveTab(t)} className={`px-3 py-1.5 text-sm font-medium rounded-lg capitalize transition-all ${activeTab === t ? 'bg-violet-500/15 text-violet-300' : 'text-slate-400 hover:text-white'}`}>
                 {t}
@@ -181,9 +102,10 @@ export default function BookingChat() {
             ))}
           </div>
         </div>
+        <button onClick={onBack} className="btn-ghost text-xs">← Dashboard</button>
       </div>
 
-      <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
+      <div className="flex-1 p-3 sm:p-6 pb-28 max-w-7xl mx-auto w-full min-w-0">
         {activeTab === 'chat' && (
           <div className="animate-slide-up grid grid-cols-1 lg:grid-cols-3 gap-6 h-full" style={{ minHeight: 'calc(100vh - 120px)' }}>
             {/* Contacts list */}
@@ -252,11 +174,11 @@ export default function BookingChat() {
                     </div>
                   </div>
                 ))}
-                {showNegotiation && (
+                {(
                   <div className="flex justify-start gap-2">
                     <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=28&h=28&fit=crop" alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0 mt-auto" />
-                    <div className="max-w-xs w-full">
-                      <NegotiationCard onClose={() => setShowNegotiation(false)} />
+                    <div className="max-w-xl w-full min-w-0">
+                      <NegotiationCard onAccepted={() => setActiveTab('checkout')} />
                     </div>
                   </div>
                 )}
@@ -290,45 +212,9 @@ export default function BookingChat() {
           </div>
         )}
 
-        {activeTab === 'checkout' && (
-          <div className="animate-slide-up max-w-lg">
-            <CheckoutPanel />
-          </div>
-        )}
+        {activeTab === 'checkout' && <CheckoutPanel onBack={() => setActiveTab('chat')} onViewBooking={() => setActiveTab('tracker')} />}
 
-        {activeTab === 'tracker' && (
-          <div className="animate-slide-up max-w-lg">
-            <h1 className="font-display text-2xl font-bold text-white mb-6">Booking Lifecycle</h1>
-            <div className="card p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <div className="font-mono text-xs text-slate-500">Booking ID</div>
-                  <div className="font-display font-bold text-white">BK-2901</div>
-                </div>
-                <span className="badge badge-amber">In-Negotiation</span>
-              </div>
-              <div className="space-y-0">
-                {bookingSteps.map((step, i) => (
-                  <div key={step.label}>
-                    <div className="tracker-step">
-                      <div className={`tracker-dot ${step.done ? (step.active ? 'bg-violet-500 glow-violet' : 'bg-emerald-500') : 'bg-slate-700 border-2 border-slate-600'}`} style={{ boxShadow: step.active ? '0 0 12px rgba(124,58,237,0.6)' : undefined }} />
-                      <div className="flex-1 flex items-center justify-between">
-                        <span className={`text-sm font-medium ${step.done ? (step.active ? 'text-violet-300' : 'text-white') : 'text-slate-500'}`}>{step.label}</span>
-                        <span className="font-mono text-xs text-slate-500">{step.date}</span>
-                      </div>
-                    </div>
-                    {i < bookingSteps.length - 1 && (
-                      <div className="tracker-line ml-1.5" style={{ background: step.done ? 'var(--color-violet)' : 'var(--color-border)' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button className="btn-primary w-full mt-6" onClick={() => setActiveTab('checkout')}>
-                Proceed to Payment →
-              </button>
-            </div>
-          </div>
-        )}
+        {activeTab === 'tracker' && <div className="mx-auto max-w-2xl"><BookingPaymentStatus onPay={() => setActiveTab('checkout')} /></div>}
 
         {activeTab === 'saved' && (
           <div className="animate-slide-up">
@@ -367,6 +253,7 @@ export default function BookingChat() {
             <h1 className="font-display text-2xl font-bold text-white mb-6">Invoices & Receipts</h1>
             <div className="space-y-3">
               {[
+                ...(booking.payment !== 'unpaid' ? [{ id: `DEMO-${bookingDetails.id}`, booking: `${bookingDetails.id} · ${bookingDetails.artist} · ${bookingDetails.event}`, amount: money(amounts(booking.quoteCents).totalCents), date: 'Demo receipt', status: booking.payment === 'released' ? 'Released to artist' : 'Held by StageLink' }] : []),
                 { id: 'INV-20261008', booking: 'BK-2847 · Aria Nova · Corporate Gala', amount: '$2,250', date: 'Oct 8, 2026', status: 'Paid' },
                 { id: 'INV-20260928', booking: 'BK-2790 · Luna Dance Co. · Wedding', amount: '$1,600', date: 'Sep 28, 2026', status: 'Paid' },
                 { id: 'INV-20260915', booking: 'BK-2701 · DJ Neon Pulse · Birthday', amount: '$1,200', date: 'Sep 15, 2026', status: 'Paid' },

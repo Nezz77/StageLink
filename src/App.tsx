@@ -9,6 +9,7 @@ import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import SplashScreen from './components/SplashScreen';
 import { AnimatePresence } from 'motion/react';
+import { BookingProvider } from './lib/BookingContext';
 
 type Role = 'visitor' | 'customer' | 'artist' | 'renter' | 'admin';
 type View = 'main' | 'booking';
@@ -58,6 +59,7 @@ function RoleSwitcher({ currentRole, onSwitch }: { currentRole: Role; onSwitch: 
 export default function App() {
   const [role, setRole] = useState<Role>('visitor');
   const [view, setView] = useState<View>('main');
+  const [bookingTab, setBookingTab] = useState<'chat' | 'checkout'>('chat');
   const [authMode, setAuthMode] = useState<AuthType | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -82,7 +84,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <BookingProvider actor={role}>
       <AnimatePresence>
         {!isLoaded && <SplashScreen key="splash" onComplete={() => setIsLoaded(true)} />}
       </AnimatePresence>
@@ -91,15 +93,7 @@ export default function App() {
         <div className="min-h-screen transition-colors duration-500 ease-in-out" style={{ background: 'var(--color-bg)' }}>
           {/* Booking Chat accessible to customer/artist */}
           {(role === 'customer' || role === 'artist') && view === 'booking' ? (
-            <>
-              <BookingChat />
-              <button
-                onClick={() => setView('main')}
-                className="fixed top-20 left-6 z-50 btn-ghost text-xs flex items-center gap-1"
-              >
-                ← Back to Dashboard
-              </button>
-            </>
+            <BookingChat initialTab={bookingTab} onBack={() => setView('main')} />
           ) : role === 'visitor' ? (
             <>
               <LandingPage onAuth={setAuthMode} />
@@ -113,9 +107,9 @@ export default function App() {
             </>
           ) : role === 'customer' ? (
             <>
-              <CustomerDashboard />
+              <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} />
               <button
-                onClick={() => setView('booking')}
+                onClick={() => { setBookingTab('chat'); setView('booking'); }}
                 className="fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
                 style={{ borderRadius: 12 }}
               >
@@ -127,7 +121,7 @@ export default function App() {
             <>
               <ArtistDashboard />
               <button
-                onClick={() => setView('booking')}
+                onClick={() => { setBookingTab('chat'); setView('booking'); }}
                 className="fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
                 style={{ borderRadius: 12 }}
               >
@@ -144,6 +138,6 @@ export default function App() {
           <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />
         </div>
       )}
-    </>
+    </BookingProvider>
   );
 }

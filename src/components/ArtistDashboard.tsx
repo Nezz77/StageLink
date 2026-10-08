@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon, Stars } from './Icons';
+import BookingPaymentStatus from './BookingPaymentStatus';
 
 const calendarDays = Array.from({ length: 31 }, (_, i) => i + 1);
 const bookedDates = [4, 11, 12, 18, 25, 26];
@@ -384,6 +385,7 @@ export default function ArtistDashboard() {
         {activeTab === 'earnings' && (
           <div className="animate-slide-up max-w-4xl mx-auto">
             <h1 className="font-display text-2xl font-bold text-white mb-6">Earnings</h1>
+            <div className="mb-6"><BookingPaymentStatus /></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {[
                 { label: 'Total Earned (2026)', value: '$33,200', color: 'text-amber-400' },

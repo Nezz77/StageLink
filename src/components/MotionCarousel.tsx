@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import useEmblaCarousel, { EmblaOptionsType } from 'embla-carousel-react';
+import useEmblaCarousel from 'embla-carousel-react';
+import type { EmblaOptionsType } from 'embla-carousel';
 import { motion } from 'motion/react';
 import { Icon } from './Icons';
 

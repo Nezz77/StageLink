@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from './Icons';
+import AdminPayments from './AdminPayments';
 
 const chartData = [
   { month: 'Apr', gmv: 180, users: 420, revenue: 21 },
@@ -38,6 +39,7 @@ const recentActivity = [
 
 const navItems = [
   { id: 'analytics', icon: Icon.BarChart, label: 'Analytics' },
+  { id: 'payments', icon: Icon.CreditCard, label: 'Payments' },
   { id: 'verification', icon: Icon.Shield, label: 'Verification' },
   { id: 'disputes', icon: Icon.AlertCircle, label: 'Disputes' },
   { id: 'system', icon: Icon.Cpu, label: 'System' },
@@ -92,7 +94,8 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="min-w-0 flex-1 overflow-y-auto p-3 sm:p-6">
+        {activeTab === 'payments' && <AdminPayments />}
         {activeTab === 'analytics' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
