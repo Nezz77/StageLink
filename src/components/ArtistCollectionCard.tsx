@@ -1,26 +1,29 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import type { CollectionListing } from './CollectionDetailPage';
 
 interface ArtistCollectionCardProps {
-  artistName: string;
-  images: string[]; // Up to 5 image URLs
-  date: string;
+  listing: CollectionListing;
+  onOpen: (listing: CollectionListing) => void;
 }
 
-export default function ArtistCollectionCard({ artistName, images, date }: ArtistCollectionCardProps) {
+export default function ArtistCollectionCard({ listing, onOpen }: ArtistCollectionCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [hoveredImageIndex, setHoveredImageIndex] = useState<number | null>(null);
 
   // Take up to 5 images
-  const displayImages = images.slice(0, 5);
+  const displayImages = listing.images.slice(0, 5);
 
   return (
     <motion.div
-      className="relative w-[300px] h-[350px] rounded-[40px] bg-[#F5F5F0] cursor-pointer shadow-sm hover:shadow-xl transition-shadow duration-500 mx-auto"
+      className="relative isolate z-0 w-[300px] h-[350px] select-none rounded-[40px] bg-[#F5F5F0] cursor-pointer shadow-sm hover:shadow-xl transition-shadow duration-500 mx-auto"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setIsExpanded(false); }}
-      onDoubleClick={() => setIsExpanded(!isExpanded)}
+      onDoubleClick={(event) => {
+        event.preventDefault();
+        setIsExpanded((expanded) => !expanded);
+      }}
     >
       {/* Container for images (behind the dark overlay) */}
       <div className="absolute inset-0 pt-8 flex justify-center z-10">
@@ -75,12 +78,12 @@ export default function ArtistCollectionCard({ artistName, images, date }: Artis
                 delay: isExpanded ? index * 0.05 : (isHovered ? index * 0.05 : 0) // Stagger
               }}
             >
-              <img src={src} alt={`${artistName} collection ${index + 1}`} className="w-full h-full object-cover" />
+              <img src={src} alt={`${listing.name} collection ${index + 1}`} className="w-full h-full object-cover" />
               
               {/* Optional ID tag on the first image like in the screenshot */}
               {index === 0 && (
                 <div className="absolute top-3 right-3 text-[10px] font-bold text-white/80 tracking-wider">
-                  {artistName.toUpperCase().replace(/\s+/g, '').substring(0, 8)}
+                  {listing.name.toUpperCase().replace(/\s+/g, '').substring(0, 8)}
                 </div>
               )}
             </motion.div>
@@ -108,18 +111,34 @@ export default function ArtistCollectionCard({ artistName, images, date }: Artis
                A 40,40 0 0,1 260,180
                L 40,180
                A 40,40 0 0,1 0,140 Z" 
-            fill="#1A1A1A" 
+            fill="#1A1A1A"
+            className="pointer-events-auto cursor-pointer"
+            role="button"
+            tabIndex={0}
+            aria-label={`View ${listing.name} ${listing.type === 'artist' ? 'collection' : 'listing'}`}
+            onClick={() => onOpen(listing)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpen(listing);
+              }
+            }}
           />
         </svg>
 
         {/* Overlay Content */}
-        <div className="absolute inset-0 px-8 py-6 flex flex-col justify-between text-white/90">
+        <div
+          className="pointer-events-auto absolute inset-0 px-8 py-6 flex flex-col justify-between text-white/90 cursor-pointer"
+          onClick={() => onOpen(listing)}
+        >
           <div className="mt-14">
-            <h3 className="text-xl font-medium leading-tight">View<br/>Collection</h3>
+            <h3 className="text-xl font-medium leading-tight">
+              View<br />{listing.type === 'artist' ? 'Collection' : 'Listing'}
+            </h3>
           </div>
           <div className="flex items-end gap-1 mb-2">
-            <span className="text-3xl font-light">{date.split(' ')[0]}</span>
-            <span className="text-sm text-white/50 mb-1">{date.split(' ')[1]}</span>
+            <span className="text-3xl font-light">{listing.date.split(' ')[0]}</span>
+            <span className="text-sm text-white/50 mb-1">{listing.date.split(' ')[1]}</span>
           </div>
         </div>
       </motion.div>

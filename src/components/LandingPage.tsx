@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
 import BrowseArtistsPage from './BrowseArtistsPage';
 import RentEquipmentPage from './RentEquipmentPage';
+import CollectionDetailPage, { type CollectionListing } from './CollectionDetailPage';
 import { Icon, Stars } from './Icons';
 import { SwitchMode } from './SwitchMode';
 import { FaFire } from 'react-icons/fa';
@@ -51,7 +52,9 @@ const stats = [
 ];
 
 export default function LandingPage({ onAuth }: { onAuth: (type: 'login' | 'register_customer' | 'register_artist' | 'register_renter') => void }) {
-  const [activeTab, setActiveTab] = useState<'home' | 'browse' | 'rent'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'browse' | 'rent' | 'detail'>('home');
+  const [selectedListing, setSelectedListing] = useState<CollectionListing | null>(null);
+  const [listingOrigin, setListingOrigin] = useState<'browse' | 'rent'>('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
@@ -62,6 +65,13 @@ export default function LandingPage({ onAuth }: { onAuth: (type: 'login' | 'regi
   const textOpacity = useTransform(scrollY, [0, 50, 300], [0, 0, 1]);
   const textY = useTransform(scrollY, [0, 50, 300], [40, 40, 0]);
   const filters = ['All', 'Vocalist', 'Band', 'DJ', 'Dancer', 'Classical'];
+
+  const openCollection = (listing: CollectionListing) => {
+    setSelectedListing(listing);
+    setListingOrigin(activeTab === 'rent' ? 'rent' : 'browse');
+    setActiveTab('detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const heroContainer = {
     hidden: { opacity: 0 },
@@ -349,11 +359,19 @@ export default function LandingPage({ onAuth }: { onAuth: (type: 'login' | 'regi
         )}
 
         {activeTab === 'browse' && (
-          <BrowseArtistsPage key="browse" />
+          <BrowseArtistsPage key="browse" onOpenCollection={openCollection} />
         )}
 
         {activeTab === 'rent' && (
-          <RentEquipmentPage key="rent" />
+          <RentEquipmentPage key="rent" onOpenCollection={openCollection} />
+        )}
+
+        {activeTab === 'detail' && selectedListing && (
+          <CollectionDetailPage
+            key={`detail-${selectedListing.id}`}
+            listing={selectedListing}
+            onBack={() => setActiveTab(listingOrigin)}
+          />
         )}
       </AnimatePresence>
     </div>

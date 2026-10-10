@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
+import type { CollectionListing } from './CollectionDetailPage';
 
 const rentEquipmentData = [
   { 
@@ -37,7 +38,7 @@ const rentEquipmentData = [
   }
 ];
 
-export default function RentEquipmentPage() {
+export default function RentEquipmentPage({ onOpenCollection }: { onOpenCollection: (listing: CollectionListing) => void }) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -86,9 +87,8 @@ export default function RentEquipmentPage() {
               variants={{ hidden: { opacity: 0, y: 40 }, show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } } }}
             >
               <ArtistCollectionCard 
-                artistName={equipment.name}
-                date={equipment.date}
-                images={equipment.images}
+                listing={{ ...equipment, type: 'equipment' }}
+                onOpen={onOpenCollection}
               />
             </motion.div>
           ))}

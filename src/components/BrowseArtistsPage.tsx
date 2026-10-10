@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
+import type { CollectionListing } from './CollectionDetailPage';
 
 const browseArtistsData = [
   { 
@@ -37,7 +38,7 @@ const browseArtistsData = [
   }
 ];
 
-export default function BrowseArtistsPage() {
+export default function BrowseArtistsPage({ onOpenCollection }: { onOpenCollection: (listing: CollectionListing) => void }) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -86,9 +87,8 @@ export default function BrowseArtistsPage() {
               variants={{ hidden: { opacity: 0, y: 40 }, show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } } }}
             >
               <ArtistCollectionCard 
-                artistName={artist.name}
-                date={artist.date}
-                images={artist.images}
+                listing={{ ...artist, type: 'artist' }}
+                onOpen={onOpenCollection}
               />
             </motion.div>
           ))}
