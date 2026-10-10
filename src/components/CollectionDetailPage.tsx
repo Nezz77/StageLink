@@ -245,14 +245,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3, ...easeSpring }}
-          className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold text-white cursor-pointer"
-          style={{
-            background: 'rgba(255,255,255,0.08)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            border: '1px solid rgba(255,255,255,0.16)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-          }}
+          className="btn-glass absolute top-6 left-6 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm"
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
         >
@@ -711,29 +704,16 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
               </div>
 
               <motion.button
-                className="w-full py-3.5 rounded-xl font-bold text-sm text-white mb-3"
-                style={{
-                  background: 'rgba(124,58,237,0.85)',
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(124,58,237,0.6)',
-                  boxShadow: '0 4px 24px rgba(124,58,237,0.35)',
-                }}
-                whileHover={{ scale: 1.02, boxShadow: '0 6px 32px rgba(124,58,237,0.5)' }}
+                className="btn-primary w-full py-3.5 rounded-xl font-bold text-sm mb-3"
+                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 {isArtist ? 'Book Now' : 'Request Rental'}
               </motion.button>
 
               <motion.button
-                className="w-full py-3 rounded-xl font-semibold text-sm text-slate-300"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                }}
-                whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.09)' }}
+                className="btn-glass w-full py-3 rounded-xl font-semibold text-sm"
+                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <span className="flex items-center justify-center gap-2">

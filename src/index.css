@@ -235,42 +235,200 @@ body::before {
   opacity: 1;
 }
 
+/* ── Primary button — violet liquid glass ───────────────────────────────── */
 .btn-primary {
-  background: var(--color-violet);
+  position: relative;
+  overflow: hidden;
+  /* base glass layer */
+  background: rgba(109, 40, 217, 0.72);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
   color: #fff;
   padding: 10px 20px;
   border-radius: 8px;
-  border: none;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  /* inset top-edge highlight */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 2px 12px rgba(124, 58, 237, 0.25);
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Shimmer sheen — slides across on hover */
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.14) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.btn-primary:hover::before {
+  transform: translateX(100%);
 }
 
 .btn-primary:hover {
-  background: #6d28d9;
+  background: rgba(124, 58, 237, 0.82);
+  border-color: rgba(196, 167, 255, 0.55);
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+    0 0 0 3px rgba(124, 58, 237, 0.18),
+    0 8px 32px rgba(124, 58, 237, 0.50),
+    0 2px 8px rgba(124, 58, 237, 0.35);
 }
 
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 4px 16px rgba(124, 58, 237, 0.4);
+}
+
+/* ── Ghost button — transparent liquid glass ────────────────────────────── */
 .btn-ghost {
-  background: transparent;
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
   color: var(--color-fg-muted);
   padding: 10px 20px;
   border-radius: 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 2px 8px rgba(0, 0, 0, 0.18);
   font-family: var(--font-sans);
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.2s ease,
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-ghost::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.btn-ghost:hover::before {
+  transform: translateX(100%);
 }
 
 .btn-ghost:hover {
-  border-color: var(--color-violet);
+  background: rgba(124, 58, 237, 0.10);
+  border-color: rgba(124, 58, 237, 0.50);
   color: var(--color-fg);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 3px rgba(124, 58, 237, 0.10),
+    0 6px 24px rgba(124, 58, 237, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.22);
 }
+
+.btn-ghost:active {
+  transform: translateY(0);
+}
+
+/* ── Glass button — fully transparent, any surface ──────────────────────── */
+.btn-glass {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  color: rgba(255, 255, 255, 0.80);
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.10),
+    0 4px 16px rgba(0, 0, 0, 0.25);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.2s ease,
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.btn-glass:hover::before {
+  transform: translateX(100%);
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.30),
+    0 0 0 3px rgba(255, 255, 255, 0.06),
+    0 8px 32px rgba(124, 58, 237, 0.20),
+    0 0 20px rgba(255, 255, 255, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.30);
+}
+
+.btn-glass:active {
+  transform: translateY(0);
+}
+
 
 .input {
   background: rgba(0, 0, 0, 0.2);
