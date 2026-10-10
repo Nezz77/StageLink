@@ -49,7 +49,7 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking }: { onOpe
     </article>
   );
 
-  return <DashboardShell role="customer" navItems={navItems} activeTab={activeTab} onNavigate={navigate}>
+  return <DashboardShell role="customer" navItems={navItems} activeTab={activeTab} onNavigate={navigate} onOpenChat={onOpenChat}>
     <div key={activeTab} className="animate-slide-up">
       {activeTab === 'home' && <>
         <DashboardIntro eyebrow="YOUR BACKSTAGE PASS" title="Good evening," emphasis="Jordan." description="A little inspiration. A little planning. An unforgettable night." action={<button className="btn-ghost sl-action" onClick={() => setActiveTab('booking')}><Icon.Calendar className="w-4 h-4" /> My bookings</button>} />

@@ -41,9 +41,9 @@ const identities = {
   admin: { title: 'Control room', name: 'StageLink Admin', initials: 'AD', tag: 'Platform operations', note: 'Keep the show running.' },
 };
 
-export default function DashboardShell({ role, navItems, activeTab, onNavigate, children }: {
+export default function DashboardShell({ role, navItems, activeTab, onNavigate, onOpenChat, children }: {
   role: keyof typeof identities; navItems: DashboardNav[]; activeTab: string;
-  onNavigate: (tab: string) => void; children: ReactNode;
+  onNavigate: (tab: string) => void; onOpenChat?: () => void; children: ReactNode;
 }) {
   const identity = identities[role];
   const contentRef = usePanelEntrance(activeTab);
@@ -71,7 +71,58 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
         <div className="sl-account"><span className="sl-avatar">{identity.initials}</span><div><strong>{identity.name}</strong><small>{identity.tag}</small></div></div>
       </aside>
       <div className="sl-workspace">
-        <header className="sl-topbar"><div><span className="sl-topbar-label">WORKSPACE</span><span className="sl-topbar-divider">/</span><span>{navItems.find(item => item.id === activeTab)?.label ?? 'Discover'}</span></div><span className="sl-demo-indicator"><i /> Demo workspace</span></header>
+        <header className="sl-topbar">
+          <div><span className="sl-topbar-label">WORKSPACE</span><span className="sl-topbar-divider">/</span><span>{navItems.find(item => item.id === activeTab)?.label ?? 'Discover'}</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="sl-demo-indicator"><i /> Demo workspace</span>
+            {onOpenChat && (
+              <button
+                onClick={onOpenChat}
+                aria-label="Open booking chat"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  fontFamily: 'var(--font-sans)',
+                  cursor: 'pointer',
+                  background: 'rgba(124,58,237,0.18)',
+                  backdropFilter: 'blur(16px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+                  border: '1px solid rgba(124,58,237,0.45)',
+                  color: '#c4b5fd',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 12px rgba(124,58,237,0.25)',
+                  transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => {
+                  const t = e.currentTarget;
+                  t.style.background = 'rgba(124,58,237,0.30)';
+                  t.style.borderColor = 'rgba(167,139,250,0.65)';
+                  t.style.color = '#ede9fe';
+                  t.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 3px rgba(124,58,237,0.14), 0 6px 22px rgba(124,58,237,0.40)';
+                  t.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={e => {
+                  const t = e.currentTarget;
+                  t.style.background = 'rgba(124,58,237,0.18)';
+                  t.style.borderColor = 'rgba(124,58,237,0.45)';
+                  t.style.color = '#c4b5fd';
+                  t.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 12px rgba(124,58,237,0.25)';
+                  t.style.transform = 'translateY(0)';
+                }}
+              >
+                <Icon.MessageCircle className="w-3.5 h-3.5" />
+                Open Chat
+              </button>
+            )}
+          </div>
+        </header>
         <main ref={contentRef} id="dashboard-content" className="sl-main" tabIndex={-1}>{children}</main>
         <footer className="sl-footer"><span>STAGELINK</span><span>Made for moments that matter.</span><span>BACKSTAGE / 2026</span></footer>
       </div>

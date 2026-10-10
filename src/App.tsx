@@ -106,29 +106,9 @@ export default function App() {
               )}
             </>
           ) : role === 'customer' ? (
-            <>
-              <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} onOpenChat={() => { setBookingTab('chat'); setView('booking'); }} />
-              <button
-                onClick={() => { setBookingTab('chat'); setView('booking'); }}
-                className="sl-chat-shortcut fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
-                style={{ borderRadius: 12 }}
-              >
-                <Icon.MessageCircle className="w-4 h-4" />
-                Open Chat
-              </button>
-            </>
+            <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} onOpenChat={() => { setBookingTab('chat'); setView('booking'); }} />
           ) : role === 'artist' ? (
-            <>
-              <ArtistDashboard />
-              <button
-                onClick={() => { setBookingTab('chat'); setView('booking'); }}
-                className="sl-chat-shortcut fixed bottom-24 right-6 z-50 btn-primary text-xs flex items-center gap-2 shadow-2xl glow-violet"
-                style={{ borderRadius: 12 }}
-              >
-                <Icon.MessageCircle className="w-4 h-4" />
-                Open Chat
-              </button>
-            </>
+            <ArtistDashboard />
           ) : role === 'renter' ? (
             <RenterDashboard />
           ) : (
