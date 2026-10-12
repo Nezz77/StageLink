@@ -40,7 +40,7 @@ const navItems = [
   { id: 'profile', icon: Icon.User, label: 'Profile' },
 ];
 
-export default function RenterDashboard() {
+export default function RenterDashboard({ onGoToLanding }: { onGoToLanding?: () => void }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [category, setCategory] = useState('All');
   const [requests, setRequests] = useState(incomingRequests);
@@ -52,7 +52,7 @@ export default function RenterDashboard() {
   };
 
   return (
-    <DashboardShell role="renter" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab}>
+    <DashboardShell role="renter" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
       {notice && <p role="status" className="sl-feedback">{notice}</p>}
         {activeTab === 'overview' && (
           <div className="animate-slide-up max-w-6xl mx-auto">

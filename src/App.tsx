@@ -14,7 +14,7 @@ import { AnimatePresence, LayoutGroup } from 'motion/react';
 import { BookingProvider } from './lib/BookingContext';
 
 type Role = 'visitor' | 'customer' | 'artist' | 'renter' | 'admin';
-type View = 'main' | 'booking';
+type View = 'main' | 'booking' | 'landing';
 type AuthType = 'login' | 'register_customer' | 'register_artist' | 'register_renter';
 type ViewTransition = { finished: Promise<void> };
 type DocumentWithViewTransition = Document & {
@@ -136,9 +136,15 @@ export default function App() {
             {/* Booking Chat accessible to customer/artist */}
             {(role === 'customer' || role === 'artist') && view === 'booking' ? (
               <BookingChat initialTab={bookingTab} onBack={() => setView('main')} />
-            ) : role === 'visitor' ? (
+            ) : role === 'visitor' || view === 'landing' ? (
               <>
-                <LandingPage onAuth={setAuthMode} isDark={isDark} onThemeChange={handleThemeChange} isSplashLogoTransition={isSplashLogoTransition} />
+                <LandingPage
+                  onAuth={setAuthMode}
+                  isDark={isDark}
+                  onThemeChange={handleThemeChange}
+                  isSplashLogoTransition={isSplashLogoTransition}
+                  onReturnToDashboard={role !== 'visitor' ? () => setView('main') : undefined}
+                />
                 {authMode && (
                   <AuthModal
                     initialMode={authMode}
@@ -148,13 +154,13 @@ export default function App() {
                 )}
               </>
             ) : role === 'customer' ? (
-              <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} onOpenChat={() => { setBookingTab('chat'); setView('booking'); }} />
+              <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} onOpenChat={() => { setBookingTab('chat'); setView('booking'); }} onGoToLanding={() => setView('landing')} />
             ) : role === 'artist' ? (
-              <ArtistDashboard />
+              <ArtistDashboard onGoToLanding={() => setView('landing')} />
             ) : role === 'renter' ? (
-              <RenterDashboard />
+              <RenterDashboard onGoToLanding={() => setView('landing')} />
             ) : (
-              <AdminDashboard />
+              <AdminDashboard onGoToLanding={() => setView('landing')} />
             )}
 
             <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />

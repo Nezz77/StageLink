@@ -96,7 +96,7 @@ const navItems = [
   { id: 'profile', icon: Icon.User, label: 'Profile' },
 ];
 
-export default function ArtistDashboard() {
+export default function ArtistDashboard({ onGoToLanding }: { onGoToLanding?: () => void }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [requests, setRequests] = useState(incomingRequests);
   const [notice, setNotice] = useState('');
@@ -108,7 +108,7 @@ export default function ArtistDashboard() {
   const [showAIModal, setShowAIModal] = useState(false);
 
   return (
-    <DashboardShell role="artist" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab}>
+    <DashboardShell role="artist" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
       {notice && <p role="status" className="sl-feedback">{notice}</p>}
       {showAIModal && <AIListingModal onClose={() => setShowAIModal(false)} />}
 

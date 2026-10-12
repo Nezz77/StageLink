@@ -27,7 +27,7 @@ const navItems = [
   { id: 'profile', label: 'My profile', icon: Icon.User },
 ];
 
-export default function CustomerDashboard({ onOpenChat, onOpenBooking }: { onOpenChat?: () => void, onOpenBooking?: () => void }) {
+export default function CustomerDashboard({ onOpenChat, onOpenBooking, onGoToLanding }: { onOpenChat?: () => void, onOpenBooking?: () => void, onGoToLanding?: () => void }) {
   const [activeTab, setActiveTab] = useState<CustomerTab>('home');
   const [savedIds, setSavedIds] = useState<number[]>([]);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -49,7 +49,7 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking }: { onOpe
     </article>
   );
 
-  return <DashboardShell role="customer" navItems={navItems} activeTab={activeTab} onNavigate={navigate} onOpenChat={onOpenChat}>
+  return <DashboardShell role="customer" navItems={navItems} activeTab={activeTab} onNavigate={navigate} onGoToLanding={onGoToLanding} onOpenChat={onOpenChat}>
     <div key={activeTab} className="animate-slide-up">
       {activeTab === 'home' && <>
         <DashboardIntro eyebrow="YOUR BACKSTAGE PASS" title="Good evening," emphasis="Jordan." description="A little inspiration. A little planning. An unforgettable night." action={<button className="btn-ghost sl-action" onClick={() => setActiveTab('booking')}><Icon.Calendar className="w-4 h-4" /> My bookings</button>} />

@@ -45,14 +45,14 @@ const navItems = [
   { id: 'support', icon: Icon.MessageCircle, label: 'Support' },
 ];
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ onGoToLanding }: { onGoToLanding?: () => void }) {
   const [activeTab, setActiveTab] = useState('analytics');
   const [metric, setMetric] = useState<'gmv' | 'users' | 'revenue'>('gmv');
   const metricMax = Math.max(...chartData.map(item => item[metric]));
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   return (
-    <DashboardShell role="admin" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab}>
+    <DashboardShell role="admin" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
         {activeTab === 'analytics' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
             <DashboardIntro eyebrow="PLATFORM OPERATIONS · OCTOBER 2026" title="A pulse on" emphasis="every performance." description="The people, bookings, and business behind the StageLink community." action={<span className="sl-status"><i /> Systems operational</span>} />

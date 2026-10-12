@@ -41,9 +41,9 @@ const identities = {
   admin: { title: 'Control room', name: 'StageLink Admin', initials: 'AD', tag: 'Platform operations', note: 'Keep the show running.' },
 };
 
-export default function DashboardShell({ role, navItems, activeTab, onNavigate, onOpenChat, children }: {
+export default function DashboardShell({ role, navItems, activeTab, onNavigate, onGoToLanding, onOpenChat, children }: {
   role: keyof typeof identities; navItems: DashboardNav[]; activeTab: string;
-  onNavigate: (tab: string) => void; onOpenChat?: () => void; children: ReactNode;
+  onNavigate: (tab: string) => void; onGoToLanding?: () => void; onOpenChat?: () => void; children: ReactNode;
 }) {
   const identity = identities[role];
   const contentRef = usePanelEntrance(activeTab);
@@ -62,6 +62,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
             {item.count ? <span className="sl-nav-count">{item.count}</span> : <span className="sl-nav-index">0{index + 1}</span>}
           </button>)}
         </nav>
+        {onGoToLanding && <button className="sl-public-site-link" onClick={onGoToLanding}><Icon.Home className="sl-nav-icon" /><span>Landing page</span><span aria-hidden="true">↗</span></button>}
         {role !== 'admin' && <GlassSurface className="sl-access-pass">
           <span className="sl-eyebrow">ALL ACCESS</span>
           <div className="sl-pass-symbol" aria-hidden="true">✳</div>

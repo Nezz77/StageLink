@@ -52,11 +52,12 @@ const stats = [
   { label: 'Avg. Response Time', value: '< 2 hrs' },
 ];
 
-export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLogoTransition }: {
+export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLogoTransition, onReturnToDashboard }: {
   onAuth: (type: 'login' | 'register_customer' | 'register_artist' | 'register_renter') => void;
   isDark: boolean;
   onThemeChange: (isDark: boolean, event: ReactMouseEvent<HTMLButtonElement>) => void;
   isSplashLogoTransition: boolean;
+  onReturnToDashboard?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<'home' | 'browse' | 'rent' | 'detail'>('home');
   const [selectedListing, setSelectedListing] = useState<CollectionListing | null>(null);
@@ -114,23 +115,31 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
 
       {/* Nav */}
       <motion.nav
-        className="sticky top-0 z-50 app-header bg-[#07090f]/80 backdrop-blur-md"
+        className="landing-nav sticky top-0 z-50"
         initial={isSplashLogoTransition ? false : { y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="landing-nav-shell">
+          <a href="#" className="landing-nav-brand" aria-label="StageLink home" onClick={event => { event.preventDefault(); setActiveTab('home'); }}>
             <motion.img layoutId="stagelink-logo" src="/stagelink-logo.png" alt="StageLink" className="h-10 w-auto object-contain" transition={{ layout: { type: 'spring', stiffness: 52, damping: 19, mass: 1.25 } }} style={{ filter: 'drop-shadow(0 0 8px rgba(124,58,237,0.4))' }} />
+          </a>
+          <div className="landing-nav-center">
+            <div className="landing-nav-links" aria-label="Main navigation">
+              {([
+                { id: 'home', label: 'How It Works' },
+                { id: 'browse', label: 'Browse Artists' },
+                { id: 'rent', label: 'Rent Equipment' },
+              ] as const).map(item => (
+                <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} aria-current={activeTab === item.id ? 'page' : undefined} className={`landing-nav-link ${activeTab === item.id ? 'is-active' : ''}`}>
+                  {activeTab === item.id && <motion.span layoutId="landing-nav-active" className="landing-nav-active" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="hidden md:flex items-center gap-6">
-            <span onClick={() => setActiveTab('home')} className={`nav-glow-item text-sm font-semibold tracking-wider uppercase cursor-pointer transition-colors ${activeTab === 'home' ? 'text-white' : 'text-slate-300 hover:text-white'}`}>How It Works</span>
-            <span onClick={() => setActiveTab('browse')} className={`nav-glow-item text-sm font-semibold tracking-wider uppercase cursor-pointer transition-colors ${activeTab === 'browse' ? 'text-white' : 'text-slate-300 hover:text-white'}`}>Browse Artists</span>
-            <span onClick={() => setActiveTab('rent')} className={`nav-glow-item text-sm font-semibold tracking-wider uppercase cursor-pointer transition-colors ${activeTab === 'rent' ? 'text-white' : 'text-slate-300 hover:text-white'}`}>Rent Equipment</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="btn-primary text-sm" onClick={() => onAuth('login')}>Log In</button>
-            <div className="w-px h-6 bg-slate-800 mx-1"></div>
+          <div className="landing-nav-actions">
+            <div className="landing-theme-control">
             <SwitchMode
               width={64}
               height={32}
@@ -143,6 +152,11 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
               borderDarkColor="#444"
               borderLightColor="#DDD"
             />
+            </div>
+            <button className="landing-nav-cta" onClick={onReturnToDashboard ?? (() => onAuth('login'))}>
+              <span>{onReturnToDashboard ? 'Back to dashboard' : 'Log in'}</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10" /></svg>
+            </button>
           </div>
         </div>
       </motion.nav>
