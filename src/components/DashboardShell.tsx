@@ -62,12 +62,12 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
             {item.count ? <span className="sl-nav-count">{item.count}</span> : <span className="sl-nav-index">0{index + 1}</span>}
           </button>)}
         </nav>
-        <GlassSurface className="sl-access-pass">
+        {role !== 'admin' && <GlassSurface className="sl-access-pass">
           <span className="sl-eyebrow">ALL ACCESS</span>
           <div className="sl-pass-symbol" aria-hidden="true">✳</div>
           <p>{identity.note}</p><div className="sl-barcode" aria-hidden="true" />
           <span className="sl-pass-id">STAGELINK / {role.toUpperCase()}</span>
-        </GlassSurface>
+        </GlassSurface>}
         <div className="sl-account"><span className="sl-avatar">{identity.initials}</span><div><strong>{identity.name}</strong><small>{identity.tag}</small></div></div>
       </aside>
       <div className="sl-workspace">
