@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
 import BrowseArtistsPage from './BrowseArtistsPage';
@@ -51,7 +52,12 @@ const stats = [
   { label: 'Avg. Response Time', value: '< 2 hrs' },
 ];
 
-export default function LandingPage({ onAuth }: { onAuth: (type: 'login' | 'register_customer' | 'register_artist' | 'register_renter') => void }) {
+export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLogoTransition }: {
+  onAuth: (type: 'login' | 'register_customer' | 'register_artist' | 'register_renter') => void;
+  isDark: boolean;
+  onThemeChange: (isDark: boolean, event: ReactMouseEvent<HTMLButtonElement>) => void;
+  isSplashLogoTransition: boolean;
+}) {
   const [activeTab, setActiveTab] = useState<'home' | 'browse' | 'rent' | 'detail'>('home');
   const [selectedListing, setSelectedListing] = useState<CollectionListing | null>(null);
   const [listingOrigin, setListingOrigin] = useState<'browse' | 'rent'>('browse');
@@ -89,7 +95,7 @@ export default function LandingPage({ onAuth }: { onAuth: (type: 'login' | 'regi
   };
 
   return (
-    <div className="min-h-screen relative bg-[#07090f]">
+    <div className="landing-page min-h-screen relative bg-[#07090f]">
       {/* Fixed Background Video */}
       {activeTab === 'home' && (
         <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
@@ -102,20 +108,20 @@ export default function LandingPage({ onAuth }: { onAuth: (type: 'login' | 'regi
             src="/Stage-Link-Background.mp4"
           />
           {/* Gradient overlay to blend the bottom of the video into the background color */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#07090f]/50 to-[#07090f]"></div>
+          <div className="landing-video-overlay absolute inset-0 bg-gradient-to-b from-transparent via-[#07090f]/50 to-[#07090f]"></div>
         </div>
       )}
 
       {/* Nav */}
       <motion.nav
         className="sticky top-0 z-50 app-header bg-[#07090f]/80 backdrop-blur-md"
-        initial={{ y: -100, opacity: 0 }}
+        initial={isSplashLogoTransition ? false : { y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/stagelink-logo.png" alt="StageLink" className="h-10 w-auto object-contain" style={{ filter: 'drop-shadow(0 0 8px rgba(124,58,237,0.4))' }} />
+            <motion.img layoutId="stagelink-logo" src="/stagelink-logo.png" alt="StageLink" className="h-10 w-auto object-contain" transition={{ layout: { type: 'spring', stiffness: 52, damping: 19, mass: 1.25 } }} style={{ filter: 'drop-shadow(0 0 8px rgba(124,58,237,0.4))' }} />
           </div>
           <div className="hidden md:flex items-center gap-6">
             <span onClick={() => setActiveTab('home')} className={`nav-glow-item text-sm font-semibold tracking-wider uppercase cursor-pointer transition-colors ${activeTab === 'home' ? 'text-white' : 'text-slate-300 hover:text-white'}`}>How It Works</span>
@@ -128,6 +134,8 @@ export default function LandingPage({ onAuth }: { onAuth: (type: 'login' | 'regi
             <SwitchMode
               width={64}
               height={32}
+              isDark={isDark}
+              onChange={onThemeChange}
               darkColor="#111"
               lightColor="#F9F9F9"
               knobDarkColor="#1C1C1C"

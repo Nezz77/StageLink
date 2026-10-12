@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import { flushSync } from 'react-dom';
 import { Icon } from './components/Icons';
 import LandingPage from './components/LandingPage';
 import CustomerDashboard from './components/CustomerDashboard';
@@ -8,12 +10,16 @@ import BookingChat from './components/BookingChat';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import SplashScreen from './components/SplashScreen';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, LayoutGroup } from 'motion/react';
 import { BookingProvider } from './lib/BookingContext';
 
 type Role = 'visitor' | 'customer' | 'artist' | 'renter' | 'admin';
 type View = 'main' | 'booking';
 type AuthType = 'login' | 'register_customer' | 'register_artist' | 'register_renter';
+type ViewTransition = { finished: Promise<void> };
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (updateCallback: () => void) => ViewTransition;
+};
 
 const roleConfig: Record<Role, { label: string; color: string; badgeClass: string }> = {
   visitor: { label: 'Visitor', color: '#94a3b8', badgeClass: 'badge-violet' },
@@ -62,6 +68,41 @@ export default function App() {
   const [bookingTab, setBookingTab] = useState<'chat' | 'checkout'>('chat');
   const [authMode, setAuthMode] = useState<AuthType | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [isSplashLogoTransition, setIsSplashLogoTransition] = useState(false);
+
+  const handleThemeChange = (nextIsDark: boolean, event: ReactMouseEvent<HTMLButtonElement>) => {
+    const root = document.documentElement;
+    root.style.setProperty('--theme-origin-x', `${event.clientX}px`);
+    root.style.setProperty('--theme-origin-y', `${event.clientY}px`);
+    root.dataset.themeTransition = 'true';
+
+    const updateTheme = () => {
+      flushSync(() => setIsDark(nextIsDark));
+      root.dataset.theme = nextIsDark ? 'dark' : 'light';
+    };
+
+    const canAnimate = window.matchMedia('(prefers-reduced-motion: no-preference)').matches;
+    const startViewTransition = (document as DocumentWithViewTransition).startViewTransition;
+    if (canAnimate && startViewTransition) {
+      const transition = startViewTransition.call(document, updateTheme);
+      void transition.finished.then(
+        () => delete root.dataset.themeTransition,
+        () => delete root.dataset.themeTransition,
+      );
+    } else {
+      updateTheme();
+      delete root.dataset.themeTransition;
+    }
+  };
+
+  const handleSplashComplete = useCallback(() => {
+    flushSync(() => {
+      setIsSplashLogoTransition(true);
+      setIsLoaded(true);
+    });
+    window.setTimeout(() => setIsSplashLogoTransition(false), 2200);
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -85,39 +126,41 @@ export default function App() {
 
   return (
     <BookingProvider actor={role}>
-      <AnimatePresence>
-        {!isLoaded && <SplashScreen key="splash" onComplete={() => setIsLoaded(true)} />}
-      </AnimatePresence>
+      <LayoutGroup id="stagelink-brand">
+        <AnimatePresence>
+          {!isLoaded && <SplashScreen key="splash" onComplete={handleSplashComplete} />}
+        </AnimatePresence>
 
-      {isLoaded && (
-        <div className={`min-h-screen transition-colors duration-500 ease-in-out ${view === 'booking' ? 'sl-chat-open' : ''}`} style={{ background: 'var(--color-bg)' }}>
-          {/* Booking Chat accessible to customer/artist */}
-          {(role === 'customer' || role === 'artist') && view === 'booking' ? (
-            <BookingChat initialTab={bookingTab} onBack={() => setView('main')} />
-          ) : role === 'visitor' ? (
-            <>
-              <LandingPage onAuth={setAuthMode} />
-              {authMode && (
-                <AuthModal
-                  initialMode={authMode}
-                  onClose={() => setAuthMode(null)}
-                  onSuccess={handleLogin}
-                />
-              )}
-            </>
-          ) : role === 'customer' ? (
-            <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} onOpenChat={() => { setBookingTab('chat'); setView('booking'); }} />
-          ) : role === 'artist' ? (
-            <ArtistDashboard />
-          ) : role === 'renter' ? (
-            <RenterDashboard />
-          ) : (
-            <AdminDashboard />
-          )}
+        {isLoaded && (
+          <div className={`theme-root min-h-screen transition-colors duration-500 ease-in-out ${view === 'booking' ? 'sl-chat-open' : ''}`} style={{ background: 'var(--color-bg)' }}>
+            {/* Booking Chat accessible to customer/artist */}
+            {(role === 'customer' || role === 'artist') && view === 'booking' ? (
+              <BookingChat initialTab={bookingTab} onBack={() => setView('main')} />
+            ) : role === 'visitor' ? (
+              <>
+                <LandingPage onAuth={setAuthMode} isDark={isDark} onThemeChange={handleThemeChange} isSplashLogoTransition={isSplashLogoTransition} />
+                {authMode && (
+                  <AuthModal
+                    initialMode={authMode}
+                    onClose={() => setAuthMode(null)}
+                    onSuccess={handleLogin}
+                  />
+                )}
+              </>
+            ) : role === 'customer' ? (
+              <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} onOpenChat={() => { setBookingTab('chat'); setView('booking'); }} />
+            ) : role === 'artist' ? (
+              <ArtistDashboard />
+            ) : role === 'renter' ? (
+              <RenterDashboard />
+            ) : (
+              <AdminDashboard />
+            )}
 
-          <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />
-        </div>
-      )}
+            <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />
+          </div>
+        )}
+      </LayoutGroup>
     </BookingProvider>
   );
 }

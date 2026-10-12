@@ -216,3 +216,80 @@
 .sl-dashboard ::-webkit-scrollbar-thumb { background: rgba(var(--sl-accent-rgb), .35); }
 .sl-navigation { scrollbar-width: thin; scrollbar-color: rgba(var(--sl-accent-rgb), .4) transparent; }
 @media (max-width: 600px) { .sl-equipment-spotlight::after { display: none; } .sl-talent-meta { font-size: 9px; } .sl-eyebrow { font-size: 9px; } }
+
+html[data-theme="light"] .sl-dashboard {
+  color: #292633;
+  color-scheme: light;
+  background:
+    radial-gradient(ellipse at 78% 4%, rgba(var(--sl-accent-rgb), .12), transparent 42%),
+    radial-gradient(ellipse at 12% 78%, rgba(124, 58, 237, .06), transparent 45%),
+    #f6f4f8;
+}
+html[data-theme="light"] .sl-sidebar {
+  background: linear-gradient(140deg, #f4f0fc, #faf9fc);
+  border-color: #2926331c;
+}
+html[data-theme="light"] .sl-brand,
+html[data-theme="light"] .sl-dashboard .text-white,
+html[data-theme="light"] .sl-intro h1,
+html[data-theme="light"] .sl-dashboard .card h2 {
+  color: #292633;
+}
+html[data-theme="light"] .sl-sidebar-caption,
+html[data-theme="light"] .sl-nav-item,
+html[data-theme="light"] .sl-topbar,
+html[data-theme="light"] .sl-footer,
+html[data-theme="light"] .sl-dashboard .text-slate-500,
+html[data-theme="light"] .sl-dashboard .text-slate-600,
+html[data-theme="light"] .sl-intro p,
+html[data-theme="light"] .sl-account small {
+  color: #686573;
+}
+html[data-theme="light"] .sl-dashboard .card,
+html[data-theme="light"] .sl-dashboard .card-2,
+html[data-theme="light"] .sl-dashboard .sl-glass,
+html[data-theme="light"] .sl-dashboard .sl-stat {
+  color: #292633;
+  background: linear-gradient(135deg, #fff, #f6f3fa) !important;
+  border-color: #2926331c !important;
+  box-shadow: 0 10px 28px #2926330c;
+}
+html[data-theme="light"] .sl-dashboard .text-slate-400,
+html[data-theme="light"] .sl-dashboard .sl-topbar-label,
+html[data-theme="light"] .sl-dashboard .sl-eyebrow {
+  color: #686573;
+}
+html[data-theme="light"] .sl-nav-item.is-active {
+  color: #6848a8;
+  background: #eee8fa;
+  border-color: #a78bfa70;
+}
+html[data-theme="light"] .sl-account,
+html[data-theme="light"] .sl-topbar,
+html[data-theme="light"] .sl-footer {
+  border-color: #2926331c;
+}
+html[data-theme="light"] .sl-dashboard .input,
+html[data-theme="light"] .sl-dashboard input,
+html[data-theme="light"] .sl-dashboard textarea,
+html[data-theme="light"] .sl-dashboard select {
+  color: #292633;
+  background: #fff;
+  border-color: #29263330;
+}
+html[data-theme="light"] .sl-dashboard .sl-talent-photo :is(.text-white, h3) {
+  color: #fff;
+}
+html[data-theme="light"] .sl-dashboard [class~="bg-slate-800"],
+html[data-theme="light"] .sl-dashboard [class~="bg-slate-900"] {
+  color: #484452;
+  background-color: #e9e6ef;
+}
+@media (prefers-reduced-transparency: reduce) {
+  html[data-theme="light"] .sl-dashboard .card,
+  html[data-theme="light"] .sl-dashboard .card-2,
+  html[data-theme="light"] .sl-dashboard .sl-glass {
+    background: #fff !important;
+    backdrop-filter: none;
+  }
+}

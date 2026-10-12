@@ -7,45 +7,23 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [progress, setProgress] = useState(0);
-  
-  const brandName = "StageLink";
 
   useEffect(() => {
-    // Simulate loading progress
-    const timer = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(timer);
-          setTimeout(onComplete, 800); // Wait a moment after 100% before firing complete
-          return 100;
-        }
-        return prev + 2; // Fast progress for demo
-      });
-    }, 30);
-    return () => clearInterval(timer);
+    const progressTimer = window.setInterval(() => {
+      setProgress(value => Math.min(value + 2, 100));
+    }, 40);
+    const completionTimer = window.setTimeout(onComplete, 2000);
+    return () => {
+      window.clearInterval(progressTimer);
+      window.clearTimeout(completionTimer);
+    };
   }, [onComplete]);
-
-  // Typewriter stagger variant
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      }
-    }
-  };
-
-  const letterVariant = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: 'spring', damping: 12, stiffness: 200 } }
-  };
 
   return (
     <motion.div
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black"
       initial={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 1.05, transition: { duration: 0.8, ease: "easeInOut" } }}
+      exit={{ opacity: 0, transition: { duration: 1.15, ease: [0.22, 1, 0.36, 1] } }}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.7, y: 20 }}
@@ -53,10 +31,12 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         className="mb-6"
       >
-        <img
+        <motion.img
+          layoutId="stagelink-logo"
           src="/stagelink-logo.png"
           alt="StageLink"
           className="w-64 md:w-80 object-contain"
+          transition={{ layout: { type: 'spring', stiffness: 52, damping: 19, mass: 1.25 } }}
           style={{ filter: 'drop-shadow(0 0 24px rgba(124,58,237,0.6)) drop-shadow(0 0 48px rgba(245,158,11,0.2))' }}
         />
       </motion.div>

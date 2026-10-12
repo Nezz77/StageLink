@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Icon } from './Icons';
+import { useState, type MouseEvent } from 'react';
 
 export interface SwitchModeProps {
   width?: number;
@@ -10,6 +9,8 @@ export interface SwitchModeProps {
   knobLightColor?: string;
   borderDarkColor?: string;
   borderLightColor?: string;
+  isDark?: boolean;
+  onChange?: (isDark: boolean, event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function SwitchMode({
@@ -20,16 +21,27 @@ export function SwitchMode({
   knobDarkColor = "#1C1C1C",
   knobLightColor = "#F3F3F7",
   borderDarkColor = "#444",
-  borderLightColor = "#DDD"
+  borderLightColor = "#DDD",
+  isDark: controlledIsDark,
+  onChange,
 }: SwitchModeProps) {
-  const [isDark, setIsDark] = useState(true);
+  const [internalIsDark, setInternalIsDark] = useState(true);
+  const isDark = controlledIsDark ?? internalIsDark;
 
   const padding = height * 0.1;
   const knobSize = height - (padding * 2);
 
   return (
-    <div
-      onClick={() => setIsDark(!isDark)}
+    <button
+      type="button"
+      role="switch"
+      aria-label="Light mode"
+      aria-checked={!isDark}
+      onClick={event => {
+        const nextIsDark = !isDark;
+        if (controlledIsDark === undefined) setInternalIsDark(nextIsDark);
+        onChange?.(nextIsDark, event);
+      }}
       style={{
         width,
         height,
@@ -82,7 +94,7 @@ export function SwitchMode({
           }}
         />
       </div>
-    </div>
+    </button>
   );
 }
 
