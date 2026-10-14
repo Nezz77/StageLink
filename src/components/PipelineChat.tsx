@@ -240,8 +240,8 @@ export default function PipelineChat({
             )}
           </div>
           <p className="pw-chat-note">
-            Local demo · updates across tabs in this browser. Live delivery
-            needs a connected chat service.
+            Temporary demo · switch roles in this tab to try both sides.
+            Refreshing clears messages and attachments.
           </p>
         </aside>
         {record ? (

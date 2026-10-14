@@ -166,10 +166,10 @@ export default function App() {
             ) : role === 'renter' ? (
               <RenterDashboard onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : (
-              <AdminDashboard onGoToLanding={() => setView('landing')} />
+              <AdminDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onGoToLanding={() => setView('landing')} />
             )}
 
-            {view !== 'workspace' && <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />}
+            {view !== 'workspace' && !(role === 'admin' && view === 'main') && <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />}
           </div>
         )}
       </LayoutGroup>

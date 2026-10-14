@@ -30,13 +30,14 @@ import DashboardShell, {
 } from "./DashboardShell"
 import PaymentCheckout from "./PaymentCheckout"
 import { useBooking } from "../lib/BookingContext"
-import { amounts, money } from "../lib/booking"
+import { amounts, checkoutFor, money, settlement, type PaymentKind } from "../lib/booking"
 import {
   blankForm,
   canRefund,
   conflicts,
   dateKey,
   paymentLabel,
+  performanceEndsAt,
   quoteFor,
   serviceFor,
   services,
@@ -48,13 +49,14 @@ import {
   type Status,
 } from "../lib/pipeline"
 import PipelineChat from "./PipelineChat"
+import { InstallmentHistory, OvertimePanel, PaymentChoice, SettlementSummary } from "./BookingSettlement"
 import "../pipeline.css"
 
 export type WorkspaceSection = "bookings" | "calendar" | "history" | "requests" | "payments" | "chat"
 type Screen = { kind: "list" } | { kind: "form"; form: BookingForm } | {
   kind: "review"
   form: BookingForm
-} | { kind: "details" | "checkout" | "payment"; id: string }
+} | { kind: "details" | "payment"; id: string } | { kind: "checkout"; id: string; offer: { kind: PaymentKind; amountCents: number; version: number; paidCents: number; overtimeCents: number } }
 const statusLabel: Record<Status, string> = {
   pending: "Pending",
   accepted: "Accepted",
@@ -160,7 +162,7 @@ function ConfirmDialog({
 function Summary({ form }: { form: BookingForm }) {
   const service = serviceFor(form.serviceId)
   const quote = Math.max(0, quoteFor(form) || 0)
-  const { feeCents, totalCents } = amounts(quote)
+  const { totalCents } = amounts(quote)
   return (
     <aside className="pw-pass">
       <div className="sl-eyebrow">YOUR EVENT / IN THE MAKING</div>
@@ -189,8 +191,8 @@ function Summary({ form }: { form: BookingForm }) {
           <dd>{money(quote)}</dd>
         </div>
         <div>
-          <dt>Service fee · 5%</dt>
-          <dd>{money(feeCents)}</dd>
+          <dt>Optional advance · 10%</dt>
+          <dd>{money(Math.round(quote * .1))}</dd>
         </div>
         <div className="pw-total">
           <dt>Estimated total</dt>
@@ -216,7 +218,7 @@ function BookingEditor({
   onSaved: () => void
   onBack: () => void
 }) {
-  const { state, dispatch, storageUnavailable } = useBooking()
+  const { state, dispatch } = useBooking()
   const [form, setForm] = useState(initial)
   const [errors, setErrors] =
     useState<Partial<Record<keyof BookingForm, string>>>({})
@@ -391,9 +393,8 @@ function BookingEditor({
             </button>
           </div>
           <p className="pw-caption">
-            {storageUnavailable
-              ? "Saving is currently limited to this session."
-              : "Saved drafts stay in this browser, even after you close the tab."}
+            Saved drafts stay available while you navigate this demo. Refreshing
+            or closing the page clears them.
           </p>
         </form>
         <Summary form={form} />
@@ -433,7 +434,7 @@ function BookingReview({
         eyebrow="02 / THE FINAL REHEARSAL"
         title="Everything,"
         emphasis="in tune."
-        description="Review your request. Payment follows after your provider accepts."
+        description="Review your request. An optional 10% advance follows acceptance; the balance is due after the event."
       />
       <div className="pw-two-col">
         <section className="pw-panel pw-review">
@@ -523,13 +524,13 @@ function BookingDetails({
   const steps = [
     "Request sent",
     "Provider accepted",
-    "Payment held",
+    "Ready for the event",
     "Event complete",
   ]
   const step =
     record.status === "completed"
       ? 3
-      : record.ledger.payment !== "unpaid"
+      : record.status === "active"
         ? 2
         : record.status === "accepted"
           ? 1
@@ -583,34 +584,10 @@ function BookingDetails({
               <button className="btn-ghost sl-action" onClick={onChat}>
                 <MessageCircle size={15} /> Booking chat
               </button>
-              {actor === "customer" &&
-                record.status === "accepted" &&
-                record.ledger.payment === "unpaid" && (
-                  <button
-                    className="btn-primary sl-action"
-                    onClick={() => {
-                      if (
-                        record.ledger.quoteStatus === "awaiting_customer" &&
-                        !dispatch({ type: "agree", id: record.id })
-                      ) {
-                        setError("This quote changed. Please review it again.")
-                        return
-                      }
-                      onPay()
-                    }}
-                  >
-                    {record.ledger.quoteStatus === "awaiting_customer"
-                      ? "Agree to quote & checkout"
-                      : "Continue to payment"}
-                    <ArrowRight size={15} />
-                  </button>
-                )}
-              {record.ledger.payment !== "unpaid" && (
-                <button className="btn-primary" onClick={onPayment}>
-                  Payment details
-                </button>
-              )}
+              {actor === "customer" && record.status === "accepted" && record.ledger.quoteStatus === "awaiting_customer" && <button className="btn-primary" onClick={() => apply({ type: "agree", id: record.id })}>Agree to booking price</button>}
+              <button className="btn-ghost" onClick={onPayment}>Payment details</button>
             </div>
+            <PaymentChoice record={record} onPay={onPay} />
             {provider && record.status === "pending" && (
               <div className="pw-callout">
                 <h3>A new request for your calendar</h3>
@@ -639,13 +616,13 @@ function BookingDetails({
                 </div>
               </div>
             )}
-            {provider && record.status === "active" && (
+            {provider && ["active", "accepted"].includes(record.status) && record.ledger.quoteStatus === "accepted" && (
               <div className="pw-callout">
                 <button
                   className="btn-ghost"
                   disabled={
                     !!record.refund ||
-                    new Date(`${record.date}T${record.end}`) > new Date()
+                    performanceEndsAt(record) > new Date()
                   }
                   onClick={() => apply({ type: "complete", id: record.id })}
                 >
@@ -673,6 +650,7 @@ function BookingDetails({
               </p>
             )}
           </section>
+          <OvertimePanel record={record} />
           <section className="pw-panel pw-review">
             <span className="sl-eyebrow">FROM HELLO TO ENCORE</span>
             <ol className="pw-journey">
@@ -710,7 +688,7 @@ function BookingDetails({
             </ul>
           </section>
         </div>
-        <Summary form={record} />
+        <SettlementSummary record={record} />
       </div>
       {confirm && (
         <ConfirmDialog
@@ -933,20 +911,19 @@ function PaymentDetails({
   record,
   onBack,
   onBooking,
+  onPay,
 }: {
   record: RecordBooking
   onBack: () => void
   onBooking: () => void
+  onPay: () => void
 }) {
   const { actor, dispatch } = useBooking()
   const [showRefund, setShowRefund] = useState(false)
   const [reason, setReason] = useState("")
   const [error, setError] = useState("")
-  const { feeCents, totalCents } = amounts(record.ledger.quoteCents)
+  const totals = settlement(record.ledger)
   const refundEligible = canRefund(record)
-  const paymentTime =
-    record.ledger.history.find((event) => event.label.includes("received"))
-      ?.at ?? record.createdAt
   const receipt = () => {
     const text = [
       "STAGELINK · DEMO RECEIPT",
@@ -956,8 +933,15 @@ function PaymentDetails({
       `Provider: ${serviceFor(record.serviceId).name}`,
       `Date: ${dayLabel(record.date)}`,
       `Performance / rental: ${money(record.ledger.quoteCents)}`,
-      `Service fee: ${money(feeCents)}`,
-      `Total: ${money(totalCents)}`,
+      `Approved overtime: ${money(totals.overtimeCents)}`,
+      `Total agreed: ${money(totals.totalCents)}`,
+      `Customer paid: ${money(totals.receivedCents)}`,
+      `Remaining due: ${money(totals.remainingCents)}`,
+      `StageLink fee deducted: ${money(totals.feeChargedCents)}`,
+      ...record.ledger.installments.flatMap(item => [
+        `TX-${record.id}-${item.kind.toUpperCase()} | ${item.paidAt} | ${item.method} | Received ${money(item.grossCents)}`,
+        item.releasedAt ? `Admin transfer ${item.releasedAt}: ${money(item.payoutCents ?? 0)} to provider bank; fee ${money(item.feeCents ?? 0)}` : "Held by StageLink; awaiting admin transfer",
+      ]),
       `Status: ${paymentLabel(record)}`,
       "Demo record only. No real payment was made.",
     ].join("\n")
@@ -982,45 +966,16 @@ function PaymentDetails({
       <div className="pw-two-col">
         <div className="pw-stack">
           <section className="pw-panel pw-review">
-            <div className="pw-panel-heading">
-              <span className="sl-eyebrow">DEMO TRANSACTION</span>
-              <StatusPill
-                status={record.refund ? "pending" : record.ledger.payment}
-              >
-                {paymentLabel(record)}
-              </StatusPill>
-            </div>
-            <h2>{money(totalCents)}</h2>
-            <p>{record.event}</p>
-            <dl className="pw-detail-grid">
-              {[
-                ["Transaction", `TX-${record.id}`],
-                ["Recorded", new Date(paymentTime).toLocaleString()],
-                ["Provider", serviceFor(record.serviceId).name],
-                [
-                  "Method",
-                  record.paymentMethod === "wallet"
-                    ? "Demo wallet"
-                    : "Demo card · 4242",
-                ],
-                ["Service", money(record.ledger.quoteCents)],
-                ["Platform fee", money(feeCents)],
-              ].map(([key, value]) => (
-                <div key={key}>
-                  <dt>{key}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
+            <h2>{record.event}</h2>
+            <p>{serviceFor(record.serviceId).name} · {record.id}</p>
+            <PaymentChoice record={record} onPay={onPay} />
             <div className="pw-actions">
-              <button className="btn-primary sl-action" onClick={receipt}>
-                <Download size={15} /> Download receipt
-              </button>
-              <button className="btn-ghost" onClick={onBooking}>
-                View booking
-              </button>
+              <button className="btn-primary sl-action" disabled={!totals.receivedCents} onClick={receipt}><Download size={15} /> Download receipt</button>
+              <button className="btn-ghost" onClick={onBooking}>View booking</button>
             </div>
           </section>
+          <InstallmentHistory record={record} />
+          <OvertimePanel record={record} />
           <section className="pw-panel pw-review">
             <span className="sl-eyebrow">REFUND REQUEST</span>
             <h2>Plans can change.</h2>
@@ -1103,54 +1058,7 @@ function PaymentDetails({
             )}
           </section>
         </div>
-        <aside className="pw-pass">
-          <ShieldCheck size={32} />
-          <span className="sl-eyebrow">ESCROW TRACKING</span>
-          <h2>
-            Protected until
-            <br />
-            <em>the encore.</em>
-          </h2>
-          <ol className="pw-escrow">
-            <li className="done">
-              <Check size={16} />
-              <div>
-                <strong>Payment received</strong>
-                <p>Added to the demo holding balance.</p>
-              </div>
-            </li>
-            <li
-              className={record.ledger.payment === "held" ? "current" : "done"}
-            >
-              <ShieldCheck size={16} />
-              <div>
-                <strong>
-                  {record.refund ? paymentLabel(record) : "Held by StageLink"}
-                </strong>
-                <p>
-                  {record.refund
-                    ? "Refund review and payment status are recorded together."
-                    : "Waiting for event completion and payout approval."}
-                </p>
-              </div>
-            </li>
-            <li className={record.ledger.payment === "released" ? "done" : ""}>
-              <Check size={16} />
-              <div>
-                <strong>Released to provider</strong>
-                <p>
-                  {record.ledger.payment === "released"
-                    ? "Payout complete in this demo record."
-                    : "Funds have not been released."}
-                </p>
-              </div>
-            </li>
-          </ol>
-          <p className="pw-caption">
-            Frontend simulation. Payment processing and refund review require
-            the production payment service.
-          </p>
-        </aside>
+        <SettlementSummary record={record} />
       </div>
     </>
   )
@@ -1169,7 +1077,7 @@ export default function BookingWorkspace({
   onBack: () => void
   onGoToLanding: () => void
 }) {
-  const { actor, state, dispatch, storageError, retryStorage } = useBooking()
+  const { actor, state, dispatch } = useBooking()
   const [section, setSection] = useState<WorkspaceSection>(initialSection)
   const [screen, setScreen] = useState<Screen>({ kind: "list" })
   const [chatId, setChatId] = useState(initialBookingId)
@@ -1227,9 +1135,14 @@ export default function BookingWorkspace({
     "id" in screen
       ? bookings.find((record) => record.id === screen.id)
       : undefined
-  const transactions = bookings.filter(
-    (record) => record.ledger.payment !== "unpaid",
-  )
+  const openCheckout = (record: RecordBooking) => {
+    const due = checkoutFor(record.ledger)
+    if (!due) return
+    const totals = settlement(record.ledger)
+    setSection("payments")
+    setScreen({ kind: "checkout", id: record.id, offer: { ...due, version: record.ledger.quoteVersion, paidCents: totals.receivedCents, overtimeCents: totals.overtimeCents } })
+  }
+  const transactions = bookings.filter(record => record.ledger.quoteStatus === "accepted")
   const shown = (section === "payments" ? transactions : bookings)
     .filter(
       (record) =>
@@ -1277,13 +1190,7 @@ export default function BookingWorkspace({
           </button>
           <span>BOOK · PAY · CONNECT</span>
         </div>
-        {storageError && (
-          <div role="alert" className="pw-alert">
-            <CircleAlert size={16} />
-            <span>{storageError}</span>
-            <button onClick={retryStorage}>Retry saving</button>
-          </div>
-        )}
+        <p className="pw-caption">Temporary demo · refreshing resets bookings, payments, saved drafts and chat. Switch roles in this tab to continue the same session.</p>
         {notice && (
           <p className="pw-notice" role="status">
             <Check size={15} />
@@ -1304,7 +1211,7 @@ export default function BookingWorkspace({
             onBack={() => setScreen({ kind: "list" })}
             onSaved={() => {
               setScreen({ kind: "list" })
-              setNotice("Draft saved. Resume it from Saved for later.")
+              setNotice("Draft saved for this session. Resume it from Saved for later before refreshing.")
             }}
           />
         ) : screen.kind === "review" ? (
@@ -1324,10 +1231,7 @@ export default function BookingWorkspace({
             record={selected}
             onBack={() => setScreen({ kind: "list" })}
             onChat={() => openChat(selected.id)}
-            onPay={() => {
-              setSection("payments")
-              setScreen({ kind: "checkout", id: selected.id })
-            }}
+            onPay={() => openCheckout(selected)}
             onPayment={() => {
               setSection("payments")
               setScreen({ kind: "payment", id: selected.id })
@@ -1341,15 +1245,11 @@ export default function BookingWorkspace({
             event={selected.event}
             quoteCents={selected.ledger.quoteCents}
             feeCents={amounts(selected.ledger.quoteCents).feeCents}
-            onPaid={(method) =>
-              dispatch({
-                type: "pay",
-                method,
-                id: selected.id,
-                quoteVersion: selected.ledger.quoteVersion,
-                totalCents: amounts(selected.ledger.quoteCents).totalCents,
-              })
-            }
+            paymentKind={screen.offer.kind}
+            paymentCents={screen.offer.amountCents}
+            paidCents={screen.offer.paidCents}
+            overtimeCents={screen.offer.overtimeCents}
+            onPaid={(method) => dispatch({ type: "settle", id: selected.id, action: { type: "collect", kind: screen.offer.kind, method, quoteVersion: screen.offer.version, totalCents: screen.offer.amountCents } })}
             onBack={() => open(selected.id)}
             onViewBooking={() => open(selected.id)}
           />
@@ -1359,6 +1259,7 @@ export default function BookingWorkspace({
             record={selected}
             onBack={() => navigate("payments")}
             onBooking={() => open(selected.id)}
+            onPay={() => openCheckout(selected)}
           />
         ) : section === "chat" ? (
           <PipelineChat initialBookingId={chatId} onOpenBooking={open} />
@@ -1460,7 +1361,7 @@ export default function BookingWorkspace({
                         {key === "pending"
                           ? "Awaiting a response"
                           : key === "active"
-                            ? "Payment held · getting ready"
+                            ? "Confirmed · getting ready"
                             : key === "completed"
                               ? "A moment well made"
                               : "Next on your calendar"}
@@ -1476,7 +1377,7 @@ export default function BookingWorkspace({
                         <Save size={17} /> Saved for later{" "}
                         <span>{state.drafts.length}</span>
                       </h2>
-                      <small>Only in this browser</small>
+                      <small>This session only · cleared on refresh</small>
                     </div>
                     {state.drafts.map((draft) => (
                       <div className="pw-draft" key={draft.id}>
@@ -1510,45 +1411,11 @@ export default function BookingWorkspace({
                 )}
               </>
             )}
-            {section === "payments" && (
-              <div className="pw-stats pw-payment-stats">
-                {[
-                  [
-                    "Held in escrow",
-                    transactions.filter(
-                      (record) =>
-                        record.ledger.payment === "held" && !record.refund,
-                    ),
-                  ],
-                  [
-                    "Released",
-                    transactions.filter(
-                      (record) => record.ledger.payment === "released",
-                    ),
-                  ],
-                  ["Refunds", transactions.filter((record) => !!record.refund)],
-                ].map(([label, items]) => (
-                  <div className="pw-stat" key={label as string}>
-                    <div>
-                      <span>{label as string}</span>
-                      <ShieldCheck size={17} />
-                    </div>
-                    <strong>
-                      {money(
-                        (items as RecordBooking[]).reduce(
-                          (sum, record) =>
-                            sum + amounts(record.ledger.quoteCents).totalCents,
-                          0,
-                        ),
-                      )}
-                    </strong>
-                    <small>
-                      {(items as RecordBooking[]).length} demo transactions
-                    </small>
-                  </div>
-                ))}
-              </div>
-            )}
+            {section === "payments" && <div className="pw-stats pw-payment-stats">{[
+              ["Held by StageLink", transactions.reduce((sum, record) => sum + (record.refund?.status === "refunded" ? 0 : settlement(record.ledger).heldCents), 0)],
+              ["Transferred to providers", transactions.reduce((sum, record) => sum + settlement(record.ledger).paidOutCents, 0)],
+              ["Final payments due", transactions.reduce((sum, record) => sum + (record.ledger.performance !== "upcoming" && !record.refund ? settlement(record.ledger).remainingCents : 0), 0)],
+            ].map(([label, value]) => <div className="pw-stat" key={label}><div><span>{label}</span><ShieldCheck size={17} /></div><strong>{money(value as number)}</strong><small>All transactions through StageLink</small></div>)}</div>}
             <section className="pw-panel pw-booking-list">
               <div className="pw-list-heading">
                 <div>
@@ -1589,12 +1456,7 @@ export default function BookingWorkspace({
                   >
                     <option value="all">All statuses</option>
                     {(section === "payments"
-                      ? [
-                          "Held in escrow",
-                          "Released",
-                          "Refund requested",
-                          "Refunded",
-                        ]
+                      ? [...new Set(transactions.map(paymentLabel))]
                       : section === "history"
                         ? ["completed", "cancelled", "rejected"]
                         : section === "requests"
@@ -1664,7 +1526,7 @@ export default function BookingWorkspace({
                     </StatusPill>
                     <span className="pw-row-price">
                       <strong>
-                        {money(amounts(record.ledger.quoteCents).totalCents)}
+                        {money(settlement(record.ledger).totalCents)}
                       </strong>
                       <small>
                         {section === "payments"
@@ -1709,7 +1571,7 @@ export default function BookingWorkspace({
             <div className="pw-bottom-note">
               <ShieldCheck size={15} />
               <span>
-                Demo workspace · saved in this browser · switch roles to try
+                Demo workspace · refresh to reset · switch roles in this tab to try
                 both sides of a booking.
               </span>
             </div>
@@ -1725,7 +1587,7 @@ export default function BookingWorkspace({
               setDeleteId(null)
             }}
           >
-            This removes the saved form from your browser. Existing bookings
+            This removes the saved form from this demo session. Existing bookings
             stay in your history.
           </ConfirmDialog>
         )}

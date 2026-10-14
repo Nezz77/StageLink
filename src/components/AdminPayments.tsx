@@ -1,64 +1,69 @@
-import { useState } from 'react';
-import { ArrowUpRight, Check, Clock3, Landmark, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowUpRight, Check, Landmark, ShieldCheck, X } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
-import { amounts, bookingDetails, money } from '../lib/booking';
-import BookingPaymentStatus from './BookingPaymentStatus';
-import PaymentGlass from './PaymentGlass';
+import { canRelease, money, settlement, type BookingAction, type Installment } from '../lib/booking';
+import { serviceFor } from '../lib/pipeline';
+import { InstallmentHistory, SettlementSummary } from './BookingSettlement';
+import '../pipeline.css';
 
+function TransferDialog({ name, amount, fee, onClose, onConfirm }: { name: string; amount: number; fee: number; onClose: () => void; onConfirm: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => { const trigger = document.activeElement as HTMLElement; const dialog = ref.current!; dialog.showModal(); return () => { dialog.close(); trigger?.focus(); }; }, []);
+  return <dialog className="pw-dialog" ref={ref} aria-labelledby="transfer-title" onCancel={event => { event.preventDefault(); onClose(); }}><div className="pw-dialog-content">
+    <button className="pw-icon pw-dialog-close" aria-label="Close transfer confirmation" onClick={onClose}><X size={18} /></button>
+    <span className="sl-eyebrow">ADMIN / DEMO BANK TRANSFER</span><h2 id="transfer-title">Release {money(amount)}?</h2>
+    <p>Transfer to {name}’s linked bank account. StageLink retains {money(fee)} from this payment. {fee === 0 ? 'The booking fee has already been deducted.' : 'This is the one-time booking fee.'}</p>
+    <p>No real bank account is connected in this demo.</p><div className="pw-actions"><button className="btn-ghost" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={onConfirm}>Confirm demo transfer</button></div>
+  </div></dialog>;
+}
 export default function AdminPayments() {
-  const { booking, actor, act } = useBooking();
+  const { state, actor, dispatch } = useBooking();
+  const [id, setId] = useState('BK-2901');
   const [verified, setVerified] = useState(false);
-  const [confirmRelease, setConfirmRelease] = useState(false);
-  const held = booking.payment === 'held';
-  const released = booking.payment === 'released';
-  const ready = held && booking.performance === 'confirmed' && !booking.payoutBlocked;
-  const { feeCents, totalCents } = amounts(booking.quoteCents);
+  const [confirm, setConfirm] = useState<Installment['kind'] | null>(null);
+  const [error, setError] = useState('');
+  const record = state.bookings.find(record => record.id === id)!;
+  const totals = settlement(record.ledger);
+  const provider = serviceFor(record.serviceId).name;
+  const item = record.ledger.installments.find(item => item.kind === confirm);
+  const apply = (action: BookingAction) => {
+    if (!dispatch({ type: 'settle', id, action })) { setError('The booking changed or this action is unavailable. Review the latest amounts and status.'); return false; }
+    setError(''); return true;
+  };
   if (actor !== 'admin') return null;
-
-  return <div className="relative isolate mx-auto max-w-6xl pb-24">
-    <div aria-hidden="true" className="pointer-events-none absolute -inset-6 -z-10 bg-[radial-gradient(ellipse_at_10%_10%,rgba(124,58,237,0.13),transparent_50%),radial-gradient(ellipse_at_100%_70%,rgba(245,158,11,0.06),transparent_50%)]" />
-    <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-      <div><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-rose-400">StageLink / Settlement desk</p><h1 className="font-display text-3xl font-bold text-white">Payments & payouts</h1><p className="mt-2 text-sm text-slate-400">Hold the funds. Verify the performance. Release with confidence.</p></div>
-      <span className="badge badge-amber">Frontend demo · No real transfers</span>
-    </div>
-    <div className="mb-6 grid gap-3 sm:grid-cols-3">
-      {[
-        { label: 'Held by StageLink', value: held ? totalCents : 0, icon: Landmark, color: 'text-violet-300' },
-        { label: 'Awaiting admin release', value: ready ? booking.quoteCents : 0, icon: Clock3, color: 'text-amber-300' },
-        { label: 'Released to artist', value: released ? booking.quoteCents : 0, icon: ArrowUpRight, color: 'text-emerald-300' },
-      ].map(item => <PaymentGlass key={item.label} className="flex items-center gap-4 p-5"><item.icon size={22} className={item.color} /><div><p className="text-xs text-slate-400">{item.label}</p><p className={`mt-1 font-mono text-xl ${item.color}`}>{money(item.value)}</p></div></PaymentGlass>)}
-    </div>
-    <div className="grid items-start gap-6 lg:grid-cols-[1.1fr_1fr]">
-      <BookingPaymentStatus />
-      <div className="space-y-5">
-        <PaymentGlass className="p-5 sm:p-6" aria-label="Release controls">
-          <div className="mb-5 flex items-center gap-3"><ShieldCheck className="text-rose-400" size={21} /><h2 className="font-display text-xl text-white">Admin release controls</h2></div>
-          <dl className="space-y-3 text-sm">
-            <div className="flex justify-between gap-3"><dt className="text-slate-400">Payee</dt><dd className="text-white">{bookingDetails.artist}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-slate-400">Performance fee</dt><dd className="font-mono text-white">{money(booking.quoteCents)}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-slate-400">StageLink service fee</dt><dd className="font-mono text-slate-300">{money(feeCents)}</dd></div>
-          </dl>
-          {!held && !released && <div className="mt-5 rounded-xl border border-slate-700/70 p-4 text-sm text-slate-400">Waiting for the customer to accept the quote and pay. No funds are available for release.</div>}
-          {held && <>
-            <div className="mb-5 mt-6 rounded-xl border border-slate-700/60 bg-slate-900/30 p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-300">01 · Verify performance</p>
-              {booking.performance === 'upcoming' ? <p className="text-sm text-slate-400">Waiting for the singer to mark the performance complete.</p> : booking.performance === 'reported' ? <>
-                <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-slate-300"><input type="checkbox" checked={verified} onChange={e => setVerified(e.target.checked)} className="mt-1 accent-rose-500" />I have verified that the agreed performance was completed.</label>
-                <button disabled={!verified} onClick={() => { act({ type: 'confirm_performance' }); setVerified(false); }} className="btn-ghost mt-3 w-full disabled:cursor-not-allowed disabled:opacity-40">Confirm performance</button>
-              </> : <p className="flex items-center gap-2 text-sm text-emerald-300"><Check size={15} /> Performance verified by admin</p>}
-            </div>
-            <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-400">{booking.payoutBlocked ? 'Payout is paused for review' : 'Need to review a booking issue?'}</p><button onClick={() => { act({ type: 'toggle_hold' }); setConfirmRelease(false); }} className="shrink-0 rounded-lg border border-rose-400/20 px-3 py-2 text-xs text-rose-300 transition hover:bg-rose-500/10">{booking.payoutBlocked ? 'Clear payout hold' : 'Place payout on hold'}</button></div>
-            <p className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wider text-slate-300">02 · Release to singer</p>
-            {!ready && <p className="mb-3 flex items-start gap-2 text-xs leading-relaxed text-slate-500"><LockKeyhole size={14} className="shrink-0" />Release stays locked until performance verification is complete and any payout hold is cleared.</p>}
-            {confirmRelease && ready ? <div className="rounded-xl border border-rose-400/30 bg-rose-500/5 p-4" role="group" aria-label="Confirm artist payout">
-              <p className="text-sm leading-relaxed text-white">Release {money(booking.quoteCents)} to {bookingDetails.artist}? StageLink retains the {money(feeCents)} service fee.</p>
-              <div className="mt-4 flex gap-3"><button onClick={() => setConfirmRelease(false)} className="btn-ghost flex-1">Cancel</button><button onClick={() => { act({ type: 'release' }); setConfirmRelease(false); }} className="btn-primary flex-1">Confirm demo release</button></div>
-            </div> : <button disabled={!ready} onClick={() => setConfirmRelease(true)} className="flex w-full items-center justify-between rounded-xl border border-violet-400/30 bg-gradient-to-r from-violet-500/20 to-violet-400/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-xl px-4 py-3 text-sm font-semibold text-violet-200 transition hover:brightness-125 disabled:cursor-not-allowed disabled:opacity-35"><span>Release {money(booking.quoteCents)} to artist</span><ArrowUpRight size={16} /></button>}
-          </>}
-          {released && <p role="status" className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm leading-relaxed text-emerald-300"><Check size={21} className="shrink-0" />Demo payout complete. {money(booking.quoteCents)} released to {bookingDetails.artist}; {money(feeCents)} retained as the StageLink fee.</p>}
-        </PaymentGlass>
-        <PaymentGlass className="p-5" aria-label="Payment activity"><h2 className="mb-4 text-sm font-semibold text-white">Booking activity</h2>{booking.history.length === 0 ? <p className="text-xs text-slate-500">Activity will appear when this quote is agreed.</p> : <ol className="space-y-4">{booking.history.map((entry, i) => <li key={`${entry.at}-${i}`} className="flex gap-3 text-xs"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" /><div><p className="leading-relaxed text-slate-300">{entry.label}</p><time dateTime={entry.at} className="mt-1 block text-[10px] text-slate-500">{new Date(entry.at).toLocaleString()}</time></div></li>)}</ol>}</PaymentGlass>
+  return <div className="pw-workspace sl-admin-settlement">
+    <div className="mb-7"><p className="sl-eyebrow">STAGELINK / SETTLEMENT DESK</p><h1 className="font-display text-3xl font-bold mt-3">Payments & payouts</h1><p className="pw-muted mt-3">Every payment enters StageLink. Every provider transfer needs an admin.</p><span className="badge badge-amber mt-3">Temporary demo · Refresh to reset · No real transfers</span></div>
+    <div className="pw-stats pw-payment-stats">{[
+      ['Held by StageLink', state.bookings.reduce((sum, record) => sum + (record.refund?.status === 'refunded' ? 0 : settlement(record.ledger).heldCents), 0)],
+      ['Transferred to providers', state.bookings.reduce((sum, record) => sum + settlement(record.ledger).paidOutCents, 0)],
+      ['StageLink fees collected', state.bookings.reduce((sum, record) => sum + settlement(record.ledger).feeChargedCents, 0)],
+    ].map(([label,value]) => <div className="pw-stat" key={label}><div><span>{label}</span><Landmark size={17} /></div><strong>{money(value as number)}</strong></div>)}</div>
+    <label className="pw-field">Booking to settle<select value={id} onChange={event => { setId(event.target.value); setVerified(false); setConfirm(null); setError(''); }}>{state.bookings.map(record => <option key={record.id} value={record.id}>{record.id} · {record.event}</option>)}</select></label>
+    <div className="pw-two-col">
+      <div className="pw-stack"><SettlementSummary record={record} /><InstallmentHistory record={record} /></div>
+      <div className="pw-stack">
+        <section className="pw-panel pw-review" aria-label="Release controls">
+          <div className="pw-panel-heading"><span className="sl-eyebrow">ADMIN TRANSFER CONTROLS</span><ShieldCheck size={20} /></div><h2>{provider}</h2><p>Destination: provider’s linked bank account (simulated).</p>
+          <div className="pw-callout"><h3>Verify the performance</h3>
+            {record.ledger.performance === 'upcoming' ? <p>Waiting for the provider to report completion. An optional advance can be released before the gig.</p> : record.ledger.performance === 'reported' ? <><label className="pw-check"><input type="checkbox" checked={verified} onChange={event => setVerified(event.target.checked)} />I have verified that the performance was completed.</label><button className="btn-ghost" disabled={!verified || !!record.refund} onClick={() => { if (apply({ type: 'confirm_performance' })) setVerified(false); }}>Confirm performance</button></> : <p className="sl-transfer-status"><Check size={17} />Performance verified by admin</p>}
+          </div>
+          {record.refund && <p className="pw-alert">Refund {record.refund.status}. Transfers are blocked.</p>}
+          {!record.ledger.installments.length && <p className="pw-muted">No funds have been received. The customer may skip the advance and pay after the gig.</p>}
+          {record.ledger.installments.filter(item => !item.releasedAt).map(item => {
+            const ready = !record.refund && canRelease(record.ledger, item.kind);
+            const fee = item.kind !== 'advance' && record.ledger.installments.some(other => other.kind === 'advance' && !other.releasedAt) ? 0 : totals.feeDueCents;
+            return <article className="sl-installment" key={item.kind}><h3>{item.kind === 'advance' ? 'Release advance' : 'Release final payment'}</h3>
+              <dl className="sl-settlement-lines"><div><dt>Held for this payment</dt><dd>{money(item.grossCents)}</dd></div><div><dt>{fee ? 'One-time StageLink fee' : 'No additional fee'}</dt><dd>{money(fee)}</dd></div><div className="sl-settlement-total"><dt>Transfer to provider</dt><dd>{money(item.grossCents - fee)}</dd></div></dl>
+              {!ready && <p className="pw-caption">{record.ledger.payoutBlocked || record.refund ? 'Transfer paused for review.' : record.ledger.installments.some(other => other.kind === 'advance' && !other.releasedAt) && item.kind !== 'advance' ? 'Release the advance first; it carries the one-time fee.' : 'Final payout requires admin verification of the completed performance.'}</p>}
+              <button className="btn-primary sl-action" disabled={!ready} onClick={() => setConfirm(item.kind)}>Transfer {item.kind === 'advance' ? 'advance' : 'final payment'} · {money(item.grossCents - fee)}<ArrowUpRight size={15} /></button>
+            </article>;
+          })}
+          {totals.heldCents > 0 && !record.refund && <button className="btn-ghost mt-5" onClick={() => { apply({ type: 'toggle_hold' }); setConfirm(null); }}>{record.ledger.payoutBlocked ? 'Clear payout hold' : 'Place payout on hold'}</button>}
+          {error && <p className="pw-error" role="alert">{error}</p>}
+        </section>
+        <section className="pw-panel pw-review"><span className="sl-eyebrow">BOOKING ACTIVITY</span><ul className="pw-activity">{record.activity.map((entry, index) => <li key={`${entry.at}-${index}`}><span /><div><p>{entry.label}</p><time dateTime={entry.at}>{new Date(entry.at).toLocaleString()}</time></div></li>)}</ul></section>
       </div>
     </div>
+    {confirm && item && !record.refund && canRelease(record.ledger, confirm) && <TransferDialog name={provider} amount={item.grossCents - totals.feeDueCents} fee={totals.feeDueCents} onClose={() => setConfirm(null)} onConfirm={() => { apply({ type: 'release', kind: confirm }); setConfirm(null); }} />}
   </div>;
 }

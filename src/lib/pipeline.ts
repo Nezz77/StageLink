@@ -1,5 +1,5 @@
 import {
-  amounts,
+  bookingStatus,
   initialBooking,
   transitionBooking,
   type BookingAction,
@@ -92,7 +92,7 @@ export type PipelineAction = { type: "save_draft"; form: BookingForm } | {
 } | { type: "send"; message: Omit<Message, "sender" | "at"> } | {
   type: "read"
   id: string
-} | { type: "legacy"; action: BookingAction }
+} | { type: "settle"; id: string; action: BookingAction } | { type: "legacy"; action: BookingAction }
 export type PipelineEvent = {
   action: PipelineAction
   actor: BookingRole
@@ -201,6 +201,13 @@ function seedRecord(
       quoteStatus: status === "pending" ? "awaiting_artist" : "accepted",
       payment,
       performance: status === "completed" ? "confirmed" : "upcoming",
+      advance: payment === "unpaid" ? "offered" : "skipped",
+      installments: payment === "unpaid" ? [] : [{
+        kind: "legacy", grossCents: serviceFor(serviceId).rate * (serviceId === "aria" ? 3 : 1) * 1.05,
+        legacySurchargeCents: Math.round(serviceFor(serviceId).rate * (serviceId === "aria" ? 3 : 1) * .05),
+        paidAt: "2026-09-10T10:00:00Z", method: "card",
+        ...(payment === "released" ? { releasedAt: "2026-09-29T10:00:00Z", feeCents: 11250, payoutCents: 225000 } : {}),
+      }],
       history: [],
     },
     activity: [
@@ -291,6 +298,9 @@ export const unreadFor = (
       message.sender !== actor &&
       message.at > (state.read[`${actor}:${record.id}`] ?? ""),
   ).length
+export const performanceEndsAt = (record: RecordBooking) => new Date(
+  new Date(`${record.date}T${record.end}`).getTime() + record.ledger.overtime.filter(item => item.status === "accepted").reduce((minutes, item) => minutes + item.minutes, 0) * 60_000,
+)
 export const canRefund = (record: RecordBooking, now = new Date()) =>
   record.ledger.payment === "held" &&
   !record.refund &&
@@ -298,15 +308,7 @@ export const canRefund = (record: RecordBooking, now = new Date()) =>
   record.ledger.performance === "upcoming" &&
   new Date(`${record.date}T${record.start}`) > now
 export const paymentLabel = (record: RecordBooking) =>
-  record.refund?.status === "refunded"
-    ? "Refunded"
-    : record.refund
-      ? "Refund requested"
-      : record.ledger.payment === "held"
-        ? "Held in escrow"
-        : record.ledger.payment === "released"
-          ? "Released"
-          : "Unpaid"
+  record.refund?.status === "refunded" ? "Refunded" : record.refund ? "Refund requested" : bookingStatus(record.ledger)
 function safeForm(value: unknown): value is BookingForm {
   if (!value || typeof value !== "object") return false
   const form = value as BookingForm
@@ -335,6 +337,7 @@ export function reducePipeline(
   action: PipelineAction,
   actor: BookingRole,
   at = new Date().toISOString(),
+  replayLegacy = false,
 ): PipelineState {
   if (
     !action ||
@@ -467,8 +470,8 @@ export function reducePipeline(
       label = "Customer cancelled the booking"
       break
     case "pay": {
-      if (record.status !== "accepted" || record.refund) return state
-      const ledger = transitionBooking(record.ledger, action, actor, at)
+      if (!replayLegacy || record.status !== "accepted" || record.refund) return state
+      const ledger = transitionBooking(record.ledger, action, actor, at, replayLegacy)
       if (ledger === record.ledger) return state
       patch = {
         ledger,
@@ -481,9 +484,10 @@ export function reducePipeline(
     case "complete":
       if (
         actor !== serviceFor(record.serviceId).role ||
-        record.status !== "active" ||
+        !["active", "accepted"].includes(record.status) ||
+        record.ledger.quoteStatus !== "accepted" ||
         record.refund ||
-        new Date(`${record.date}T${record.end}`) > new Date(at)
+        performanceEndsAt(record) > new Date(at)
       )
         return state
       patch = {
@@ -507,17 +511,23 @@ export function reducePipeline(
       }
       label = "Refund requested · payout paused for review"
       break
+    case "settle":
     case "legacy": {
       if (record.refund || ["rejected", "cancelled"].includes(record.status))
         return state
-      const ledger = transitionBooking(record.ledger, action.action, actor, at)
+      const inner = action.action
+      if (action.type === "settle" && (record.status === "pending" || !["collect", "skip_advance", "propose_overtime", "resolve_overtime", "confirm_performance", "toggle_hold", "release"].includes(inner.type))) return state
+      if (inner.type === "pay" && !replayLegacy) return state
+      if (["propose_overtime", "resolve_overtime"].includes(inner.type) && (record.serviceId !== "aria" || new Date(`${record.date}T${record.start}`) > new Date(at))) return state
+      if (inner.type === "report_performance" && !replayLegacy && (actor !== serviceFor(record.serviceId).role || performanceEndsAt(record) > new Date(at))) return state
+      const ledger = transitionBooking(record.ledger, inner, actor, at, replayLegacy)
       if (ledger === record.ledger) return state
       patch = {
         ledger,
         status:
-          ledger.payment === "released" || ledger.performance !== "upcoming"
+          ledger.performance !== "upcoming"
             ? "completed"
-            : ledger.payment === "held"
+            : ledger.installments.length > 0 || ledger.advance === "skipped"
               ? "active"
               : record.status,
       }
@@ -546,7 +556,7 @@ export function restorePipeline(
       throw new Error("Invalid history")
     let state = initialPipeline()
     for (const event of events) {
-      const next = reducePipeline(state, event.action, event.actor, event.at)
+      const next = reducePipeline(state, event.action, event.actor, event.at, true)
       if (next === state) throw new Error("Invalid event")
       state = next
     }

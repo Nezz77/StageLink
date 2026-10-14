@@ -12,6 +12,10 @@ interface PaymentCheckoutProps {
   event: string;
   quoteCents: number;
   feeCents: number;
+  paymentKind: 'advance' | 'final';
+  paymentCents: number;
+  paidCents: number;
+  overtimeCents: number;
   onPaid: (method: 'card' | 'wallet') => boolean;
   onBack: () => void;
   onViewBooking: () => void;
@@ -21,7 +25,7 @@ const emptyCard: CardFields = { name: '', number: '', expiry: '', cvv: '' };
 const inputClass = 'mt-2 w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-400/15 aria-invalid:border-rose-500';
 
 /** Frontend simulation: card fields never leave this component or enter storage. */
-export default function PaymentCheckout({ bookingId, artist, event, quoteCents, feeCents, onPaid, onBack, onViewBooking }: PaymentCheckoutProps) {
+export default function PaymentCheckout({ bookingId, artist, event, quoteCents, feeCents, paymentKind, paymentCents, paidCents, overtimeCents, onPaid, onBack, onViewBooking }: PaymentCheckoutProps) {
   const [method, setMethod] = useState<'card' | 'wallet'>('card');
   const [phase, setPhase] = useState<PaymentState>('form');
   const [fields, setFields] = useState<CardFields>(emptyCard);
@@ -34,7 +38,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
   const titleRef = useRef<HTMLHeadingElement>(null);
   const successRef = useRef<HTMLHeadingElement>(null);
   const reduceMotion = useReducedMotion();
-  const totalCents = quoteCents + feeCents;
+  const totalCents = paymentCents;
   const layoutTransition = { duration: reduceMotion ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] as const };
 
   useEffect(() => {
@@ -157,7 +161,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
               {phase === 'form' ? (
                 <motion.div key="protection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-8 flex gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 backdrop-blur-xl">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.08] text-violet-300 shadow-sm"><Landmark size={18} /></span>
-                  <div><p className="text-sm font-semibold">Booked now. Released after the encore.</p><p className="mt-1 text-xs leading-relaxed text-slate-400">Your payment stays in the StageLink holding balance until the performance is complete and an admin approves the provider’s payout.</p></div>
+                  <div><p className="text-sm font-semibold">{paymentKind === 'advance' ? 'An advance, held until admin release.' : 'The encore, settled through StageLink.'}</p><p className="mt-1 text-xs leading-relaxed text-slate-400">{paymentKind === 'advance' ? 'StageLink holds your advance. An admin can release it to the provider before the performance, after deducting the one-time booking fee.' : 'StageLink holds your final payment until an admin verifies the completed performance and approves the provider’s payout.'}</p></div>
                 </motion.div>
               ) : formGone ? (
                 <motion.div key={phase} initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.25 }} onAnimationComplete={() => { if (phase === 'success') successRef.current?.focus({ preventScroll: true }); }} className="mt-9 text-center" role="status" aria-live="polite">
@@ -216,10 +220,11 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                   <p className="text-xs font-semibold text-slate-100">{artist} <span className="font-normal text-slate-400">/ {event}</span></p>
                   <dl className="mt-3 space-y-2 text-xs text-slate-400">
                     <div className="flex justify-between gap-3"><dt>Agreed performance fee</dt><dd>{money(quoteCents)}</dd></div>
-                    <div className="flex justify-between gap-3"><dt>StageLink service fee (5%)</dt><dd>{money(feeCents)}</dd></div>
-                    <div className="flex items-center justify-between gap-3 pt-2 text-white"><dt className="font-medium">Payment amount</dt><dd className="text-xl font-semibold tracking-tight">{money(totalCents)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Approved overtime</dt><dd>{money(overtimeCents)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Already paid to StageLink</dt><dd>{money(paidCents)}</dd></div><div className="flex items-center justify-between gap-3 pt-2 text-white"><dt className="font-medium">{paymentKind === 'advance' ? 'Optional 10% advance' : 'Final balance due'}</dt><dd className="text-xl font-semibold tracking-tight">{money(totalCents)}</dd></div>
                   </dl>
                 </div>
+                <p className="mb-4 text-xs leading-relaxed text-slate-400">{paymentKind === 'advance' ? 'Your advance goes to StageLink. An admin can transfer it to the provider before the gig.' : 'Your final payment goes to StageLink. An admin transfers it after performance verification.'} The {money(feeCents)} StageLink fee is deducted once from the provider’s payout; it is not added to your payment.</p>
                 {failure && <p role="alert" className="mb-3 text-sm text-rose-300">{failure}</p>}
                 <motion.button whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }} type="submit" className="flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-4 text-sm font-semibold text-white shadow-[0_8px_22px_-8px_rgba(124,58,237,0.55)] transition-colors hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"><CreditCard size={17} /><span>PAY {money(totalCents)}</span><ArrowRight size={17} /></motion.button>
                 <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-slate-400"><LockKeyhole size={10} /> Demo checkout · Card details are never saved</p>
@@ -228,7 +233,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
           </AnimatePresence>
         </motion.div>
         <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/[0.07] px-5 py-4 text-[10px] font-medium text-slate-400">
-          <span className="flex items-center gap-1.5"><Check size={12} /> Quote agreed</span><span className="flex items-center gap-1.5"><Landmark size={12} /> Payment held by StageLink</span><span className="flex items-center gap-1.5"><ShieldCheck size={12} /> Admin approves artist payout</span>
+          <span className="flex items-center gap-1.5"><Check size={12} /> Quote agreed</span><span className="flex items-center gap-1.5"><Landmark size={12} /> Held in StageLink account</span><span className="flex items-center gap-1.5"><ShieldCheck size={12} /> Admin approves artist payout</span>
         </footer>
       </PaymentGlass>
     </section>

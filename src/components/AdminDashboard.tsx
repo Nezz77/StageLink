@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import DashboardShell, { DashboardIntro } from './DashboardShell';
 import { Icon } from './Icons';
+import AdminPayments from './AdminPayments';
 
 const chartData = [
   { month: 'Apr', gmv: 180, users: 420, revenue: 21 },
@@ -38,6 +39,7 @@ const recentActivity = [
 ];
 
 const navItems = [
+  { id: 'payments', icon: Icon.CreditCard, label: 'Payments' },
   { id: 'analytics', icon: Icon.BarChart, label: 'Analytics' },
   { id: 'verification', icon: Icon.Shield, label: 'Verification' },
   { id: 'disputes', icon: Icon.AlertCircle, label: 'Disputes' },
@@ -45,14 +47,15 @@ const navItems = [
   { id: 'support', icon: Icon.MessageCircle, label: 'Support' },
 ];
 
-export default function AdminDashboard({ onGoToLanding }: { onGoToLanding?: () => void }) {
+export default function AdminDashboard({ onGoToLanding, roleControl }: { onGoToLanding?: () => void; roleControl?: ReactNode }) {
   const [activeTab, setActiveTab] = useState('analytics');
   const [metric, setMetric] = useState<'gmv' | 'users' | 'revenue'>('gmv');
   const metricMax = Math.max(...chartData.map(item => item[metric]));
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   return (
-    <DashboardShell role="admin" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
+    <DashboardShell controls={roleControl} role="admin" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
+        {activeTab === 'payments' && <AdminPayments />}
         {activeTab === 'analytics' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
             <DashboardIntro eyebrow="PLATFORM OPERATIONS · OCTOBER 2026" title="A pulse on" emphasis="every performance." description="The people, bookings, and business behind the StageLink community." action={<span className="sl-status"><i /> Systems operational</span>} />

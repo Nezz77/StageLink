@@ -4,8 +4,9 @@ import { useReducedMotion } from 'motion/react';
 import { GlassSurface } from './DashboardShell';
 import '../booking-chat.css';
 import PaymentCheckout from './PaymentCheckout';
+import BookingPaymentStatus from './BookingPaymentStatus';
 import { useBooking } from '../lib/BookingContext';
-import { amounts, bookingDetails } from '../lib/booking';
+import { amounts, bookingDetails, checkoutFor, settlement } from '../lib/booking';
 
 const initialMessages = [
   { id: 1, from: 'other', sender: 'Aria Nova', text: 'Hi Jordan! I saw your corporate gala brief. I would love to perform at your TechVentures event. What musical style are you envisioning for the evening?', time: '2:14 PM', read: true },
@@ -89,6 +90,8 @@ function NegotiationCard({ onClose, onAccept, onCounter }: { onClose: () => void
 function CheckoutTab({ onViewTracker }: { onViewTracker: () => void }) {
   const { booking, act } = useBooking();
   const { feeCents } = amounts(booking.quoteCents);
+  const [offer] = useState(() => { const due = checkoutFor(booking); return due ? { ...due, version: booking.quoteVersion, ...settlement(booking) } : null; });
+  if (!offer) return <BookingPaymentStatus />;
   return (
     <PaymentCheckout
       bookingId={bookingDetails.id}
@@ -96,7 +99,11 @@ function CheckoutTab({ onViewTracker }: { onViewTracker: () => void }) {
       event={bookingDetails.event}
       quoteCents={booking.quoteCents}
       feeCents={feeCents}
-      onPaid={() => act({ type: 'pay', quoteVersion: booking.quoteVersion, totalCents: booking.quoteCents + feeCents })}
+      paymentKind={offer.kind}
+      paymentCents={offer.amountCents}
+      paidCents={offer.receivedCents}
+      overtimeCents={offer.overtimeCents}
+      onPaid={method => act({ type: 'collect', kind: offer.kind, method, quoteVersion: offer.version, totalCents: offer.amountCents })}
       onBack={() => {}}
       onViewBooking={onViewTracker}
     />

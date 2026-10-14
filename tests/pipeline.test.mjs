@@ -42,11 +42,9 @@ function paid() {
   const state = accepted()
   const record = state.bookings[0]
   return apply(state, {
-    type: "pay",
-    id: form.id,
-    quoteVersion: record.ledger.quoteVersion,
-    totalCents: amounts(record.ledger.quoteCents).totalCents,
-    method: "wallet",
+    type: "settle", id: form.id,
+    action: { type: "collect", kind: "advance", quoteVersion: record.ledger.quoteVersion,
+      totalCents: Math.round(record.ledger.quoteCents * .1), method: "wallet" },
   })
 }
 test("partial drafts persist and submitting consumes only that draft, once", () => {
@@ -155,7 +153,7 @@ test("checkout validates price, payer and version; duplicate payment cannot chan
   const next = paid()
   assert.equal(next.bookings[0].status, "active")
   assert.equal(next.bookings[0].ledger.payment, "held")
-  assert.equal(next.bookings[0].paymentMethod, "wallet")
+  assert.equal(next.bookings[0].ledger.installments[0].method, "wallet")
   assert.equal(
     apply(next, {
       type: "pay",
@@ -279,3 +277,51 @@ test("event history restores drafts, approvals, payments and messages; invalid h
     true,
   )
 })
+
+test('new installment events replay with overtime and a once-only fee across all bookings', () => {
+  const events = [];
+  let state = initialPipeline();
+  const step = (action, actor = 'customer', at = now) => {
+    const next = reducePipeline(state, action, actor, at);
+    assert.notEqual(next, state, `Rejected ${action.type}/${action.action?.type}`);
+    events.push({ action, actor, at }); state = next;
+  };
+  const act = (action, actor, at) => step({ type: 'settle', id: form.id, action }, actor, at);
+  step({ type: 'submit', form }); step({ type: 'respond', id: form.id, accept: true }, 'artist');
+  act({type:'collect',kind:'advance',totalCents:22500,quoteVersion:1,method:'card'});
+  act({type:'release',kind:'advance'},'admin');
+  const during=new Date(`${form.date}T19:30:00`).toISOString(), after='2026-11-23T12:00:00Z';
+  act({type:'propose_overtime',id:'OT',minutes:60,amountCents:40000},'customer',during);
+  act({type:'resolve_overtime',id:'OT',accept:true},'artist',during);
+  step({type:'complete',id:form.id},'artist',after);
+  act({type:'collect',kind:'final',totalCents:242500,quoteVersion:2,method:'wallet'},'customer',after);
+  act({type:'confirm_performance'},'admin',after); act({type:'release',kind:'final'},'admin',after);
+  const restored=restorePipeline(JSON.stringify(events)); assert.equal(restored.damaged,false); assert.deepEqual(restored.state,state);
+  assert.equal(state.bookings[0].ledger.installments[1].feeCents,0);
+});
+test('skipping advance activates booking and still allows completion; overtime waits until the gig starts', () => {
+  let state=accepted(); const id=form.id;
+  assert.equal(apply(state,{type:'settle',id,action:{type:'propose_overtime',id:'ot',minutes:60,amountCents:10000}}),state);
+  state=apply(state,{type:'settle',id,action:{type:'skip_advance'}});
+  assert.equal(state.bookings[0].status,'active'); assert.equal(state.bookings[0].ledger.payment,'unpaid');
+  const done=apply(state,{type:'complete',id},'artist','2026-11-23T12:00:00Z');
+  assert.equal(done.bookings[0].status,'completed');
+  const paid=apply(done,{type:'settle',id,action:{type:'collect',kind:'final',totalCents:225000,quoteVersion:1,method:'card'}},'customer','2026-11-23T12:00:00Z');
+  assert.equal(paid.bookings[0].ledger.payment,'held');
+});
+test('provider completion includes approved overtime duration and provider isolation', () => {
+  let state=accepted(), id=form.id;
+  const during = new Date(`${form.date}T${form.start}`); during.setMinutes(during.getMinutes()+30);
+  state=apply(state,{type:'settle',id,action:{type:'propose_overtime',id:'OT',minutes:60,amountCents:40000}},'customer',during.toISOString());
+  state=apply(state,{type:'settle',id,action:{type:'resolve_overtime',id:'OT',accept:true}},'artist',during.toISOString());
+  const originalEnd=new Date(`${form.date}T${form.end}`);
+  assert.equal(apply(state,{type:'complete',id},'artist',originalEnd.toISOString()),state);
+  const end=new Date(originalEnd.getTime()+60*60*1000).toISOString();
+  assert.equal(apply(state,{type:'complete',id},'renter',end),state);
+  assert.equal(apply(state,{type:'complete',id},'artist',end).bookings[0].status,'completed');
+});
+test('refund requests block settlement, hold removal and overtime through both action routes', () => {
+  let state=paid();const id=form.id;
+  state=apply(state,{type:'refund',id,reason:'The event has been cancelled.'});
+  for (const action of [{type:'release',kind:'advance'},{type:'toggle_hold'},{type:'confirm_performance'}]) assert.equal(apply(state,{type:'settle',id,action},'admin'),state);
+});
