@@ -12,7 +12,7 @@ interface PaymentCheckoutProps {
   event: string;
   quoteCents: number;
   feeCents: number;
-  onPaid: () => boolean;
+  onPaid: (method: 'card' | 'wallet') => boolean;
   onBack: () => void;
   onViewBooking: () => void;
 }
@@ -22,6 +22,7 @@ const inputClass = 'mt-2 w-full min-w-0 rounded-xl border border-white/10 bg-whi
 
 /** Frontend simulation: card fields never leave this component or enter storage. */
 export default function PaymentCheckout({ bookingId, artist, event, quoteCents, feeCents, onPaid, onBack, onViewBooking }: PaymentCheckoutProps) {
+  const [method, setMethod] = useState<'card' | 'wallet'>('card');
   const [phase, setPhase] = useState<PaymentState>('form');
   const [fields, setFields] = useState<CardFields>(emptyCard);
   const [errors, setErrors] = useState<Partial<Record<keyof CardFields, string>>>({});
@@ -60,7 +61,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (busy.current) return;
-    const nextErrors = validateDemoCard(fields);
+    const nextErrors = method === 'card' ? validateDemoCard(fields) : {};
     setErrors(nextErrors);
     const invalidField = Object.keys(nextErrors)[0];
     if (invalidField) {
@@ -72,7 +73,9 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
     setPhase('processing');
     timer.current = setTimeout(() => {
       timer.current = null;
-      if (onPaid()) {
+      if (method === 'card' && fields.number.replace(/\s/g, '') === '4000000000000002') {
+        busy.current = false; setFormGone(false); setPhase('form'); setFailure('Demo payment declined. No funds were taken. Use the demo card button to retry.');
+      } else if (onPaid(method)) {
         setFields(emptyCard);
         setPhase('success');
       } else {
@@ -113,8 +116,9 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
             <motion.div layout="position" className="mb-5 flex items-center justify-between text-[10px] font-semibold tracking-[0.2em] text-slate-400">
               <span>YOUR BACKSTAGE PASS</span><span>01 / PAYMENT</span>
             </motion.div>
-            <div className="relative aspect-[1.586] w-full [perspective:1200px]" aria-label={flipped ? 'Credit card back' : 'Credit card front'}>
+            <div className="relative aspect-[1.586] w-full [perspective:1200px]" aria-label={method === 'wallet' ? 'Demo wallet' : flipped ? 'Credit card back' : 'Credit card front'}>
               <motion.div
+                style={{ visibility: method === 'wallet' ? 'hidden' : 'visible' }}
                 data-testid="payment-card"
                 data-side={flipped ? 'back' : 'front'}
                 animate={{ rotateY: flipped ? 180 : 0 }}
@@ -146,13 +150,14 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                   <p className="absolute bottom-[8%] left-[7%] text-[9px] text-slate-400">StageLink · Demo card preview</p>
                 </div>
               </motion.div>
+              {method === 'wallet' && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-[20px] border border-violet-300/30 bg-gradient-to-br from-violet-950 to-[#171126] text-violet-100 shadow-xl"><Landmark size={36} /><strong className="text-xl">StageLink demo wallet</strong><span className="text-xs text-violet-300">Simulated payment · no real balance</span><span className="text-2xl">{money(totalCents)}</span></div>}
             </div>
 
             <AnimatePresence mode="wait" initial={false}>
               {phase === 'form' ? (
                 <motion.div key="protection" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-8 flex gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 backdrop-blur-xl">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.08] text-violet-300 shadow-sm"><Landmark size={18} /></span>
-                  <div><p className="text-sm font-semibold">Booked now. Released after the encore.</p><p className="mt-1 text-xs leading-relaxed text-slate-400">Your payment stays in the StageLink holding balance until the performance is complete and an admin approves the singer’s payout.</p></div>
+                  <div><p className="text-sm font-semibold">Booked now. Released after the encore.</p><p className="mt-1 text-xs leading-relaxed text-slate-400">Your payment stays in the StageLink holding balance until the performance is complete and an admin approves the provider’s payout.</p></div>
                 </motion.div>
               ) : formGone ? (
                 <motion.div key={phase} initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.25 }} onAnimationComplete={() => { if (phase === 'success') successRef.current?.focus({ preventScroll: true }); }} className="mt-9 text-center" role="status" aria-live="polite">
@@ -164,7 +169,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                     <motion.div initial={{ scale: reduceMotion ? 1 : 0.3 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 320, damping: 18 }} className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300"><Check size={25} strokeWidth={3} /></motion.div>
                     <h2 ref={successRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">Payment Successful!</h2>
                     <p className="mt-2 text-sm leading-relaxed text-slate-400">Your demo transaction of <strong className="font-semibold text-slate-100">{money(totalCents)}</strong> has been processed successfully.</p>
-                    <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-violet-200"><LockKeyhole size={13} /> Funds held by StageLink · Not yet paid to artist</p>
+                    <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-violet-200"><LockKeyhole size={13} /> Funds held by StageLink · Not yet paid to provider</p>
                     <button onClick={onViewBooking} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400">View booking <ArrowRight size={15} /></button>
                   </>}
                 </motion.div>
@@ -177,7 +182,8 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
               <motion.form key="payment-form" noValidate onSubmit={submit} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: reduceMotion ? 0 : 20 }} transition={{ duration: reduceMotion ? 0 : 0.25 }} className="w-full max-w-[390px] min-w-0">
                 <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">Payment details</h1>
                 <p className="mt-2 text-sm text-slate-400">One step closer to an unforgettable performance.</p>
-                <div className="mb-6 mt-4 flex items-center justify-between gap-2 text-xs">
+                <fieldset className="mt-5 flex gap-3 border-0 p-0"><legend className="mb-2 text-xs text-slate-300">Payment method</legend>{(['card', 'wallet'] as const).map(value => <label key={value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-xs ${method === value ? 'border-violet-400 bg-violet-500/15 text-violet-100' : 'border-white/15 text-slate-400'}`}><input type="radio" name="payment-method" value={value} checked={method === value} onChange={() => { setMethod(value); setErrors({}); setFailure(''); }} />{value === 'card' ? 'Demo card' : 'Demo wallet'}</label>)}</fieldset>
+                {method === 'card' ? <><div className="mb-6 mt-4 flex items-center justify-between gap-2 text-xs">
                   <span className="text-slate-400">Test Visa ending in 4242</span>
                   <button type="button" onClick={fillDemo} className="rounded-md px-2 py-1.5 font-semibold text-violet-300 transition hover:bg-violet-500/15 focus-visible:outline-2 focus-visible:outline-violet-400">Use demo card</button>
                 </div>
@@ -205,6 +211,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                     </div>
                   </div>
                 </div>
+                <p className="mt-3 text-[10px] leading-relaxed text-slate-400">To preview a declined payment, use test card 4000 0000 0000 0002 with a future expiry and any 3-digit test CVV.</p></> : <p className="my-6 text-sm leading-relaxed text-slate-300">This demo wallet lets you preview checkout without entering card details. No real money or wallet balance is used.</p>}
                 <div className="mb-5 mt-6 border-t border-white/[0.07] pt-4">
                   <p className="text-xs font-semibold text-slate-100">{artist} <span className="font-normal text-slate-400">/ {event}</span></p>
                   <dl className="mt-3 space-y-2 text-xs text-slate-400">

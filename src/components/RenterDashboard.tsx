@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import DashboardShell, { DashboardIntro } from './DashboardShell';
+import { useBooking } from '../lib/BookingContext';
+import { money, amounts } from '../lib/booking';
+import { serviceFor } from '../lib/pipeline';
+import type { WorkspaceSection } from './BookingWorkspace';
 import { Icon } from './Icons';
 
 const inventory = [
@@ -15,10 +19,7 @@ const activeRentals = [
   { id: 'RNT-231', client: 'TechVentures Corp', item: 'ROE Carbon LED Wall (12m²)', returnDate: 'Oct 19, 2026', total: '$1,350', status: 'Active' },
 ];
 
-const incomingRequests = [
-  { id: 'REQ-119', client: 'Starlit Weddings', item: 'Full PA System + Lighting Rig', date: 'Nov 8, 2026', budget: '$600/day' },
-  { id: 'REQ-121', client: 'Private Corporate', item: 'LED Video Wall 8m²', date: 'Nov 14, 2026', budget: '$320/day' },
-];
+
 
 const revenueData = [
   { month: 'Apr', amount: 4100 },
@@ -33,6 +34,8 @@ const maxRevenue = Math.max(...revenueData.map(d => d.amount));
 
 const navItems = [
   { id: 'overview', icon: Icon.LayoutDashboard, label: 'Overview' },
+  { id: 'bookingdesk', icon: Icon.Calendar, label: 'Booking desk' },
+  { id: 'messages', icon: Icon.MessageCircle, label: 'Messages' },
   { id: 'inventory', icon: Icon.Package, label: 'Inventory' },
   { id: 'rentals', icon: Icon.Repeat, label: 'Active Rentals' },
   { id: 'requests', icon: Icon.Bell, label: 'Requests' },
@@ -40,19 +43,17 @@ const navItems = [
   { id: 'profile', icon: Icon.User, label: 'Profile' },
 ];
 
-export default function RenterDashboard({ onGoToLanding }: { onGoToLanding?: () => void }) {
+export default function RenterDashboard({ onGoToLanding, onOpenWorkspace }: { onGoToLanding?: () => void; onOpenWorkspace: (section?: WorkspaceSection) => void }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [category, setCategory] = useState('All');
-  const [requests, setRequests] = useState(incomingRequests);
+  const { state, actor } = useBooking();
+  const requests = state.bookings.filter(record => record.status === 'pending' && serviceFor(record.serviceId).role === actor).map(record => ({ id: record.id, client: 'Jordan Rivera', event: record.event, item: record.event, date: record.date, offer: money(amounts(record.ledger.quoteCents).totalCents), budget: money(amounts(record.ledger.quoteCents).totalCents) }));
   const [notice, setNotice] = useState('');
   const [profileValues, setProfileValues] = useState<Record<string, string>>({});
-  const respondToRequest = (id: string, accepted: boolean) => {
-    setRequests(items => items.filter(item => item.id !== id));
-    setNotice(`${id} ${accepted ? 'accepted' : 'declined'} in this demo session.`);
-  };
+  const respondToRequest = (_id: string, _accepted: boolean) => onOpenWorkspace('requests');
 
   return (
-    <DashboardShell role="renter" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
+    <DashboardShell role="renter" navItems={navItems} activeTab={activeTab} onNavigate={tab => { if (tab === 'bookingdesk') onOpenWorkspace('bookings'); else if (tab === 'messages') onOpenWorkspace('chat'); else if (tab === 'requests') onOpenWorkspace('requests'); else if (tab === 'calendar') onOpenWorkspace('calendar'); else setActiveTab(tab); }} onGoToLanding={onGoToLanding} onOpenChat={() => onOpenWorkspace('chat')}>
       {notice && <p role="status" className="sl-feedback">{notice}</p>}
         {activeTab === 'overview' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
@@ -160,8 +161,7 @@ export default function RenterDashboard({ onGoToLanding }: { onGoToLanding?: () 
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-amber-400 font-bold text-sm">{req.budget}</span>
                         <div className="flex gap-2">
-                          <button onClick={() => respondToRequest(req.id, false)} className="btn-ghost text-xs py-1.5 px-3">Decline</button>
-                          <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-1.5 px-3">Accept</button>
+                          <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-1.5 px-3">Review request</button>
                         </div>
                       </div>
                     </div>
@@ -242,8 +242,7 @@ export default function RenterDashboard({ onGoToLanding }: { onGoToLanding?: () 
                   </div>
                   <span className="font-mono text-amber-400 font-bold flex-shrink-0">{req.budget}</span>
                   <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => respondToRequest(req.id, false)} className="btn-ghost text-xs py-2 px-3">Decline</button>
-                    <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-2 px-3">Accept</button>
+                    <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-2 px-3">Review request</button>
                   </div>
                 </div>
               ))}

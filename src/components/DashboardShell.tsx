@@ -4,14 +4,10 @@ import { Icon } from './Icons';
 import '../vendor/liquid-glass.js';
 import '../dashboard.css';
 import '../signed-in-motion.css';
+import NotificationCenter from './NotificationCenter';
 import { usePanelEntrance } from './usePanelEntrance';
 
 type GlassInstance = { destroy: () => void; refresh: () => void; supported: boolean };
-declare global {
-  interface Window {
-    liquidGlass: (element: HTMLElement, options?: { scale?: number; chroma?: number; blur?: number; border?: number; fallbackBlur?: number }) => GlassInstance;
-  }
-}
 
 /** A small optical surface. Large content panels use CSS frost to limit GPU cost. */
 export function GlassSurface({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -41,9 +37,9 @@ const identities = {
   admin: { title: 'Control room', name: 'StageLink Admin', initials: 'AD', tag: 'Platform operations', note: 'Keep the show running.' },
 };
 
-export default function DashboardShell({ role, navItems, activeTab, onNavigate, onGoToLanding, onOpenChat, children }: {
+export default function DashboardShell({ role, navItems, activeTab, onNavigate, onGoToLanding, onOpenChat, controls, children }: {
   role: keyof typeof identities; navItems: DashboardNav[]; activeTab: string;
-  onNavigate: (tab: string) => void; onGoToLanding?: () => void; onOpenChat?: () => void; children: ReactNode;
+  onNavigate: (tab: string) => void; onGoToLanding?: () => void; onOpenChat?: () => void; controls?: ReactNode; children: ReactNode;
 }) {
   const identity = identities[role];
   const contentRef = usePanelEntrance(activeTab);
@@ -76,9 +72,11 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
           <div><span className="sl-topbar-label">WORKSPACE</span><span className="sl-topbar-divider">/</span><span>{navItems.find(item => item.id === activeTab)?.label ?? 'Discover'}</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="sl-demo-indicator"><i /> Demo workspace</span>
+            <NotificationCenter />
             {onOpenChat && (
               <button
                 onClick={onOpenChat}
+                className="sl-open-chat"
                 aria-label="Open booking chat"
                 style={{
                   display: 'flex',
@@ -122,6 +120,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
                 Open Chat
               </button>
             )}
+            {controls}
           </div>
         </header>
         <main ref={contentRef} id="dashboard-content" className="sl-main" tabIndex={-1}>{children}</main>

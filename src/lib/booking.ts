@@ -140,7 +140,7 @@ export function restoreBooking(raw: string | null): { state: BookingState; event
 export function validateDemoCard(details: { name: string; number: string; expiry: string; cvv: string }, now = new Date()) {
   const errors: Partial<Record<keyof typeof details, string>> = {};
   if (details.name.trim().length < 2) errors.name = 'Enter the cardholder name.';
-  if (details.number.replace(/\s/g, '') !== '4242424242424242') errors.number = 'Use the demo card 4242 4242 4242 4242. Do not enter real card details.';
+  if (!['4242424242424242', '4000000000000002'].includes(details.number.replace(/\s/g, ''))) errors.number = 'Use a provided demo card. Do not enter real card details.';
   const expiry = /^(0[1-9]|1[0-2])\s*\/\s*(\d{2})$/.exec(details.expiry);
   if (!expiry || new Date(2000 + Number(expiry[2]), Number(expiry[1]), 1) <= now) errors.expiry = 'Enter a future expiry as MM/YY.';
   if (!/^\d{3}$/.test(details.cvv)) errors.cvv = 'Enter a 3-digit demo CVV.';

@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import DashboardShell, { DashboardIntro } from './DashboardShell';
+import { useBooking } from '../lib/BookingContext';
+import { money, amounts } from '../lib/booking';
+import { serviceFor } from '../lib/pipeline';
+import type { WorkspaceSection } from './BookingWorkspace';
 import { Icon, Stars } from './Icons';
 import BookingPaymentStatus from './BookingPaymentStatus';
 
@@ -31,10 +35,7 @@ const earningsData = [
 ];
 const maxEarnings = Math.max(...earningsData.map(d => d.amount));
 
-const incomingRequests = [
-  { id: 'REQ-441', client: 'Meridian Corp', event: 'Annual Gala', date: 'Dec 5, 2026', offer: '$3,200', status: 'new' },
-  { id: 'REQ-438', client: 'Private Client', event: 'Wedding Reception', date: 'Nov 22, 2026', offer: '$1,800', status: 'new' },
-];
+
 
 function AIListingModal({ onClose }: { onClose: () => void }) {
   const [keywords, setKeywords] = useState('');
@@ -89,6 +90,8 @@ function AIListingModal({ onClose }: { onClose: () => void }) {
 
 const navItems = [
   { id: 'overview', icon: Icon.LayoutDashboard, label: 'Overview' },
+  { id: 'bookingdesk', icon: Icon.Calendar, label: 'Booking desk' },
+  { id: 'messages', icon: Icon.MessageCircle, label: 'Messages' },
   { id: 'gigs', icon: Icon.Music, label: 'My Gigs' },
   { id: 'calendar', icon: Icon.Calendar, label: 'Calendar' },
   { id: 'portfolio', icon: Icon.Image, label: 'Portfolio' },
@@ -96,19 +99,17 @@ const navItems = [
   { id: 'profile', icon: Icon.User, label: 'Profile' },
 ];
 
-export default function ArtistDashboard({ onGoToLanding }: { onGoToLanding?: () => void }) {
+export default function ArtistDashboard({ onGoToLanding, onOpenWorkspace }: { onGoToLanding?: () => void; onOpenWorkspace: (section?: WorkspaceSection) => void }) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [requests, setRequests] = useState(incomingRequests);
+  const { state, actor } = useBooking();
+  const requests = state.bookings.filter(record => record.status === 'pending' && serviceFor(record.serviceId).role === actor).map(record => ({ id: record.id, client: 'Jordan Rivera', event: record.event, item: record.event, date: record.date, offer: money(amounts(record.ledger.quoteCents).totalCents), budget: money(amounts(record.ledger.quoteCents).totalCents) }));
   const [notice, setNotice] = useState('');
   const [profileValues, setProfileValues] = useState<Record<string, string>>({});
-  const respondToRequest = (id: string, accepted: boolean) => {
-    setRequests(items => items.filter(item => item.id !== id));
-    setNotice(`${id} ${accepted ? 'accepted' : 'declined'} in this demo session.`);
-  };
+  const respondToRequest = (_id: string, _accepted: boolean) => onOpenWorkspace('requests');
   const [showAIModal, setShowAIModal] = useState(false);
 
   return (
-    <DashboardShell role="artist" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
+    <DashboardShell role="artist" navItems={navItems} activeTab={activeTab} onNavigate={tab => { if (tab === 'bookingdesk') onOpenWorkspace('bookings'); else if (tab === 'messages') onOpenWorkspace('chat'); else if (tab === 'requests') onOpenWorkspace('requests'); else if (tab === 'calendar') onOpenWorkspace('calendar'); else setActiveTab(tab); }} onGoToLanding={onGoToLanding} onOpenChat={() => onOpenWorkspace('chat')}>
       {notice && <p role="status" className="sl-feedback">{notice}</p>}
       {showAIModal && <AIListingModal onClose={() => setShowAIModal(false)} />}
 
@@ -192,8 +193,7 @@ export default function ArtistDashboard({ onGoToLanding }: { onGoToLanding?: () 
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-amber-400 font-bold text-sm">{req.offer}</span>
                         <div className="flex gap-2">
-                          <button onClick={() => respondToRequest(req.id, false)} className="btn-ghost text-xs py-1.5 px-3">Decline</button>
-                          <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-1.5 px-3">Accept</button>
+                          <button onClick={() => respondToRequest(req.id, true)} className="btn-primary text-xs py-1.5 px-3">Review request</button>
                         </div>
                       </div>
                     </div>

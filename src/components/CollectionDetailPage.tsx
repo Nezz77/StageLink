@@ -194,7 +194,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
     { key: 'reviews', label: `Reviews (${data.reviewCount})` },
   ] as const;
 
-  const easeSpring = { type: 'spring', stiffness: 340, damping: 32 };
+  const easeSpring = { type: 'spring' as const, stiffness: 340, damping: 32 };
   const fadeUp = {
     hidden: { opacity: 0, y: 22 },
     show: (i: number) => ({
@@ -414,7 +414,6 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
                               className="mt-1 w-2 h-2 rounded-full shrink-0 ring-4"
                               style={{
                                 background: '#7c3aed',
-                                ringColor: 'rgba(124,58,237,0.18)',
                                 boxShadow: '0 0 0 4px rgba(124,58,237,0.14)',
                               }}
                             />

@@ -7,6 +7,7 @@ import CustomerDashboard from './components/CustomerDashboard';
 import ArtistDashboard from './components/ArtistDashboard';
 import RenterDashboard from './components/RenterDashboard';
 import BookingChat from './components/BookingChat';
+import BookingWorkspace, { type WorkspaceSection } from './components/BookingWorkspace';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import SplashScreen from './components/SplashScreen';
@@ -14,7 +15,7 @@ import { AnimatePresence, LayoutGroup } from 'motion/react';
 import { BookingProvider } from './lib/BookingContext';
 
 type Role = 'visitor' | 'customer' | 'artist' | 'renter' | 'admin';
-type View = 'main' | 'booking' | 'landing';
+type View = 'main' | 'booking' | 'landing' | 'workspace';
 type AuthType = 'login' | 'register_customer' | 'register_artist' | 'register_renter';
 type ViewTransition = { finished: Promise<void> };
 type DocumentWithViewTransition = Document & {
@@ -29,13 +30,13 @@ const roleConfig: Record<Role, { label: string; color: string; badgeClass: strin
   admin: { label: 'Administrator', color: '#fb7185', badgeClass: 'badge-rose' },
 };
 
-function RoleSwitcher({ currentRole, onSwitch }: { currentRole: Role; onSwitch: (r: Role) => void }) {
+function RoleSwitcher({ currentRole, onSwitch, inline = false }: { currentRole: Role; onSwitch: (r: Role) => void; inline?: boolean }) {
   const [open, setOpen] = useState(false);
   const roles: Role[] = ['visitor', 'customer', 'artist', 'renter', 'admin'];
   return (
-    <div className={`fixed bottom-6 right-6 z-50 ${currentRole !== 'visitor' ? 'sl-app-controls' : ''}`}>
+    <div className={inline ? 'relative z-50 sl-inline-role' : `fixed bottom-6 right-6 z-50 ${currentRole !== 'visitor' ? 'sl-app-controls' : ''}`}>
       {open && (
-        <div className="card mb-3 p-2 w-52 animate-slide-up">
+        <div className={`card p-2 w-52 animate-slide-up ${inline ? 'absolute right-0 top-full mt-3' : 'mb-3'}`}>
           <div className="text-xs text-slate-500 font-medium px-2 py-1 mb-1">Switch Role (Demo)</div>
           {roles.map(r => (
             <button
@@ -66,6 +67,9 @@ export default function App() {
   const [role, setRole] = useState<Role>('visitor');
   const [view, setView] = useState<View>('main');
   const [bookingTab, setBookingTab] = useState<'chat' | 'checkout'>('chat');
+  const [workspace, setWorkspace] = useState<{ section: WorkspaceSection; id?: string; key: number }>({ section: 'bookings', key: 0 });
+  const openWorkspace = (section: WorkspaceSection = 'bookings', id?: string) => { setWorkspace(previous => ({ section, id, key: previous.key + 1 })); setView('workspace'); };
+  useEffect(() => { const openThread = (event: Event) => { const id = (event as CustomEvent<string>).detail; if (typeof id === 'string') openWorkspace('chat', id); }; window.addEventListener('stagelink:open-thread', openThread); return () => window.removeEventListener('stagelink:open-thread', openThread); }, []);
   const [authMode, setAuthMode] = useState<AuthType | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isDark, setIsDark] = useState(true);
@@ -134,7 +138,9 @@ export default function App() {
         {isLoaded && (
           <div className={`theme-root min-h-screen transition-colors duration-500 ease-in-out ${view === 'booking' ? 'sl-chat-open' : ''}`} style={{ background: 'var(--color-bg)' }}>
             {/* Booking Chat accessible to customer/artist */}
-            {(role === 'customer' || role === 'artist') && view === 'booking' ? (
+            {view === 'workspace' && ['customer', 'artist', 'renter'].includes(role) ? (
+              <BookingWorkspace roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} key={workspace.key} initialSection={workspace.section} initialBookingId={workspace.id} onBack={() => setView('main')} onGoToLanding={() => setView('landing')} />
+            ) : (role === 'customer' || role === 'artist') && view === 'booking' ? (
               <BookingChat initialTab={bookingTab} onBack={() => setView('main')} />
             ) : role === 'visitor' || view === 'landing' ? (
               <>
@@ -154,16 +160,16 @@ export default function App() {
                 )}
               </>
             ) : role === 'customer' ? (
-              <CustomerDashboard onOpenBooking={() => { setBookingTab('checkout'); setView('booking'); }} onOpenChat={() => { setBookingTab('chat'); setView('booking'); }} onGoToLanding={() => setView('landing')} />
+              <CustomerDashboard onOpenBooking={() => openWorkspace('bookings')} onOpenPayments={() => openWorkspace('payments')} onOpenChat={() => openWorkspace('chat')} onGoToLanding={() => setView('landing')} />
             ) : role === 'artist' ? (
-              <ArtistDashboard onGoToLanding={() => setView('landing')} />
+              <ArtistDashboard onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : role === 'renter' ? (
-              <RenterDashboard onGoToLanding={() => setView('landing')} />
+              <RenterDashboard onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : (
               <AdminDashboard onGoToLanding={() => setView('landing')} />
             )}
 
-            <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />
+            {view !== 'workspace' && <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />}
           </div>
         )}
       </LayoutGroup>
