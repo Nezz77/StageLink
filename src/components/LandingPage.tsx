@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
@@ -64,6 +64,33 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
   const [listingOrigin, setListingOrigin] = useState<'browse' | 'rent'>('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = heroVideoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+
+    const startPlayback = () => {
+      if (document.visibilityState !== 'visible') return;
+
+      void video.play().catch(error => {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') return;
+        console.error('Unable to play the landing background video.', error);
+      });
+    };
+
+    video.addEventListener('canplay', startPlayback);
+    document.addEventListener('visibilitychange', startPlayback);
+    startPlayback();
+
+    return () => {
+      video.removeEventListener('canplay', startPlayback);
+      document.removeEventListener('visibilitychange', startPlayback);
+    };
+  }, [activeTab]);
 
   // Use absolute scrollY to trigger the animation instantly without being delayed by the nav bar height
   const { scrollY } = useScroll();
@@ -101,10 +128,13 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
       {activeTab === 'home' && (
         <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
           <video
+            ref={heroVideoRef}
             autoPlay
             loop
             muted
             playsInline
+            preload="auto"
+            poster="/dashboard-stage-fallback.svg"
             className="absolute top-0 left-0 w-full h-full object-cover opacity-60"
             src="/Stage-Link-Background.mp4"
           />
