@@ -49,7 +49,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
       <a className="sl-skip" href="#dashboard-content">Skip to dashboard</a>
       <aside className="sl-sidebar">
         <button className="sl-brand" onClick={() => onNavigate(navItems[0].id)} aria-label="StageLink dashboard home">
-          <span className="sl-brand-icon"><Icon.Music /></span><span>stage<span className="sl-brand-light">link</span><sup>®</sup></span>
+          <img className="sl-brand-logo" src="/stagelink-logo.png" alt="StageLink" />
         </button>
         <div className="sl-sidebar-caption">{identity.title}</div>
         <nav className="sl-navigation" aria-label={`${identity.title} navigation`}>
