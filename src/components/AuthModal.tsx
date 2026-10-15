@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AccountRecovery from './AccountRecovery';
 import { Icon } from './Icons';
 
 type AuthType = 'login' | 'register_customer' | 'register_artist' | 'register_renter';
@@ -36,6 +37,7 @@ const socialIcons = [
 ];
 
 export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModalProps) {
+  const [recovery, setRecovery] = useState(false);
   const isInitiallySignUp = initialMode.startsWith('register');
   const [rightPanelActive, setRightPanelActive] = useState(isInitiallySignUp);
   const [mounted, setMounted] = useState(false);
@@ -111,6 +113,8 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
   };
 
   return (
+    <>
+    {recovery && <AccountRecovery initialEmail={loginEmail} onClose={() => setRecovery(false)} />}
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)' }}
@@ -221,7 +225,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
 
             <a
               href="#"
-              onClick={e => e.preventDefault()}
+              onClick={e => { e.preventDefault(); setRecovery(true); }}
               style={{
                 fontSize: 12,
                 color: '#a78bfa',
@@ -507,5 +511,6 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
         </div>
       </div>
     </div>
+    </>
   );
 }

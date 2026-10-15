@@ -63,3 +63,7 @@ For a two-sided chat demonstration, switch between Customer and the appropriate 
 Run `pnpm typecheck`, `pnpm test` and `pnpm build` in the repository. The domain suite covers draft recovery, creation, conflicts, role checks, booking transitions, payments, refund eligibility, chat read state and invalid event history, alongside the existing payment tests. Additional checks cover refund decisions, held-fund accounting, cancellation after skipping an advance, demo progress, notification recipients, and sent/seen state.
 
 Browser QA also covers the complete advance → overtime → final payment → admin payout flow, refund approval/decline, receipt downloads, notification deep links/history, chat read indicators, and mobile light/dark layouts. Browser QA covers payment followed by reload, ignoring an existing paid demo record, preserving progress while navigating and switching roles, session-only drafts and attachments, independent fresh tabs, and checkout when browser storage is unavailable. Screenshots and detailed QA results are retained in the working folder used for this implementation.
+
+## Connected priority workflows
+
+The marketplace, provider catalog, payout-account review, availability/capacity editor, verification submissions, support/disputes, recovery/email verification and completed-booking reviews are now connected. See [PRIORITY_UI_DEMO.md](PRIORITY_UI_DEMO.md) for navigation, limits and demo steps. The full domain suite contains 54 passing tests.

@@ -1,3 +1,4 @@
+import CompletedBookingReview from './BookingReview'
 import { useEffect, useState, type ReactNode } from "react"
 import {
   ArrowLeft,
@@ -39,12 +40,13 @@ import {
   canCancel,
   refundBlocks,
   conflicts,
+  availabilityError,
   dateKey,
   paymentLabel,
   performanceEndsAt,
   quoteFor,
-  serviceFor,
-  services,
+  bookingService, serviceFor,
+  services as seedServices,
   unreadFor,
   validateForm,
   visibleTo,
@@ -52,7 +54,7 @@ import {
   type RecordBooking,
   type Status,
 } from "../lib/pipeline"
-import PipelineChat from "./PipelineChat"
+import MessagesCenter from "./MessagesCenter"
 import { InstallmentHistory, OvertimePanel, PaymentChoice, SettlementSummary } from "./BookingSettlement"
 import "../pipeline.css"
 
@@ -108,8 +110,9 @@ export function EmptyState({
   )
 }
 function Summary({ form }: { form: BookingForm }) {
-  const service = serviceFor(form.serviceId)
-  const quote = Math.max(0, quoteFor(form) || 0)
+  const { options } = useBooking()
+  const service = serviceFor(form.serviceId, options.catalog)
+  const quote = Math.max(0, quoteFor(form, options.catalog) || 0)
   const { totalCents } = amounts(quote)
   return (
     <aside className="pw-pass">
@@ -134,7 +137,7 @@ function Summary({ form }: { form: BookingForm }) {
         </div>
         <div>
           <dt>
-            {service.unit === "hour" ? "Performance" : "Equipment · 1 day"}
+            {service.role === "artist" ? "Performance" : `Equipment · ${form.quantity ?? 1} units`}
           </dt>
           <dd>{money(quote)}</dd>
         </div>
@@ -166,7 +169,8 @@ function BookingEditor({
   onSaved: () => void
   onBack: () => void
 }) {
-  const { state, dispatch } = useBooking()
+  const { state, dispatch, options } = useBooking()
+  const services = (options.catalog ?? seedServices).filter(item => item.available)
   const [form, setForm] = useState(initial)
   const [errors, setErrors] =
     useState<Partial<Record<keyof BookingForm, string>>>({})
@@ -246,7 +250,7 @@ function BookingEditor({
           onSubmit={(event) => {
             event.preventDefault()
             const formElement = event.currentTarget
-            const next = validateForm(form, state.bookings)
+            const next = validateForm(form, state.bookings, new Date(), options)
             setErrors(next)
             if (Object.keys(next).length) {
               setNotice("Check the highlighted details before continuing.")
@@ -288,6 +292,9 @@ function BookingEditor({
               </button>
             ))}
           </div>
+          {!services.length && <p className="pw-alert">No listings are currently available. You can save a draft and return later.</p>}
+          {errors.serviceId && <p className="pw-alert" role="alert">{errors.serviceId}</p>}
+          {serviceFor(form.serviceId, options.catalog).role === 'renter' && field('quantity', 'Equipment quantity', 'number')}
           <div className="pw-section-label">
             <span>02</span>
             <h2>The occasion & the essentials</h2>
@@ -370,7 +377,7 @@ function BookingReview({
   onBack: () => void
   onDone: (id: string) => void
 }) {
-  const { dispatch } = useBooking()
+  const { dispatch, options } = useBooking()
   const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState("")
   return (
@@ -390,12 +397,12 @@ function BookingReview({
           <h2>{form.event}</h2>
           <dl className="pw-detail-grid">
             {[
-              ["Provider", serviceFor(form.serviceId).name],
+              ["Provider", serviceFor(form.serviceId, options.catalog).name],
               ["Date", dayLabel(form.date)],
               ["Time", `${form.start}–${form.end}`],
               ["Guests", form.guests],
               ["Venue", form.venue],
-              ["Organizer", "Jordan Rivera"],
+              ["Organizer", options.organizer ?? "Jordan Rivera"],
             ].map(([key, value]) => (
               <div key={key}>
                 <dt>{key}</dt>
@@ -458,7 +465,7 @@ function BookingDetails({
   onPay: () => void
   onPayment: () => void
 }) {
-  const { actor, state, dispatch } = useBooking()
+  const { actor, state, dispatch, options } = useBooking()
   const [confirm, setConfirm] = useState<"cancel" | "reject" | null>(null)
   const [error, setError] = useState("")
   const apply = (action: Parameters<typeof dispatch>[0]) => {
@@ -467,7 +474,7 @@ function BookingDetails({
         "This action is no longer available. Review the latest booking status.",
       )
   }
-  const service = serviceFor(record.serviceId)
+  const service = bookingService(record)
   const provider = actor === service.role
   const steps = [
     "Request sent",
@@ -512,7 +519,7 @@ function BookingDetails({
             <dl className="pw-detail-grid">
               {[
                 ["Provider", service.name],
-                ["Organizer", "Jordan Rivera"],
+                ["Organizer", record.organizer ?? "Jordan Rivera"],
                 ["Date", dayLabel(record.date)],
                 ["Time", `${record.start}–${record.end}`],
                 ["Venue", record.venue],
@@ -540,9 +547,9 @@ function BookingDetails({
               <div className="pw-callout">
                 <h3>A new request for your calendar</h3>
                 <p>Review the timing and requirements before accepting.</p>
-                {!!conflicts(record, state.bookings).length && (
+                {!!(conflicts(record, state.bookings, options.catalog).length || !!availabilityError(record, options)) && (
                   <p role="alert" className="pw-error">
-                    This request conflicts with another booking.
+                    This request conflicts with another booking or the provider’s availability.
                   </p>
                 )}
                 <div className="pw-actions">
@@ -554,7 +561,7 @@ function BookingDetails({
                   </button>
                   <button
                     className="btn-primary"
-                    disabled={!!conflicts(record, state.bookings).length}
+                    disabled={!!(conflicts(record, state.bookings, options.catalog).length || !!availabilityError(record, options))}
                     onClick={() =>
                       apply({ type: "respond", id: record.id, accept: true })
                     }
@@ -598,6 +605,7 @@ function BookingDetails({
             )}
           </section>
           <DemoPerformance record={record} />
+            <CompletedBookingReview record={record} />
           <OvertimePanel record={record} />
           <section className="pw-panel pw-review">
             <span className="sl-eyebrow">FROM HELLO TO ENCORE</span>
@@ -672,6 +680,8 @@ function CalendarView({
   open: (id: string) => void
   create?: (date: string) => void
 }) {
+  const { options } = useBooking()
+  const services = options.catalog ?? seedServices
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   )
@@ -770,7 +780,7 @@ function CalendarView({
               )
               const items = records.filter((record) => record.date === date)
               const conflict = items.some(
-                (record) => conflicts(record, records).length,
+                (record) => conflicts(record, records, services).length,
               )
               return (
                 <button
@@ -827,7 +837,7 @@ function CalendarView({
                   {record.start}–{record.end}
                 </time>
                 <strong>{record.event}</strong>
-                <span>{serviceFor(record.serviceId).name}</span>
+                <span>{bookingService(record).name}</span>
                 <StatusPill status={record.status}>
                   {statusLabel[record.status]}
                 </StatusPill>
@@ -878,7 +888,7 @@ function PaymentDetails({
       `Receipt: TX-${record.id}`,
       `Booking: ${record.id}`,
       `Event: ${record.event}`,
-      `Provider: ${serviceFor(record.serviceId).name}`,
+      `Provider: ${bookingService(record).name}`,
       `Date: ${dayLabel(record.date)}`,
       `Performance / rental: ${money(record.ledger.quoteCents)}`,
       `Approved overtime: ${money(totals.overtimeCents)}`,
@@ -916,7 +926,7 @@ function PaymentDetails({
         <div className="pw-stack">
           <section className="pw-panel pw-review">
             <h2>{record.event}</h2>
-            <p>{serviceFor(record.serviceId).name} · {record.id}</p>
+            <p>{bookingService(record).name} · {record.id}</p>
             <PaymentChoice record={record} onPay={onPay} />
             <div className="pw-actions">
               <button className="btn-primary sl-action" disabled={!totals.receivedCents} onClick={receipt}><Download size={15} /> Download receipt</button>
@@ -925,6 +935,7 @@ function PaymentDetails({
           </section>
           <InstallmentHistory record={record} />
           <DemoPerformance record={record} />
+            <CompletedBookingReview record={record} />
           <OvertimePanel record={record} />
           <section className="pw-panel pw-review">
             <span className="sl-eyebrow">REFUND REQUEST</span>
@@ -1019,19 +1030,23 @@ function PaymentDetails({
 export default function BookingWorkspace({
   initialSection = "bookings",
   initialBookingId,
+  initialServiceId,
+  initialInquiryId,
   onBack,
   onGoToLanding,
   roleControl,
 }: {
   initialSection?: WorkspaceSection
   initialBookingId?: string
+  initialServiceId?: string
+  initialInquiryId?: string
   roleControl?: ReactNode
   onBack: () => void
   onGoToLanding: () => void
 }) {
-  const { actor, state, dispatch } = useBooking()
+  const { actor, state, dispatch, options } = useBooking()
   const [section, setSection] = useState<WorkspaceSection>(initialSection)
-  const [screen, setScreen] = useState<Screen>(() => initialBookingId && initialSection !== "chat"
+  const [screen, setScreen] = useState<Screen>(() => initialServiceId ? { kind: "form", form: { ...blankForm(), serviceId: initialServiceId, quantity: "1" } } : initialBookingId && initialSection !== "chat"
     ? { kind: initialSection === "payments" ? "payment" : "details", id: initialBookingId } : { kind: "list" })
   const [chatId, setChatId] = useState(initialBookingId)
   const [search, setSearch] = useState("")
@@ -1118,7 +1133,7 @@ export default function BookingWorkspace({
               ? ["accepted", "active"].includes(record.status) &&
                 record.date >= dateKey(new Date())
               : record.status === filter)) &&
-        `${record.id} ${record.event} ${serviceFor(record.serviceId).name} ${record.date}`
+        `${record.id} ${record.event} ${bookingService(record).name} ${record.date}`
           .toLowerCase()
           .includes(search.toLowerCase()),
     )
@@ -1203,7 +1218,7 @@ export default function BookingWorkspace({
           <PaymentCheckout
             key={selected.id}
             bookingId={selected.id}
-            artist={serviceFor(selected.serviceId).name}
+            artist={bookingService(selected).name}
             event={selected.event}
             quoteCents={selected.ledger.quoteCents}
             feeCents={amounts(selected.ledger.quoteCents).feeCents}
@@ -1224,7 +1239,7 @@ export default function BookingWorkspace({
             onPay={() => openCheckout(selected)}
           />
         ) : section === "chat" ? (
-          <PipelineChat initialBookingId={chatId} onOpenBooking={open} />
+          <MessagesCenter initialBookingId={chatId} initialInquiryId={initialInquiryId} onOpenBooking={open} />
         ) : section === "calendar" ? (
           <CalendarView
             bookings={bookings}
@@ -1346,7 +1361,7 @@ export default function BookingWorkspace({
                         <div>
                           <strong>{draft.event || "Untitled event"}</strong>
                           <span>
-                            {serviceFor(draft.serviceId).name} ·{" "}
+                            {serviceFor(draft.serviceId, options.catalog).name} ·{" "}
                             {draft.date
                               ? dayLabel(draft.date)
                               : "Date to be decided"}
@@ -1463,13 +1478,13 @@ export default function BookingWorkspace({
                     <span className="pw-booking-info">
                       <small>
                         {record.id} ·{" "}
-                        {record.serviceId === "aria"
+                        {bookingService(record).role === "artist"
                           ? "PERFORMANCE"
                           : "EQUIPMENT"}
                       </small>
                       <strong>{record.event}</strong>
                       <span>
-                        {serviceFor(record.serviceId).name} <i>·</i>{" "}
+                        {bookingService(record).name} <i>·</i>{" "}
                         {record.start}–{record.end}
                       </span>
                     </span>

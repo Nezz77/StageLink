@@ -1,3 +1,4 @@
+import { type Service, type Availability } from './catalog.ts'
 import {
   bookingStatus,
   initialBooking,
@@ -8,9 +9,9 @@ import {
   type BookingState,
 } from "./booking.ts"
 
-export const services = [
+export const services: Service[] = [
   {
-    id: "aria",
+    id: "aria", provider: "Aria Nova", capacity: 1, available: true,
     name: "Aria Nova",
     detail: "Jazz & soul · live performance",
     role: "artist",
@@ -19,7 +20,7 @@ export const services = [
     initials: "AN",
   },
   {
-    id: "pa",
+    id: "pa", provider: "AudioVault Rentals", capacity: 1, available: true,
     name: "AudioVault · PA system",
     detail: "Speakers, mixer & microphones",
     role: "renter",
@@ -28,7 +29,7 @@ export const services = [
     initials: "AV",
   },
   {
-    id: "lights",
+    id: "lights", provider: "AudioVault Rentals", capacity: 1, available: true,
     name: "AudioVault · Lighting rig",
     detail: "Moving heads & stage lighting",
     role: "renter",
@@ -36,8 +37,8 @@ export const services = [
     unit: "day",
     initials: "AV",
   },
-] as const
-export type ServiceId = typeof services[number]["id"]
+]
+export type ServiceId = string
 export type Status = "pending" | "accepted" | "active" | "completed" | "rejected" | "cancelled"
 export type BookingForm = {
   id: string
@@ -49,8 +50,12 @@ export type BookingForm = {
   venue: string
   guests: string
   requirements: string
+  quantity?: string
 }
 export type RecordBooking = BookingForm & {
+  service?: Service
+  organizer?: string
+  review?: { rating: number; text: string; at: string }
   status: Status
   ledger: BookingState
   paymentMethod?: "card" | "wallet"
@@ -82,7 +87,7 @@ export type PipelineState = {
   messages: Message[]
   read: Record<string, string>
 }
-export type PipelineAction = { type: "read_notification"; id: string }
+export type PipelineAction = { type: "review"; id: string; rating: number; text: string } | { type: "read_notification"; id: string }
   | { type: "demo_start" | "demo_finish"; id: string }
   | { type: "resolve_refund"; id: string; approve: boolean; reason: string }
   | { type: "save_draft"; form: BookingForm } | {
@@ -112,13 +117,17 @@ export type PipelineEvent = {
   at: string
 }
 export const PIPELINE_KEY = "stagelink:pipeline:v1"
-export const serviceFor = (id: ServiceId) =>
-  services.find((service) => service.id === id)!
+export const serviceFor = (id: ServiceId, catalog: Service[] = services): Service =>
+  catalog.find(service => service.id === id) ?? { id, name: 'Unavailable listing', provider: 'Provider', role: 'artist', detail: 'Choose an available listing.', rate: 0, unit: 'event', initials: 'SL', capacity: 0, available: false }
+export const bookingService = (record: RecordBooking): Service => record.service ?? serviceFor(record.serviceId)
+export type BookingOptions = { catalog?: Service[]; availability?: Partial<Record<'artist' | 'renter', Availability>>; organizer?: string }
+
 export const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 export const blankForm = (): BookingForm => ({
   id: `BK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
   serviceId: "aria",
+  quantity: "1",
   event: "",
   date: "",
   start: "19:00",
@@ -127,35 +136,34 @@ export const blankForm = (): BookingForm => ({
   guests: "",
   requirements: "",
 })
-export const quoteFor = (form: BookingForm) =>
-  Math.round(
-    serviceFor(form.serviceId).rate *
-      (form.serviceId === "aria"
-        ? (minutes(form.end) - minutes(form.start)) / 60
-        : 1),
-  )
-const minutes = (time: string) =>
-  Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
-const active = (record: RecordBooking) =>
-  !["rejected", "cancelled", "completed"].includes(record.status)
-export const visibleTo = (record: RecordBooking, actor: BookingRole) =>
-  actor === "customer" ||
-  actor === "admin" ||
-  serviceFor(record.serviceId).role === actor
-export const conflicts = (form: BookingForm, bookings: RecordBooking[]) =>
-  bookings.filter(
-    (record) =>
-      record.id !== form.id &&
-      active(record) &&
-      record.date === form.date &&
-      record.serviceId === form.serviceId &&
-      (form.serviceId !== "aria" ||
-        (form.start < record.end && form.end > record.start)),
-  )
+export const quoteFor = (form: BookingForm, catalog: Service[] = services) => {
+  const service = serviceFor(form.serviceId, catalog)
+  return Math.round(service.rate * (service.unit === 'hour' ? (minutes(form.end) - minutes(form.start)) / 60 : 1) * (service.role === 'renter' ? Number(form.quantity ?? '1') : 1))
+}
+const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
+const active = (record: RecordBooking) => !['rejected', 'cancelled', 'completed'].includes(record.status)
+export const visibleTo = (record: RecordBooking, actor: BookingRole) => actor === 'customer' || actor === 'admin' || bookingService(record).role === actor
+export const conflicts = (form: BookingForm, bookings: RecordBooking[], catalog: Service[] = services) => {
+  const service = serviceFor(form.serviceId, catalog)
+  const occupied = bookings.filter(record => record.id !== form.id && active(record) && record.date === form.date &&
+    (service.role === 'artist' ? bookingService(record).role === 'artist' && form.start < record.end && form.end > record.start : record.serviceId === form.serviceId))
+  return service.role === 'renter' && occupied.reduce((sum, record) => sum + Number(record.quantity ?? '1'), 0) + Number(form.quantity ?? '1') <= service.capacity ? [] : occupied
+}
+export function availabilityError(form: BookingForm, options: BookingOptions = {}) {
+  const service = serviceFor(form.serviceId, options.catalog)
+  if (!service.available) return 'This listing is paused or unavailable. Choose another listing.'
+  if (service.role === 'renter' && (!/^\d+$/.test(form.quantity ?? '1') || Number(form.quantity ?? '1') < 1 || Number(form.quantity ?? '1') > service.capacity)) return 'The requested quantity exceeds available inventory.'
+  const schedule = options.availability?.[service.role]
+  if (!schedule) return ''
+  if (!schedule.days.includes(new Date(`${form.date}T12:00:00`).getDay()) || form.start < schedule.start || form.end > schedule.end) return 'This time is outside the provider’s available hours.'
+  if (schedule.blocks.some(block => block.date === form.date && form.start < block.end && form.end > block.start)) return 'The provider has blocked this date or time.'
+  return ''
+}
 export function validateForm(
   form: BookingForm,
   bookings: RecordBooking[],
   now = new Date(),
+  options: BookingOptions = {},
 ) {
   const errors: Partial<Record<keyof BookingForm, string>> = {}
   if (!form.event.trim()) errors.event = "Give your event a name."
@@ -183,7 +191,12 @@ export function validateForm(
     Number(form.guests) > 100000
   )
     errors.guests = "Enter 1–100,000 guests."
-  if (conflicts(form, bookings).length)
+  const service = serviceFor(form.serviceId, options.catalog)
+  const quantity = form.quantity ?? '1'
+  if (service.role === 'renter' && (!/^\d+$/.test(quantity) || Number(quantity) < 1 || Number(quantity) > service.capacity)) errors.quantity = `Choose 1–${service.capacity} available units.`
+  const unavailable = availabilityError(form, options)
+  if (unavailable) errors.serviceId = unavailable
+  if (conflicts(form, bookings, options.catalog).length)
     errors.date = "This service already has a booking in that time slot."
   return errors
 }
@@ -324,7 +337,7 @@ export const performanceStarted = (record: RecordBooking, now = new Date()) =>
 export const canCancel = (record: RecordBooking, now = new Date()) =>
   ["pending", "accepted", "active"].includes(record.status) && record.ledger.payment === "unpaid" && !performanceStarted(record, now)
 export const messageSeen = (state: PipelineState, message: Message, record: RecordBooking) => {
-  const recipient = message.sender === "customer" ? serviceFor(record.serviceId).role : "customer"
+  const recipient = message.sender === "customer" ? bookingService(record).role : "customer"
   return Date.parse(state.read[`${recipient}:${record.id}`] ?? "") >= Date.parse(message.at)
 }
 export const notificationsFor = (state: PipelineState, actor: BookingRole) =>
@@ -340,7 +353,7 @@ export const paymentLabel = (record: RecordBooking) =>
 function notificationFor(record: RecordBooking, action: PipelineAction, actor: BookingRole, title: string, at: string): BookingNotification {
   const inner = action.type === "settle" || action.type === "legacy" ? action.action.type : action.type
   const payment = ["collect", "release", "refund", "resolve_refund", "toggle_hold", "confirm_performance", "pay"].includes(inner)
-  const recipients: BookingRole[] = ["customer", serviceFor(record.serviceId).role]
+  const recipients: BookingRole[] = ["customer", bookingService(record).role]
   if (["collect", "refund", "complete", "demo_finish", "report_performance", "pay"].includes(inner)) recipients.push("admin")
   return { id: `${record.id}:${record.activity.length}:${action.type}`, bookingId: record.id, title, at,
     section: payment ? "payments" : "bookings", recipients: recipients.filter(role => role !== actor), readBy: [] }
@@ -361,10 +374,10 @@ function safeForm(value: unknown): value is BookingForm {
     ].every(
       (key) =>
         typeof form[(key as keyof BookingForm)] === "string" &&
-        form[(key as keyof BookingForm)].length <=
+        (form[(key as keyof BookingForm)] as string).length <=
           (key === "requirements" ? 3000 : 200),
     ) &&
-    services.some((service) => service.id === form.serviceId) &&
+    typeof form.serviceId === "string" && form.serviceId.length > 0 && form.serviceId.length <= 100 && (form.quantity === undefined || (typeof form.quantity === "string" && form.quantity.length <= 10)) &&
     /^BK-[a-zA-Z0-9-]+$/.test(form.id)
   )
 }
@@ -374,6 +387,7 @@ export function reducePipeline(
   actor: BookingRole,
   at = new Date().toISOString(),
   replayLegacy = false,
+  options: BookingOptions = {},
 ): PipelineState {
   if (
     !action ||
@@ -399,17 +413,19 @@ export function reducePipeline(
         ...state,
         drafts: [form, ...state.drafts.filter((draft) => draft.id !== form.id)],
       }
-    if (Object.keys(validateForm(form, state.bookings, new Date(at))).length)
+    if (Object.keys(validateForm(form, state.bookings, new Date(at), options)).length)
       return state
     const record: RecordBooking = {
       ...form,
+      service: { ...serviceFor(form.serviceId, options.catalog) },
+      organizer: options.organizer ?? "Jordan Rivera",
       event: form.event.trim(),
       venue: form.venue.trim(),
       status: "pending",
       createdAt: at,
       ledger: {
         ...initialBooking,
-        quoteCents: quoteFor(form),
+        quoteCents: quoteFor(form, options.catalog),
         quoteStatus: "awaiting_artist",
         history: [],
       },
@@ -471,11 +487,16 @@ export function reducePipeline(
   let patch: Partial<RecordBooking> = {}
   let label = ""
   switch (action.type) {
+    case "review":
+      if (actor !== 'customer' || record.status !== 'completed' || record.review || !Number.isInteger(action.rating) || action.rating < 1 || action.rating > 5 || typeof action.text !== 'string' || action.text.trim().length < 10 || action.text.length > 2000) return state
+      patch = { review: { rating: action.rating, text: action.text.trim(), at } }
+      label = 'Customer reviewed the completed booking'
+      break
     case "respond":
       if (
-        actor !== serviceFor(record.serviceId).role ||
+        actor !== bookingService(record).role ||
         record.status !== "pending" ||
-        (action.accept && conflicts(record, state.bookings).length)
+        (action.accept && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options)))
       )
         return state
       patch = {
@@ -524,7 +545,7 @@ export function reducePipeline(
     }
     case "complete":
       if (
-        actor !== serviceFor(record.serviceId).role ||
+        actor !== bookingService(record).role ||
         !["active", "accepted"].includes(record.status) ||
         record.ledger.quoteStatus !== "accepted" ||
         refundBlocks(record) ||
@@ -569,12 +590,12 @@ export function reducePipeline(
     }
     case "demo_start":
     case "demo_finish": {
-      if (actor !== serviceFor(record.serviceId).role || !["active", "accepted"].includes(record.status) ||
+      if (actor !== bookingService(record).role || !["active", "accepted"].includes(record.status) ||
         record.ledger.quoteStatus !== "accepted" || record.ledger.performance !== "upcoming" || refundBlocks(record)) return state
       if (action.type === "demo_start") {
         if (record.demoStartedAt) return state
         patch = { demoStartedAt: at, status: "active" }
-        label = record.serviceId === "aria" ? "Provider started the demo event · overtime is available" : "Provider started the demo rental event"
+        label = bookingService(record).role === "artist" ? "Provider started the demo event · overtime is available" : "Provider started the demo rental event"
       } else {
         if (!record.demoStartedAt || record.ledger.overtime.some(item => item.status === "pending")) return state
         patch = { status: "completed", ledger: { ...record.ledger, performance: "reported" } }
@@ -589,8 +610,8 @@ export function reducePipeline(
       const inner = action.action
       if (action.type === "settle" && (record.status === "pending" || !["collect", "skip_advance", "propose_overtime", "resolve_overtime", "confirm_performance", "toggle_hold", "release"].includes(inner.type))) return state
       if (inner.type === "pay" && !replayLegacy) return state
-      if (["propose_overtime", "resolve_overtime"].includes(inner.type) && (record.serviceId !== "aria" || !performanceStarted(record, new Date(at)))) return state
-      if (inner.type === "report_performance" && !replayLegacy && (actor !== serviceFor(record.serviceId).role || performanceEndsAt(record) > new Date(at))) return state
+      if (["propose_overtime", "resolve_overtime"].includes(inner.type) && (bookingService(record).role !== "artist" || !performanceStarted(record, new Date(at)))) return state
+      if (inner.type === "report_performance" && !replayLegacy && (actor !== bookingService(record).role || performanceEndsAt(record) > new Date(at))) return state
       const ledger = transitionBooking(record.ledger, inner, actor, at, replayLegacy)
       if (ledger === record.ledger) return state
       patch = {

@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { ArrowUpRight, Download } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
 import { money } from '../lib/booking';
-import { serviceFor } from '../lib/pipeline';
+import { bookingService } from '../lib/pipeline';
 import { DashboardIntro } from './DashboardShell';
 import { Badge, Empty, Panel, Stats, downloadCSV } from './DashboardUI';
 
 export default function ProviderFinances({ onPayment }: { onPayment: (id?: string) => void }) {
   const { actor, state } = useBooking();
   const [period, setPeriod] = useState('all');
-  const bookings = state.bookings.filter(record => serviceFor(record.serviceId).role === actor);
+  const bookings = state.bookings.filter(record => bookingService(record).role === actor);
   const months = [...new Set(bookings.flatMap(record => record.ledger.installments.map(item => (item.refundedAt ?? item.releasedAt ?? item.paidAt).slice(0, 7))))].sort().reverse();
   const rows = bookings.flatMap(record => record.ledger.installments.map(item => ({ record, item }))).filter(({ item }) => period === 'all' || (item.refundedAt ?? item.releasedAt ?? item.paidAt).startsWith(period));
   const totals = { paid: rows.reduce((sum, { item }) => sum + (item.payoutCents ?? 0), 0), held: rows.reduce((sum, { item }) => sum + (!item.releasedAt && !item.refundedAt ? item.grossCents : 0), 0), fee: rows.reduce((sum, { item }) => sum + (item.feeCents ?? 0), 0) };

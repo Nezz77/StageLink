@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { Play, Check } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
-import { refundBlocks, serviceFor, type RecordBooking } from '../lib/pipeline';
+import { refundBlocks, bookingService, type RecordBooking } from '../lib/pipeline';
 import ConfirmDialog from './ConfirmDialog';
 
 export default function DemoPerformance({ record }: { record: RecordBooking }) {
   const { actor, dispatch } = useBooking();
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState('');
-  if (actor !== serviceFor(record.serviceId).role || record.ledger.quoteStatus !== 'accepted' || !['active', 'accepted', 'completed'].includes(record.status) || refundBlocks(record)) return null;
+  if (actor !== bookingService(record).role || record.ledger.quoteStatus !== 'accepted' || !['active', 'accepted', 'completed'].includes(record.status) || refundBlocks(record)) return null;
   const done = record.ledger.performance !== 'upcoming';
-  const performer = record.serviceId === 'aria';
+  const performer = bookingService(record).role === 'artist';
   const pending = record.ledger.overtime.some(item => item.status === 'pending');
   const started = !!record.demoStartedAt;
   return <section className="pw-callout pw-demo-performance" aria-label="Demo event controls">

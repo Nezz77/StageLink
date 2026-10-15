@@ -1,3 +1,4 @@
+import { initialCommunity, reduceCommunity, type CommunityState, type CommunityAction } from './community.ts';
 import type { BookingRole } from './booking.ts';
 
 export type MemberRole = 'customer' | 'artist' | 'renter';
@@ -12,15 +13,15 @@ export type CaseKind = 'verification' | 'disputes' | 'support';
 export type CaseStatus = 'pending' | 'reviewing' | 'approved' | 'rejected' | 'resolved';
 export type ReviewCase = {
   id: string; kind: CaseKind; name: string; subject: string; body: string; submitted: string;
-  priority: 'normal' | 'high'; status: CaseStatus; bookingId?: string; documents: string[];
-  notes: { text: string; at: string; kind: 'reply' | 'internal' | 'decision' }[];
+  priority: 'normal' | 'high'; status: CaseStatus; bookingId?: string; documents: string[]; owner?: MemberRole; evidenceIds?: string[];
+  notes: { text: string; at: string; kind: 'reply' | 'internal' | 'decision'; author?: MemberRole | 'admin' }[];
 };
-export type DashboardState = {
+export type DashboardState = CommunityState & {
   profiles: Record<MemberRole, Profile>; savedArtists: number[]; listings: Listing[]; media: MediaItem[];
   drafts: Record<string, Record<string, string>>; cases: ReviewCase[];
   maintenance: boolean; announcement: string; audit: { label: string; at: string }[];
 };
-export type DashboardAction =
+export type DashboardAction = CommunityAction
   | { type: 'profile'; profile: Profile }
   | { type: 'favorite'; id: number }
   | { type: 'draft'; key: string; values: Record<string, string> }
@@ -69,6 +70,7 @@ export function initialDashboard(): DashboardState {
   const base = { city: 'Los Angeles, CA', phone: '', bio: '' };
   const submitted = '2026-10-12T09:00:00Z';
   return {
+    ...initialCommunity(),
     profiles: {
       customer: { ...base, name: 'Jordan Rivera', email: 'jordan.rivera@example.com', specialty: 'Event organizer' },
       artist: { ...base, name: 'Aria Nova', email: 'aria.nova@example.com', specialty: 'Soul / Jazz', bio: 'Live jazz and soul for intimate evenings, celebrations and corporate events.' },
@@ -101,6 +103,8 @@ export function initialDashboard(): DashboardState {
 }
 export function reduceDashboard(state: DashboardState, action: DashboardAction, actor: BookingRole, at = new Date().toISOString()): DashboardState {
   if (actor === 'visitor' || !Number.isFinite(Date.parse(at))) return state;
+  const community = reduceCommunity(state, action, actor, at);
+  if (community !== undefined) return community;
   const withoutDraft = (key: string) => { const drafts = { ...state.drafts }; delete drafts[draftKey(actor, key)]; return drafts; };
   switch (action.type) {
     case 'profile':
@@ -145,7 +149,7 @@ export function reduceDashboard(state: DashboardState, action: DashboardAction, 
   if (action.type === 'maintenance') return typeof action.enabled === 'boolean' ? { ...state, maintenance: action.enabled, audit: audit(`Demo maintenance banner ${action.enabled ? 'enabled' : 'disabled'}`) } : state;
   if (action.type === 'announcement') return validText(action.text, 0, 500) ? { ...state, announcement: action.text.trim(), drafts: withoutDraft('announcement'), audit: audit(action.text.trim() ? 'Workspace announcement updated (demo)' : 'Workspace announcement removed') } : state;
   if (action.type === 'system_action') return ['cache', 'sessions'].includes(action.command) ? { ...state, audit: audit(action.command === 'cache' ? 'Cache purge simulated · no network cache changed' : 'Session refresh simulated · current demo remains signed in') } : state;
-  const item = state.cases.find(item => item.id === action.id);
+  const item = state.cases.find(item => "id" in action && item.id === action.id);
   if (!item) return state;
   const update = (value: ReviewCase, label: string, clearDraft = false) => ({ ...state, cases: state.cases.map(row => row.id === item.id ? value : row), audit: audit(`${item.id} · ${label}`), drafts: clearDraft ? withoutDraft(`case:${item.id}`) : state.drafts });
   if (action.type === 'review_case') return item.status === 'pending' ? update({ ...item, status: 'reviewing' }, 'Review started') : state;

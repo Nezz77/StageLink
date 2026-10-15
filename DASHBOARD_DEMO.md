@@ -23,18 +23,20 @@ All changes are temporary and live in the current tab. Navigation and role switc
 
 ## Customer
 
-- **Saved artists** now survives moving between the discovery page, bookings and other demo roles.
+- **Discover** and **Saved listings** use the shared provider catalog. Book or request equipment from a listing, start an enquiry, and keep favorites while navigating or switching roles.
 - **My profile** validates details, supports Save for later, and updates the workspace identity when saved.
 - Existing discovery, booking, payments and chat navigation remains available.
 
 ## Administrator
 
 - **Analytics** calculates customer payments, provider transfers, fees and refunds from the booking ledger. Filter by month, switch the chart metric, export a report and open activity or queues directly.
-- **Verification** contains sample submissions. Open each sample document, confirm review, write a decision reason and approve or reject with confirmation. Completed decisions remain in the filtered history.
+- **Verification** contains sample cases plus actual demo submissions from providers. Open each document, confirm review, write a decision reason and approve or reject with confirmation. Completed decisions remain in the filtered history.
 - **Disputes** provides case context, sample attachments, internal notes, demo replies, response drafts and confirmed resolutions. Open the linked payment for any money-related action. Resolving a dispute itself does not transfer or refund funds.
 - **Support** supports search, open/completed filters, draft responses, demo replies, internal notes, resolution and reopening. Conversation history remains visible.
 - **System** provides a confirmed maintenance-preview banner, a shared announcement, saved announcement drafts, simulated cache/session actions and an operations log. These controls affect only this demo tab; navigation stays usable.
 - **Payments** retains the settlement and refund workflow. Only the administrator releases held payments.
+
+For the newly connected payout accounts, availability, verification intake, support/disputes, recovery and reviews, see [PRIORITY_UI_DEMO.md](PRIORITY_UI_DEMO.md).
 
 ## Suggested walkthrough
 
@@ -49,7 +51,7 @@ All changes are temporary and live in the current tab. Navigation and role switc
 
 ## Integration boundaries
 
-This is a frontend prototype. Role checks demonstrate allowed UI actions; they are not authentication or server authorization. Catalog edits update the management catalog in this demo. They do not modify the separate public marketplace samples, booking service options or prices already agreed on bookings. Profile edits update the dashboard identity, while existing bookings retain their seeded participant snapshots.
+This is a frontend prototype. Role checks demonstrate allowed UI actions; they are not authentication or server authorization. Published catalog edits update customer/public browse pages and booking options. Submitted bookings retain their agreed service and quote. The landing-page promotional content remains static. Profile edits update discovery and workspace identity; existing bookings retain their participant snapshots.
 
 All payments, refunds, identity reviews, support replies and system operations are simulated. There is no live payment gateway, bank transfer, AI service, remote media upload or outbound messaging. Payment policy remains an optional 10% advance, the remaining agreed price plus approved overtime after the performance, and a 5% fee on the original booking deducted once from the provider's first payout. See [PAYMENT_DEMO.md](PAYMENT_DEMO.md).
 

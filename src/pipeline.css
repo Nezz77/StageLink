@@ -206,3 +206,6 @@ html[data-theme="light"] .pw-notification-item.is-read { opacity:1; }
 html[data-theme="light"] .pw-demo-performance .sl-eyebrow { color:#896123; }
 html[data-theme="light"] .pw-refunded { color:#337c5d; }
 @media(max-width:600px) { .pw-notification-panel { width:calc(100vw - 30px); max-height:65dvh; } .pw-demo-performance h3 { font-size:23px; } }
+/* Keep the role menu below its header trigger, including scrolled detail views. */
+.sl-inline-role { position:relative; flex-shrink:0; }
+.sl-inline-role>.card { position:absolute; top:calc(100% + 12px); right:0; bottom:auto; margin:0; z-index:60; }

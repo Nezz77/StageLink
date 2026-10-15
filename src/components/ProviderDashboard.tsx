@@ -4,8 +4,12 @@ import DashboardShell, { DashboardIntro, type DashboardNav } from './DashboardSh
 import { useBooking } from '../lib/BookingContext';
 import { useDashboard } from '../lib/DashboardContext';
 import { money, settlement } from '../lib/booking';
-import { serviceFor } from '../lib/pipeline';
+import { bookingService } from '../lib/pipeline';
 import type { WorkspaceSection } from './BookingWorkspace';
+import PayoutAccount from './PayoutAccount';
+import AvailabilityEditor from './AvailabilityEditor';
+import CasePortal from './CasePortal';
+import { Landmark, ShieldCheck, LifeBuoy } from 'lucide-react';
 import ListingManager from './ListingManager';
 import MemberProfile from './MemberProfile';
 import PortfolioManager from './PortfolioManager';
@@ -17,7 +21,7 @@ export default function ProviderDashboard({ role, onGoToLanding, roleControl, on
   const { state } = useBooking(); const { state: dashboard } = useDashboard();
   const [tab, setTab] = useState('overview'), [newListing, setNewListing] = useState(false), [search, setSearch] = useState(''), [rentalFilter, setRentalFilter] = useState('active');
   const profile = dashboard.profiles[role], artist = role === 'artist';
-  const bookings = state.bookings.filter(record => serviceFor(record.serviceId).role === role);
+  const bookings = state.bookings.filter(record => bookingService(record).role === role);
   const requests = bookings.filter(record => record.status === 'pending');
   const upcoming = bookings.filter(record => ['accepted', 'active'].includes(record.status)).sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
   const earnings = bookings.reduce((sum, record) => sum + settlement(record.ledger).paidOutCents, 0);
@@ -29,6 +33,7 @@ export default function ProviderDashboard({ role, onGoToLanding, roleControl, on
     { id: artist ? 'gigs' : 'inventory', icon: artist ? Music2 : Package, label: artist ? 'My Gigs' : 'Inventory' },
     ...(!artist ? [{ id: 'rentals', icon: Repeat, label: 'Active Rentals' }] : []), { id: 'calendar', icon: CalendarDays, label: 'Calendar' },
     ...(artist ? [{ id: 'portfolio', icon: Image, label: 'Portfolio' }] : []), { id: 'earnings', icon: CreditCard, label: 'Earnings' }, { id: 'profile', icon: UserRound, label: 'Profile' },
+    { id: 'payout', icon: Landmark, label: 'Payout account' }, { id: 'availability', icon: CalendarDays, label: 'Availability' }, { id: 'verification', icon: ShieldCheck, label: 'Verification' }, { id: 'support', icon: LifeBuoy, label: 'Help & disputes' },
   ];
   const navigate = (next: string) => requestDashboardNavigation(() => {
     if (['bookingdesk', 'messages', 'requests', 'calendar'].includes(next)) onOpenWorkspace(next === 'bookingdesk' ? 'bookings' : next === 'messages' ? 'chat' : next as WorkspaceSection);
@@ -44,10 +49,14 @@ export default function ProviderDashboard({ role, onGoToLanding, roleControl, on
         <Panel title="Waiting in the wings" eyebrow="REQUESTS & CATALOG">{requests.length ? requests.map(record => <article className="mg-request" key={record.id}><Badge value="pending">New request</Badge><h3>{record.event}</h3><p>{record.date} · {money(record.ledger.quoteCents)}</p><button className="btn-primary" onClick={() => onOpenWorkspace('requests', record.id)}>Review request<ArrowUpRight size={16} /></button></article>) : <p className="mg-muted"><Check size={16} /> You’re all caught up on booking requests.</p>}<div className="mg-rule" /><p className="mg-muted">{listings.filter(item => item.status === 'live').length} published listings · {listings.filter(item => item.status !== 'live').length} paused or servicing</p><button className="btn-ghost" onClick={() => setTab(artist ? 'gigs' : 'inventory')}>{artist ? 'Manage gigs' : 'Manage inventory'}</button></Panel></div>
       </>}
       {(tab === 'gigs' || tab === 'inventory') && <ListingManager owner={role} initiallyNew={newListing} />}
+      {tab === 'payout' && <PayoutAccount />}
+      {tab === 'availability' && <AvailabilityEditor />}
+      {tab === 'verification' && <CasePortal mode="verification" />}
+      {tab === 'support' && <CasePortal mode="support" />}
       {tab === 'portfolio' && <PortfolioManager />}
       {tab === 'profile' && <MemberProfile />}
       {tab === 'earnings' && <ProviderFinances onPayment={id => onOpenWorkspace('payments', id)} />}
-      {tab === 'rentals' && <><DashboardIntro eyebrow="EQUIPMENT / OUT IN THE WORLD" title="Keep every" emphasis="production moving." description="Track accepted rentals, coordinate handover and report completion from the linked booking." /><div className="mg-toolbar"><SearchField value={search} onChange={setSearch} label="Search rentals" /><label className="mg-filter">Rental status<select aria-label="Rental status" value={rentalFilter} onChange={event => setRentalFilter(event.target.value)}><option value="active">Upcoming & active</option><option value="completed">Completed</option><option value="all">All rentals</option></select></label></div><Panel title="Your rental schedule">{rentals.length ? rentals.map(record => <article className="mg-row" key={record.id}><Package size={24} /><div><Badge value={record.status} /><h3>{record.event}</h3><p>{serviceFor(record.serviceId).name} · {record.date} · {record.start}–{record.end}</p><p>{record.venue}</p></div><strong>{money(record.ledger.quoteCents)}</strong><button className="btn-primary" onClick={() => onOpenWorkspace('bookings', record.id)}>Manage rental<ArrowUpRight size={15} /></button></article>) : <Empty title="No rentals match this view.">Accepted equipment bookings appear here.</Empty>}</Panel></>}
+      {tab === 'rentals' && <><DashboardIntro eyebrow="EQUIPMENT / OUT IN THE WORLD" title="Keep every" emphasis="production moving." description="Track accepted rentals, coordinate handover and report completion from the linked booking." /><div className="mg-toolbar"><SearchField value={search} onChange={setSearch} label="Search rentals" /><label className="mg-filter">Rental status<select aria-label="Rental status" value={rentalFilter} onChange={event => setRentalFilter(event.target.value)}><option value="active">Upcoming & active</option><option value="completed">Completed</option><option value="all">All rentals</option></select></label></div><Panel title="Your rental schedule">{rentals.length ? rentals.map(record => <article className="mg-row" key={record.id}><Package size={24} /><div><Badge value={record.status} /><h3>{record.event}</h3><p>{bookingService(record).name} · {record.date} · {record.start}–{record.end}</p><p>{record.venue}</p></div><strong>{money(record.ledger.quoteCents)}</strong><button className="btn-primary" onClick={() => onOpenWorkspace('bookings', record.id)}>Manage rental<ArrowUpRight size={15} /></button></article>) : <Empty title="No rentals match this view.">Accepted equipment bookings appear here.</Empty>}</Panel></>}
     </div>
   </DashboardShell>;
 }

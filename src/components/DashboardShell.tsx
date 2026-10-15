@@ -34,8 +34,8 @@ export function GlassSurface({ children, className = '' }: { children: ReactNode
 export type DashboardNav = { id: string; label: string; icon: ComponentType<{ className?: string }>; count?: number };
 const identities = {
   customer: { title: 'Your backstage', name: 'Jordan Rivera', initials: 'JR', tag: 'Event organizer', note: 'Great nights start here.' },
-  artist: { title: 'Artist studio', name: 'Aria Nova', initials: 'AN', tag: 'Verified artist', note: 'Make your next encore.' },
-  renter: { title: 'Equipment studio', name: 'AudioVault Rentals', initials: 'AV', tag: 'Verified rental partner', note: 'Behind every great show.' },
+  artist: { title: 'Artist studio', name: 'Aria Nova', initials: 'AN', tag: 'Artist demo account', note: 'Make your next encore.' },
+  renter: { title: 'Equipment studio', name: 'AudioVault Rentals', initials: 'AV', tag: 'Rental demo account', note: 'Behind every great show.' },
   admin: { title: 'Control room', name: 'StageLink Admin', initials: 'AD', tag: 'Platform operations', note: 'Keep the show running.' },
 };
 
@@ -46,6 +46,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
   const { state: dashboard } = useDashboard();
   const profile = role === 'admin' ? null : dashboard.profiles[role];
   const identity = { ...identities[role], ...(profile ? { name: profile.name, initials: profile.name.split(/\s+/).map(part => part[0]).slice(0, 2).join('') } : {}) };
+  if ((role === 'artist' || role === 'renter') && dashboard.cases.some(item => item.owner === role && item.kind === 'verification' && item.status === 'approved')) identity.tag = 'Profile reviewed in demo';
   const contentRef = usePanelEntrance(activeTab);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab, role]);
   return <MotionConfig reducedMotion="user">

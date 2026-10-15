@@ -1,3 +1,4 @@
+import { bookingService } from '../lib/pipeline';
 import { useState } from 'react';
 import { ArrowRight, Check, Clock3, Landmark, Plus, ShieldCheck } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
@@ -65,7 +66,7 @@ export function OvertimePanel({ record }: { record: RecordBooking }) {
   const [minutes, setMinutes] = useState('60');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
-  if (record.serviceId !== 'aria' || record.ledger.quoteStatus !== 'accepted' || ['rejected','cancelled','pending'].includes(record.status)) return null;
+  if (bookingService(record).role !== 'artist' || record.ledger.quoteStatus !== 'accepted' || ['rejected','cancelled','pending'].includes(record.status)) return null;
   const pending = record.ledger.overtime.some(item => item.status === 'pending');
   const closed = record.ledger.installments.some(item => item.kind !== 'advance') || refundBlocks(record);
   const started = performanceStarted(record);

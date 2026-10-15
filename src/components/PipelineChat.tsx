@@ -14,7 +14,7 @@ import {
 import { useBooking } from "../lib/BookingContext"
 import { downloadAttachment, saveAttachment } from "../lib/chatAttachments"
 import {
-  serviceFor,
+  bookingService,
   messageSeen,
   unreadFor,
   visibleTo,
@@ -82,11 +82,11 @@ export default function PipelineChat({
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" })
   }, [selectedId, messages.length])
-  const threadName = (id: typeof records[number]["serviceId"]) =>
-    actor === "customer" ? serviceFor(id).name : "Jordan Rivera"
+  const threadName = (record: typeof records[number]) =>
+    actor === "customer" ? bookingService(record).name : record.organizer ?? record.organizer ?? "Jordan Rivera"
   const filtered = records.filter(
     (item) =>
-      `${item.event} ${item.id} ${threadName(item.serviceId)}`
+      `${item.event} ${item.id} ${threadName(item)}`
         .toLowerCase()
         .includes(search.toLowerCase()) &&
       (!onlyUnread || unreadFor(state, item, actor) > 0),
@@ -196,11 +196,11 @@ export default function PipelineChat({
                 >
                   <span className="pw-avatar">
                     {actor === "customer"
-                      ? serviceFor(item.serviceId).initials
+                      ? bookingService(item).initials
                       : "JR"}
                   </span>
                   <span>
-                    <strong>{threadName(item.serviceId)}</strong>
+                    <strong>{threadName(item)}</strong>
                     <small>{item.event}</small>
                     <p>
                       {last?.text ||
@@ -260,11 +260,11 @@ export default function PipelineChat({
               </button>
               <span className="pw-avatar">
                 {actor === "customer"
-                  ? serviceFor(record.serviceId).initials
+                  ? bookingService(record).initials
                   : "JR"}
               </span>
               <div>
-                <h2>{threadName(record.serviceId)}</h2>
+                <h2>{threadName(record)}</h2>
                 <span>Booking conversation · {record.id}</span>
               </div>
               <button
@@ -324,8 +324,8 @@ export default function PipelineChat({
                           {mine
                             ? "You"
                             : message.sender === "customer"
-                              ? "Jordan Rivera"
-                              : serviceFor(record.serviceId).name}
+                              ? record.organizer ?? "Jordan Rivera"
+                              : bookingService(record).name}
                         </strong>
                         <time dateTime={message.at}>
                           {new Date(message.at).toLocaleTimeString([], {
@@ -411,7 +411,7 @@ export default function PipelineChat({
               <div className="pw-compose-row">
                 <textarea
                   aria-label="Message"
-                  placeholder={`Message ${threadName(record.serviceId)}…`}
+                  placeholder={`Message ${threadName(record)}…`}
                   maxLength={4000}
                   rows={2}
                   value={input}

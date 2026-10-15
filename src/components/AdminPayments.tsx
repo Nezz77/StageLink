@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Check, Landmark, ShieldCheck, X } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
 import { canRelease, money, settlement, type BookingAction, type Installment } from '../lib/booking';
-import { refundBlocks, serviceFor } from '../lib/pipeline';
+import { refundBlocks, bookingService } from '../lib/pipeline';
 import { InstallmentHistory, SettlementSummary } from './BookingSettlement';
+import { useDashboard } from '../lib/DashboardContext';
+import { maskAccount } from '../lib/community';
+import { PayoutAccountReview } from './PayoutAccount';
 import RefundReview from './RefundReview';
 import '../pipeline.css';
 
@@ -24,8 +27,11 @@ export default function AdminPayments({ initialBookingId }: { initialBookingId?:
   const [confirm, setConfirm] = useState<Installment['kind'] | null>(null);
   const [error, setError] = useState('');
   const record = state.bookings.find(record => record.id === id)!;
+  const { state: dashboard } = useDashboard();
+  const account = dashboard.payoutAccounts[bookingService(record).role];
+  const bankReady = account.status === 'verified';
   const totals = settlement(record.ledger);
-  const provider = serviceFor(record.serviceId).name;
+  const provider = bookingService(record).name;
   const item = record.ledger.installments.find(item => item.kind === confirm);
   const apply = (action: BookingAction) => {
     if (!dispatch({ type: 'settle', id, action })) { setError('The booking changed or this action is unavailable. Review the latest amounts and status.'); return false; }
@@ -40,24 +46,25 @@ export default function AdminPayments({ initialBookingId }: { initialBookingId?:
       ['StageLink fees collected', state.bookings.reduce((sum, record) => sum + settlement(record.ledger).feeChargedCents, 0)],
     ].map(([label,value]) => <div className="pw-stat" key={label}><div><span>{label}</span><Landmark size={17} /></div><strong>{money(value as number)}</strong></div>)}</div>
     {state.bookings.some(record => record.refund?.status === 'requested') && <section className="pw-panel pw-refund-queue" aria-label="Refund review queue"><span className="sl-eyebrow">NEEDS YOUR REVIEW</span><h2>Refund requests</h2>{state.bookings.filter(record => record.refund?.status === 'requested').map(record => <button className="pw-notification-item" key={record.id} onClick={() => { setId(record.id); setVerified(false); setConfirm(null); setError(''); }}><span><strong>{record.event}</strong><small>{record.id} · {money(record.refund!.amountCents)} held for review</small></span><ArrowUpRight size={17} /></button>)}</section>}
+    <PayoutAccountReview />
     <label className="pw-field">Booking to settle<select value={id} onChange={event => { setId(event.target.value); setVerified(false); setConfirm(null); setError(''); }}>{state.bookings.map(record => <option key={record.id} value={record.id}>{record.id} · {record.event}</option>)}</select></label>
     <div className="pw-two-col">
       <div className="pw-stack"><SettlementSummary record={record} /><InstallmentHistory record={record} /></div>
       <div className="pw-stack">
         <RefundReview key={record.id} record={record} />
         <section className="pw-panel pw-review" aria-label="Release controls">
-          <div className="pw-panel-heading"><span className="sl-eyebrow">ADMIN TRANSFER CONTROLS</span><ShieldCheck size={20} /></div><h2>{provider}</h2><p>Destination: provider’s linked bank account (simulated).</p>
+          <div className="pw-panel-heading"><span className="sl-eyebrow">ADMIN TRANSFER CONTROLS</span><ShieldCheck size={20} /></div><h2>{provider}</h2><p>Destination: {maskAccount(account)} (simulated).</p>{!bankReady && <p className="pw-alert">Transfers paused: the provider’s payout account needs admin verification.</p>}
           {record.refund?.status !== 'refunded' && <div className="pw-callout"><h3>Verify the performance</h3>
             {record.ledger.performance === 'upcoming' ? <p>Waiting for the provider to report completion. An optional advance can be released before the gig.</p> : record.ledger.performance === 'reported' ? <><label className="pw-check"><input type="checkbox" checked={verified} onChange={event => setVerified(event.target.checked)} />I have verified that the performance was completed.</label><button className="btn-ghost" disabled={!verified || refundBlocks(record)} onClick={() => { if (apply({ type: 'confirm_performance' })) setVerified(false); }}>Confirm performance</button></> : <p className="sl-transfer-status"><Check size={17} />Performance verified by admin</p>}
           </div>}
           {refundBlocks(record) && <p className="pw-alert">{record.refund?.status === 'refunded' ? 'Refund completed. This booking is cancelled; no payout is available.' : 'Refund under review. Transfers are paused until a decision is made.'}</p>}
           {!record.ledger.installments.length && <p className="pw-muted">No funds have been received. The customer may skip the advance and pay after the gig.</p>}
           {record.ledger.installments.filter(item => !item.releasedAt && !item.refundedAt).map(item => {
-            const ready = !refundBlocks(record) && canRelease(record.ledger, item.kind);
+            const ready = bankReady && !refundBlocks(record) && canRelease(record.ledger, item.kind);
             const fee = item.kind !== 'advance' && record.ledger.installments.some(other => other.kind === 'advance' && !other.releasedAt) ? 0 : totals.feeDueCents;
             return <article className="sl-installment" key={item.kind}><h3>{item.kind === 'advance' ? 'Release advance' : 'Release final payment'}</h3>
               <dl className="sl-settlement-lines"><div><dt>Held for this payment</dt><dd>{money(item.grossCents)}</dd></div><div><dt>{fee ? 'One-time StageLink fee' : 'No additional fee'}</dt><dd>{money(fee)}</dd></div><div className="sl-settlement-total"><dt>Transfer to provider</dt><dd>{money(item.grossCents - fee)}</dd></div></dl>
-              {!ready && <p className="pw-caption">{record.ledger.payoutBlocked || refundBlocks(record) ? 'Transfer paused for review.' : record.ledger.installments.some(other => other.kind === 'advance' && !other.releasedAt) && item.kind !== 'advance' ? 'Release the advance first; it carries the one-time fee.' : 'Final payout requires admin verification of the completed performance.'}</p>}
+              {!ready && <p className="pw-caption">{!bankReady ? 'Verify the payout account before transferring funds.' : record.ledger.payoutBlocked || refundBlocks(record) ? 'Transfer paused for review.' : record.ledger.installments.some(other => other.kind === 'advance' && !other.releasedAt) && item.kind !== 'advance' ? 'Release the advance first; it carries the one-time fee.' : 'Final payout requires admin verification of the completed performance.'}</p>}
               <button className="btn-primary sl-action" disabled={!ready} onClick={() => setConfirm(item.kind)}>Transfer {item.kind === 'advance' ? 'advance' : 'final payment'} · {money(item.grossCents - fee)}<ArrowUpRight size={15} /></button>
             </article>;
           })}
@@ -67,6 +74,6 @@ export default function AdminPayments({ initialBookingId }: { initialBookingId?:
         <section className="pw-panel pw-review"><span className="sl-eyebrow">BOOKING ACTIVITY</span><ul className="pw-activity">{record.activity.map((entry, index) => <li key={`${entry.at}-${index}`}><span /><div><p>{entry.label}</p><time dateTime={entry.at}>{new Date(entry.at).toLocaleString()}</time></div></li>)}</ul></section>
       </div>
     </div>
-    {confirm && item && !refundBlocks(record) && canRelease(record.ledger, confirm) && <TransferDialog name={provider} amount={item.grossCents - totals.feeDueCents} fee={totals.feeDueCents} onClose={() => setConfirm(null)} onConfirm={() => { apply({ type: 'release', kind: confirm }); setConfirm(null); }} />}
+    {confirm && item && bankReady && !refundBlocks(record) && canRelease(record.ledger, confirm) && <TransferDialog name={`${provider} (${maskAccount(account)})`} amount={item.grossCents - totals.feeDueCents} fee={totals.feeDueCents} onClose={() => setConfirm(null)} onConfirm={() => { apply({ type: 'release', kind: confirm }); setConfirm(null); }} />}
   </div>;
 }

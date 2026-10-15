@@ -65,3 +65,21 @@ html[data-theme="light"] .mg-page .btn-ghost,
 html[data-theme="light"] .mg-modal .btn-ghost { color:#654679; border-color:#9070a63d; background:#ffffff70; }
 html[data-theme="light"] .mg-page .btn-ghost:hover,
 html[data-theme="light"] .mg-modal .btn-ghost:hover { color:#512f70; border-color:#8c62ab; background:#f4ebff; }
+/* Connected marketplace and member services. */
+.market-page { padding:28px 0; }.theme-root>.market-page { padding:36px 24px; }
+.market-card { overflow:hidden; }.market-cover { height:180px; position:relative; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse at 70% 10%,#a78bfa28,transparent 65%),#11101a; border-radius:14px; margin-bottom:22px; color:#d5b5ff; }
+.market-cover img { width:100%; height:100%; object-fit:cover; border-radius:inherit; }.market-cover .mg-badge { position:absolute; left:14px; bottom:14px; background:#11101ae8; color:#e0cdf5; }
+.market-card .mg-actions { margin-top:auto; padding-top:20px; }.market-card { display:flex; flex-direction:column; }.market-card h2 { font:400 25px/1.2 var(--font-display); margin:12px 0; }.market-card>p { margin-bottom:16px; }.market-card>.mg-price { margin:12px 0; }
+.market-detail-art { height:260px; border:1px solid var(--mg-line); border-radius:22px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26px; color:var(--sl-accent,#a78bfa); background:radial-gradient(ellipse at 40% 10%,#a78bfa25,transparent 70%),linear-gradient(130deg,#ffffff09,#ffffff02); }.market-detail-art span { font:10px var(--font-mono); letter-spacing:.22em; }
+.mg-tabs { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 24px; border-bottom:1px solid var(--mg-line); padding-bottom:14px; }.mg-tabs button { padding:11px 18px; border-radius:12px; border:1px solid transparent; color:var(--mg-muted); font-size:12px; text-transform:capitalize; }.mg-tabs button:is([aria-selected="true"],[aria-pressed="true"]) { color:var(--mg-text); border-color:var(--mg-line); background:#a78bfa18; }
+.mg-full-media { width:100%; max-height:480px; object-fit:contain; border-radius:12px; }.mg-media-grid figure { min-width:0; }.mg-media-grid figcaption { margin-top:10px; font-size:12px; }
+.mg-days { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:26px; }.mg-days legend { font-size:13px; color:var(--mg-muted); margin-bottom:14px; }.mg-days label { padding:10px 12px; border:1px solid var(--mg-line); border-radius:10px; display:flex; gap:8px; align-items:center; font-size:12px; }.mg-days input { accent-color:#a78bfa; }
+.mg-block { padding:20px; border:1px solid var(--mg-line); border-radius:15px; margin:18px 0; }.case-portal-list { margin-top:24px; }.mg-attachment-row { display:flex; gap:8px; align-items:center; min-width:0; }.mg-attachment-row>button:first-child { flex:1; min-width:0; overflow-wrap:anywhere; }.mg-document-preview { width:100%; height:55vh; margin:20px 0; border-radius:12px; }
+.inquiry-thread { max-height:460px; overflow:auto; padding:16px 0; margin-bottom:20px; }.inquiry-mine { border-color:#a78bfa55; background:#a78bfa12; }.inquiry-thread p { white-space:pre-wrap; overflow-wrap:anywhere; }
+.mg-badge.mg-verified { color:#99d7b3; border-color:#99d7b333; }.mg-panel input[type="file"] { padding:12px; }.mg-page .mg-text-link { color:var(--sl-accent,#a78bfa); }.mg-modal a.btn-ghost { margin-top:20px; }
+html[data-theme="light"] .mg-badge.mg-verified { color:#2d7752; } html[data-theme="light"] .market-detail-art { background:radial-gradient(ellipse at 40% 10%,#a78bfa25,transparent 70%),#faf5ff; }
+@media(max-width:760px) { .market-page { padding:12px 0; }.market-detail-art { height:190px; }.mg-tabs { gap:5px; }.mg-tabs button { padding:10px 12px; }.mg-attachment-row { align-items:stretch; }.mg-document-preview { height:50vh; } }
+
+.booking-review { width:100%; }
+.market-cover { width:100%; }
+html[data-theme="light"] .mg-search input { background:transparent; }

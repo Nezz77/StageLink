@@ -1,3 +1,6 @@
+import { useDashboard } from './DashboardContext'
+import { catalogFor } from './catalog'
+import type { BookingOptions } from './pipeline'
 import {
   createContext,
   useCallback,
@@ -9,6 +12,7 @@ import {
 import type { BookingAction, BookingRole, BookingState } from "./booking"
 import {
   initialPipeline,
+  bookingService,
   reducePipeline,
   type PipelineAction,
   type PipelineState,
@@ -19,6 +23,7 @@ const BookingContext = createContext<{
   actor: BookingRole
   act: (action: BookingAction) => boolean
   state: PipelineState
+  options: BookingOptions
   dispatch: (action: PipelineAction) => boolean
 } | null>(null)
 
@@ -29,19 +34,25 @@ export function BookingProvider({
   actor: BookingRole
   children: ReactNode
 }) {
+  const { state: dashboard } = useDashboard()
+  const options: BookingOptions = { availability: dashboard.availability, catalog: catalogFor(dashboard), organizer: dashboard.profiles.customer.name }
   // Each page load starts a fresh demo. This provider stays mounted through
   // navigation and role switches; old browser-stored events are never restored.
   const [state, setState] = useState<PipelineState>(initialPipeline)
   const current = useRef(state)
   const dispatch = useCallback(
     (action: PipelineAction) => {
-      const next = reducePipeline(current.current, action, actor)
+      if ((action.type === 'settle' || action.type === 'legacy') && action.action.type === 'release') {
+      const record = current.current.bookings.find(record => record.id === (action.type === 'legacy' ? 'BK-2901' : action.id))
+      if (!record || dashboard.payoutAccounts[bookingService(record).role].status !== 'verified') return false
+    }
+    const next = reducePipeline(current.current, action, actor, new Date().toISOString(), false, options)
       if (next === current.current) return false
       current.current = next
       setState(next)
       return true
     },
-    [actor],
+    [actor, dashboard],
   )
   const act = useCallback(
     (action: BookingAction) => dispatch({ type: "legacy", action }),
@@ -54,6 +65,7 @@ export function BookingProvider({
         actor,
         act,
         state,
+        options,
         dispatch,
       }}
     >

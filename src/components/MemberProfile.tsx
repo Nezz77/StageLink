@@ -1,3 +1,4 @@
+import { EmailVerification } from './AccountRecovery';
 import { useState } from 'react';
 import { Save, UserRound } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
@@ -33,6 +34,6 @@ export default function MemberProfile() {
         </form>
       </Panel>
       <Panel title="Your backstage pass" eyebrow="SAVED PROFILE" className="mg-profile-pass"><div className="mg-profile-symbol"><UserRound size={32} /></div><h3>{state.profiles[role].name}</h3><p>{state.profiles[role].specialty}</p><p>{state.profiles[role].city}</p><Badge value="live">Demo account</Badge><div className="mg-rule" /><p>Saved details stay available when you navigate or switch roles. Drafts and changes reset on refresh.</p></Panel>
-    </div>{guard}
+    </div><EmailVerification />{guard}
   </div>;
 }
