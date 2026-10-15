@@ -7,17 +7,20 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [progress, setProgress] = useState(0);
+  const [logoReady, setLogoReady] = useState(false);
 
   useEffect(() => {
     const progressTimer = window.setInterval(() => {
       setProgress(value => Math.min(value + 2, 100));
     }, 40);
-    const completionTimer = window.setTimeout(onComplete, 2000);
     return () => {
       window.clearInterval(progressTimer);
-      window.clearTimeout(completionTimer);
     };
-  }, [onComplete]);
+  }, []);
+
+  useEffect(() => {
+    if (progress === 100 && logoReady) onComplete();
+  }, [logoReady, onComplete, progress]);
 
   return (
     <motion.div
@@ -25,21 +28,20 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       initial={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, transition: { duration: 1.15, ease: [0.22, 1, 0.36, 1] } }}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.7, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-6"
-      >
+      <div className="mb-6">
         <motion.img
           layoutId="stagelink-logo"
           src="/stagelink-logo.png"
           alt="StageLink"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onLoad={() => setLogoReady(true)}
+          onError={() => setLogoReady(true)}
           className="w-64 md:w-80 object-contain"
           transition={{ layout: { type: 'spring', stiffness: 52, damping: 19, mass: 1.25 } }}
           style={{ filter: 'drop-shadow(0 0 24px rgba(124,58,237,0.6)) drop-shadow(0 0 48px rgba(245,158,11,0.2))' }}
         />
-      </motion.div>
+      </div>
 
       <motion.p
         className="text-slate-400 text-sm tracking-[0.3em] uppercase font-medium mb-8"

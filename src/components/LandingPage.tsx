@@ -64,7 +64,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
   const [listingOrigin, setListingOrigin] = useState<'browse' | 'rent'>('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [isHeroVideoPlaying, setIsHeroVideoPlaying] = useState(false);
   const heroVideoRef = useRef<HTMLVideoElement>(null);
 
   const startHeroVideo = useCallback(() => {
@@ -72,21 +72,20 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
     if (!video || document.visibilityState !== 'visible') return;
 
     video.muted = true;
-    void video.play().then(
-      () => setAutoplayBlocked(false),
-      error => {
-        if (error instanceof DOMException && error.name === 'NotAllowedError') {
-          setAutoplayBlocked(true);
-          return;
-        }
-        console.error('Unable to play the landing background video.', error);
-      },
-    );
+    void video.play().catch(error => {
+      if (error instanceof DOMException && error.name === 'NotAllowedError') return;
+      console.error('Unable to play the landing background video.', error);
+    });
   }, []);
 
   useEffect(() => {
     const video = heroVideoRef.current;
     if (!video) return;
+
+    if (activeTab !== 'home') {
+      video.pause();
+      return;
+    }
 
     video.muted = true;
     video.defaultMuted = true;
@@ -133,8 +132,10 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
   return (
     <div className="landing-page min-h-screen relative bg-[#07090f]">
       {/* Fixed Background Video */}
-      {activeTab === 'home' && (
-        <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
+      <div
+        aria-hidden="true"
+        className={`fixed inset-0 z-0 h-screen w-full overflow-hidden ${activeTab === 'home' ? 'visible' : 'invisible'}`}
+      >
           <video
             ref={heroVideoRef}
             autoPlay
@@ -145,8 +146,17 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
             poster="/dashboard-stage-fallback.svg"
             className="absolute top-0 left-0 w-full h-full object-cover opacity-60"
             src="/Stage-Link-Background.mp4"
+            onPlaying={() => setIsHeroVideoPlaying(true)}
+            onPause={() => setIsHeroVideoPlaying(false)}
+            onError={event => {
+              const video = event.currentTarget;
+              console.error('Unable to load the landing background video.', {
+                code: video.error?.code,
+                message: video.error?.message,
+              });
+            }}
           />
-          {autoplayBlocked && (
+          {!isHeroVideoPlaying && (
             <button
               type="button"
               onClick={startHeroVideo}
@@ -157,9 +167,8 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
             </button>
           )}
           {/* Gradient overlay to blend the bottom of the video into the background color */}
-          <div className="landing-video-overlay absolute inset-0 bg-gradient-to-b from-transparent via-[#07090f]/50 to-[#07090f]"></div>
-        </div>
-      )}
+        <div className="landing-video-overlay pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-[#07090f]/50 to-[#07090f]"></div>
+      </div>
 
       {/* Nav */}
       <motion.nav
@@ -169,7 +178,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
         <div className="landing-nav-shell">
-          <a href="#" className="landing-nav-brand" aria-label="StageLink home" onClick={event => { event.preventDefault(); setActiveTab('home'); }}>
+          <a href="#" className="landing-nav-brand" aria-label="StageLink home" onClick={event => { event.preventDefault(); startHeroVideo(); setActiveTab('home'); }}>
             <motion.img layoutId="stagelink-logo" src="/stagelink-logo.png" alt="StageLink" className="h-10 w-auto object-contain" transition={{ layout: { type: 'spring', stiffness: 52, damping: 19, mass: 1.25 } }} style={{ filter: 'drop-shadow(0 0 8px rgba(124,58,237,0.4))' }} />
           </a>
           <div className="landing-nav-center">
@@ -179,7 +188,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
                 { id: 'browse', label: 'Browse Artists' },
                 { id: 'rent', label: 'Rent Equipment' },
               ] as const).map(item => (
-                <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} aria-current={activeTab === item.id ? 'page' : undefined} className={`landing-nav-link ${activeTab === item.id ? 'is-active' : ''}`}>
+                <button key={item.id} type="button" onClick={() => { if (item.id === 'home') startHeroVideo(); setActiveTab(item.id); }} aria-current={activeTab === item.id ? 'page' : undefined} className={`landing-nav-link ${activeTab === item.id ? 'is-active' : ''}`}>
                   {activeTab === item.id && <motion.span layoutId="landing-nav-active" className="landing-nav-active" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
                   <span>{item.label}</span>
                 </button>
