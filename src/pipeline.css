@@ -182,3 +182,27 @@ html[data-theme="light"] .sl-inline-role .card button { color:#584065; }
 .sl-settlement-lines dd { flex-shrink: 0; white-space: nowrap; }
 .sl-money-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
 .sl-money-grid strong { white-space: nowrap; }
+
+/* Lifecycle updates share the same glass surface as booking messages. */
+.pw-notification-panel { max-height:min(70dvh,660px); display:flex; flex-direction:column; }
+.pw-notification-list { overflow-y:auto; overscroll-behavior:contain; min-height:0; }
+.pw-notification-tools { padding:4px 16px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px; border-bottom:1px solid #a78bfa20; }
+.pw-notification-tools .pw-chat-filters { padding:0; flex:1; }
+.pw-notification-item { width:100%; }
+.pw-notification-item>span { min-width:0; flex:1; }
+.pw-notification-item strong { overflow-wrap:anywhere; line-height:1.6; }
+.pw-notification-item time { display:block; margin-top:6px; font-size:10px; color:#a293b5; }
+.pw-notification-item.is-read { opacity:.7; }
+.pw-notification-empty { padding:20px; font-size:12px; line-height:1.8; color:#b7a7c8; }
+.pw-refund-queue { padding:22px; margin:20px 0; }
+.pw-refund-queue h2 { margin:12px 0; font-family:var(--font-display); font-size:26px; }
+.pw-demo-performance { margin:0; border-color:#fcd34d35; background:linear-gradient(120deg,#fcd34d08,#a78bfa08); }
+.pw-demo-performance h3 { margin:14px 0 6px; font-family:var(--font-display); font-size:25px; }
+.pw-demo-performance .sl-eyebrow { color:#dfbd6f; }
+.pw-refunded { color:#86d9c4; border-color:#86d9c440; background:#86d9c410; }
+html[data-theme="light"] :is(.pw-notification-empty,.pw-notification-item time) { color:#766180; }
+html[data-theme="light"] .pw-notification-item span>span { color:#765298; }
+html[data-theme="light"] .pw-notification-item.is-read { opacity:1; }
+html[data-theme="light"] .pw-demo-performance .sl-eyebrow { color:#896123; }
+html[data-theme="light"] .pw-refunded { color:#337c5d; }
+@media(max-width:600px) { .pw-notification-panel { width:calc(100vw - 30px); max-height:65dvh; } .pw-demo-performance h3 { font-size:23px; } }

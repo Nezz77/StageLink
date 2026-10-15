@@ -16,8 +16,10 @@ The existing landing and login pages are unchanged. The new booking workspace us
 4. Switch to the matching provider role in the same tab. Open Booking desk → Booking requests, review the event and accept or decline.
 5. Return as Customer. Open the accepted booking and choose an optional 10% advance or skip it. Advance checkout offers a demo card or wallet.
 6. Paying or skipping the advance moves the booking into Active. The admin may release a paid advance before the gig, deducting the 5% booking fee once. After completion the customer pays the balance plus approved overtime; the admin verifies the gig and transfers the final payment. See [PAYMENT_DEMO.md](PAYMENT_DEMO.md) for the full flow.
-7. An eligible booking can request a refund before its start time. The request pauses payout; submitting it does not approve a refund or move funds.
-8. Open Booking chat from the booking details. Messages, attachments and unread counts refer to that booking.
+7. An eligible booking can request a refund before its start time (or demo start), while its funds are still held. The request pauses payout. Administrator → Payments → Refund requests allows approval or decline with a decision reason and confirmation. Approval refunds the full held amount to the original payment method and cancels the booking without a fee; decline resumes the booking and preserves any separate admin hold. Both participants receive the decision.
+8. Open Booking chat from the booking details. Messages, attachments and unread counts refer to that booking. Sent/seen indicators update when the other participant opens the conversation or marks it read.
+
+To try a future event now, use **Artist/Equipment Renter → Booking desk → booking → Start demo event**. This enables overtime for performers. Resolve pending overtime, then **Finish demo event** to make final payment due; admin verification is still required for the final transfer. These controls leave the scheduled date and system clock unchanged.
 
 For a two-sided chat demonstration, switch between Customer and the appropriate provider in the **same tab**. Messages and attachments remain available while navigating and switching roles. Refreshing resets the entire demo; each new tab starts independently. The role switcher is a demonstration tool, not authentication.
 
@@ -35,9 +37,9 @@ For a two-sided chat demonstration, switch between Customer and the appropriate 
 | Checkout and payment feedback | Demo card or wallet selection, card validation, processing, success and retryable failure |
 | Transaction history and details | Status filters, totals, linked booking, payment method and downloadable text receipt |
 | Overtime and admin transfers | Customer/performer proposals, counterparty approval, final-bill adjustments, optional advance and final transfers, one fee per booking |
-| Escrow and refunds | Held/released/refunded examples; eligibility checks and pending refund review state |
-| Inbox and booking conversation | Search, unread filter, booking-linked messages, timestamps and local file attachments |
-| Notifications | Shared header dropdown, unread indicators, open conversation and mark all as read |
+| Escrow and refunds | Held/released/refunded balances; eligibility checks, admin review queue, approve/decline confirmation, reasons and refund receipts |
+| Inbox and booking conversation | Search, unread filter, booking-linked messages, timestamps, sent/seen state and local file attachments |
+| Notifications | Role-specific booking/payment/refund/overtime updates, unread/all filters, deep links, chat indicators and mark all as read |
 | Navigation and header | Existing role shell, desktop sidebar and mobile navigation |
 | Confirmation dialogs | Modal focus handling, Escape support and confirmation before cancellation, rejection or draft deletion |
 | Loading / empty / error states | Payment and attachment processing, empty filters/inbox/history, form errors, and payment failure feedback |
@@ -50,7 +52,7 @@ For a two-sided chat demonstration, switch between Customer and the appropriate 
 - The frontend checks role, status, availability, quote version and amount before transitions. These are UI safeguards, not security controls. Production must enforce them on a server.
 - Payment fields remain in component memory and are cleared after success. They are not saved in the event log. Demo wallet payments have no real balance.
 - Use the **Use demo card** button for success. To preview failure, use **4000 0000 0000 0002**, a future expiry and a three-digit test CVV. No payment transition is recorded for the declined attempt.
-- Refund requests remain pending until a backend/reviewer resolves them. A seeded refunded transaction illustrates the final UI state.
+- Refund decisions are simulated by the Administrator role. Pending reviews freeze payments and event progress; approval cancels the booking and removes refunded money from held balances. Refunds are available only before event/demo start and before provider transfer. A decline retains any earlier admin hold. These are demo eligibility rules, not a production refund policy.
 - Attachments stay in memory (maximum 5 MB each) and can be downloaded by either participant after switching roles in the same tab. Refresh clears them. No persistent storage or remote upload occurs.
 - Tabs have independent demo sessions. Chat does not deliver messages to another tab, device or user over the network.
 - The demo works without browser storage access; existing valid or corrupted stored events do not affect the initial state.
@@ -58,6 +60,6 @@ For a two-sided chat demonstration, switch between Customer and the appropriate 
 
 ## Validation
 
-Run `pnpm typecheck`, `pnpm test` and `pnpm build` in the repository. The domain suite covers draft recovery, creation, conflicts, role checks, booking transitions, payments, refund eligibility, chat read state and invalid event history, alongside the existing payment tests.
+Run `pnpm typecheck`, `pnpm test` and `pnpm build` in the repository. The domain suite covers draft recovery, creation, conflicts, role checks, booking transitions, payments, refund eligibility, chat read state and invalid event history, alongside the existing payment tests. Additional checks cover refund decisions, held-fund accounting, cancellation after skipping an advance, demo progress, notification recipients, and sent/seen state.
 
-Browser QA covers payment followed by reload, ignoring an existing paid demo record, preserving progress while navigating and switching roles, session-only drafts and attachments, independent fresh tabs, and checkout when browser storage is unavailable. Screenshots and detailed QA results are retained in the working folder used for this implementation.
+Browser QA also covers the complete advance → overtime → final payment → admin payout flow, refund approval/decline, receipt downloads, notification deep links/history, chat read indicators, and mobile light/dark layouts. Browser QA covers payment followed by reload, ignoring an existing paid demo record, preserving progress while navigating and switching roles, session-only drafts and attachments, independent fresh tabs, and checkout when browser storage is unavailable. Screenshots and detailed QA results are retained in the working folder used for this implementation.

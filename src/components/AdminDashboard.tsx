@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import DashboardShell, { DashboardIntro } from './DashboardShell';
 import { Icon } from './Icons';
 import AdminPayments from './AdminPayments';
@@ -47,15 +47,16 @@ const navItems = [
   { id: 'support', icon: Icon.MessageCircle, label: 'Support' },
 ];
 
-export default function AdminDashboard({ onGoToLanding, roleControl }: { onGoToLanding?: () => void; roleControl?: ReactNode }) {
-  const [activeTab, setActiveTab] = useState('analytics');
+export default function AdminDashboard({ onGoToLanding, roleControl, paymentTarget }: { paymentTarget?: { id: string; key: number }; onGoToLanding?: () => void; roleControl?: ReactNode }) {
+  const [activeTab, setActiveTab] = useState(paymentTarget ? 'payments' : 'analytics');
+  useEffect(() => { if (paymentTarget) setActiveTab('payments'); }, [paymentTarget]);
   const [metric, setMetric] = useState<'gmv' | 'users' | 'revenue'>('gmv');
   const metricMax = Math.max(...chartData.map(item => item[metric]));
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   return (
     <DashboardShell controls={roleControl} role="admin" navItems={navItems} activeTab={activeTab} onNavigate={setActiveTab} onGoToLanding={onGoToLanding}>
-        {activeTab === 'payments' && <AdminPayments />}
+        {activeTab === 'payments' && <AdminPayments key={paymentTarget?.key} initialBookingId={paymentTarget?.id} />}
         {activeTab === 'analytics' && (
           <div className="animate-slide-up max-w-6xl mx-auto">
             <DashboardIntro eyebrow="PLATFORM OPERATIONS · OCTOBER 2026" title="A pulse on" emphasis="every performance." description="The people, bookings, and business behind the StageLink community." action={<span className="sl-status"><i /> Systems operational</span>} />

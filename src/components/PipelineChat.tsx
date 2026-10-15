@@ -15,6 +15,7 @@ import { useBooking } from "../lib/BookingContext"
 import { downloadAttachment, saveAttachment } from "../lib/chatAttachments"
 import {
   serviceFor,
+  messageSeen,
   unreadFor,
   visibleTo,
   type Attachment,
@@ -368,7 +369,7 @@ export default function PipelineChat({
                       )}
                       {mine && (
                         <small className="pw-delivery">
-                          Added to demo conversation
+                          {messageSeen(state, message, record) ? "Seen in demo" : "Sent in demo"}
                         </small>
                       )}
                     </article>

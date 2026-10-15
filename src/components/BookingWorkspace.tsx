@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -28,12 +28,16 @@ import DashboardShell, {
   DashboardIntro,
   type DashboardNav,
 } from "./DashboardShell"
+import ConfirmDialog from "./ConfirmDialog"
+import DemoPerformance from "./DemoPerformance"
 import PaymentCheckout from "./PaymentCheckout"
 import { useBooking } from "../lib/BookingContext"
 import { amounts, checkoutFor, money, settlement, type PaymentKind } from "../lib/booking"
 import {
   blankForm,
   canRefund,
+  canCancel,
+  refundBlocks,
   conflicts,
   dateKey,
   paymentLabel,
@@ -101,62 +105,6 @@ export function EmptyState({
       <p>{children}</p>
       {action}
     </div>
-  )
-}
-function ConfirmDialog({
-  title,
-  children,
-  confirm,
-  onClose,
-  onConfirm,
-}: {
-  title: string
-  children: ReactNode
-  confirm: string
-  onClose: () => void
-  onConfirm: () => void
-}) {
-  const ref = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    const trigger = document.activeElement as HTMLElement
-    const dialog = ref.current!
-    dialog.showModal()
-    return () => {
-      dialog.close()
-      trigger?.focus()
-    }
-  }, [])
-  return (
-    <dialog
-      className="pw-dialog"
-      ref={ref}
-      onCancel={(event) => {
-        event.preventDefault()
-        onClose()
-      }}
-      aria-labelledby="pw-dialog-title"
-    >
-      <div className="pw-dialog-content">
-        <button
-          className="pw-icon pw-dialog-close"
-          aria-label="Close dialog"
-          onClick={onClose}
-        >
-          <X size={18} />
-        </button>
-        <span className="sl-eyebrow">ONE LAST CHECK</span>
-        <h2 id="pw-dialog-title">{title}</h2>
-        <p>{children}</p>
-        <div className="pw-actions">
-          <button className="btn-ghost" onClick={onClose}>
-            Go back
-          </button>
-          <button className="btn-primary" onClick={onConfirm}>
-            {confirm}
-          </button>
-        </div>
-      </div>
-    </dialog>
   )
 }
 function Summary({ form }: { form: BookingForm }) {
@@ -621,7 +569,7 @@ function BookingDetails({
                 <button
                   className="btn-ghost"
                   disabled={
-                    !!record.refund ||
+                    refundBlocks(record) ||
                     performanceEndsAt(record) > new Date()
                   }
                   onClick={() => apply({ type: "complete", id: record.id })}
@@ -635,8 +583,7 @@ function BookingDetails({
               </div>
             )}
             {actor === "customer" &&
-              ["pending", "accepted"].includes(record.status) &&
-              record.ledger.payment === "unpaid" && (
+              canCancel(record) && (
                 <button
                   className="pw-danger"
                   onClick={() => setConfirm("cancel")}
@@ -650,6 +597,7 @@ function BookingDetails({
               </p>
             )}
           </section>
+          <DemoPerformance record={record} />
           <OvertimePanel record={record} />
           <section className="pw-panel pw-review">
             <span className="sl-eyebrow">FROM HELLO TO ENCORE</span>
@@ -940,8 +888,9 @@ function PaymentDetails({
       `StageLink fee deducted: ${money(totals.feeChargedCents)}`,
       ...record.ledger.installments.flatMap(item => [
         `TX-${record.id}-${item.kind.toUpperCase()} | ${item.paidAt} | ${item.method} | Received ${money(item.grossCents)}`,
-        item.releasedAt ? `Admin transfer ${item.releasedAt}: ${money(item.payoutCents ?? 0)} to provider bank; fee ${money(item.feeCents ?? 0)}` : "Held by StageLink; awaiting admin transfer",
+        item.refundedAt ? `Refunded to original payment method ${item.refundedAt}: ${money(item.grossCents)}` : item.releasedAt ? `Admin transfer ${item.releasedAt}: ${money(item.payoutCents ?? 0)} to provider bank; fee ${money(item.feeCents ?? 0)}` : "Held by StageLink; awaiting admin transfer",
       ]),
+      ...(record.refund ? [`Refund: ${record.refund.status}`, `Requested: ${record.refund.at} | ${record.refund.reason}`, `Refund amount: ${money(record.refund.amountCents)}`, ...(record.refund.decidedAt ? [`Admin decision ${record.refund.decidedAt}: ${record.refund.decisionReason}`] : [])] : []),
       `Status: ${paymentLabel(record)}`,
       "Demo record only. No real payment was made.",
     ].join("\n")
@@ -975,18 +924,21 @@ function PaymentDetails({
             </div>
           </section>
           <InstallmentHistory record={record} />
+          <DemoPerformance record={record} />
           <OvertimePanel record={record} />
           <section className="pw-panel pw-review">
             <span className="sl-eyebrow">REFUND REQUEST</span>
             <h2>Plans can change.</h2>
             {record.refund ? (
               <div className="pw-callout">
-                <StatusPill status="pending">{paymentLabel(record)}</StatusPill>
+                <StatusPill status={record.refund.status}>{record.refund.status === "declined" ? "Refund declined" : paymentLabel(record)}</StatusPill>
                 <p>{record.refund.reason}</p>
+                {record.refund.decisionReason && <p><strong>Admin decision:</strong> {record.refund.decisionReason}</p>}
+                {record.refund.decidedAt && <time className="pw-caption" dateTime={record.refund.decidedAt}>{new Date(record.refund.decidedAt).toLocaleString()}</time>}
                 <p className="pw-caption">
                   {record.refund.status === "requested"
                     ? "Your request is recorded. Funds stay on hold pending review; this is not an approved refund."
-                    : "This seeded demo transaction illustrates a completed refund."}
+                    : record.refund.status === "refunded" ? `${money(record.refund.amountCents)} returned to the original payment method (demo). This booking is cancelled.` : "The refund was declined. Your booking and payment schedule continue."}
                 </p>
               </div>
             ) : actor !== "customer" ? (
@@ -1079,7 +1031,8 @@ export default function BookingWorkspace({
 }) {
   const { actor, state, dispatch } = useBooking()
   const [section, setSection] = useState<WorkspaceSection>(initialSection)
-  const [screen, setScreen] = useState<Screen>({ kind: "list" })
+  const [screen, setScreen] = useState<Screen>(() => initialBookingId && initialSection !== "chat"
+    ? { kind: initialSection === "payments" ? "payment" : "details", id: initialBookingId } : { kind: "list" })
   const [chatId, setChatId] = useState(initialBookingId)
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
@@ -1088,6 +1041,15 @@ export default function BookingWorkspace({
   const [formGuard, setFormGuard] = useState<{ run: () => void } | null>(null)
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" })
+  }, [screen.kind])
+  useEffect(() => {
+    const guard = (event: Event) => {
+      if (screen.kind !== "form" && screen.kind !== "review") return
+      event.preventDefault()
+      setFormGuard({ run: (event as CustomEvent<() => void>).detail })
+    }
+    window.addEventListener("stagelink:before-navigation", guard)
+    return () => window.removeEventListener("stagelink:before-navigation", guard)
   }, [screen.kind])
   const requestNavigation = (run: () => void) => {
     if (screen.kind === "form" || screen.kind === "review")
@@ -1414,7 +1376,7 @@ export default function BookingWorkspace({
             {section === "payments" && <div className="pw-stats pw-payment-stats">{[
               ["Held by StageLink", transactions.reduce((sum, record) => sum + (record.refund?.status === "refunded" ? 0 : settlement(record.ledger).heldCents), 0)],
               ["Transferred to providers", transactions.reduce((sum, record) => sum + settlement(record.ledger).paidOutCents, 0)],
-              ["Final payments due", transactions.reduce((sum, record) => sum + (record.ledger.performance !== "upcoming" && !record.refund ? settlement(record.ledger).remainingCents : 0), 0)],
+              ["Final payments due", transactions.reduce((sum, record) => sum + (record.ledger.performance !== "upcoming" && !refundBlocks(record) ? settlement(record.ledger).remainingCents : 0), 0)],
             ].map(([label, value]) => <div className="pw-stat" key={label}><div><span>{label}</span><ShieldCheck size={17} /></div><strong>{money(value as number)}</strong><small>All transactions through StageLink</small></div>)}</div>}
             <section className="pw-panel pw-booking-list">
               <div className="pw-list-heading">
@@ -1514,7 +1476,7 @@ export default function BookingWorkspace({
                     <StatusPill
                       status={
                         section === "payments"
-                          ? record.refund
+                          ? record.refund?.status === "requested"
                             ? "pending"
                             : record.ledger.payment
                           : record.status

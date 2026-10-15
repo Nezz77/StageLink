@@ -5,7 +5,7 @@ export type PaymentKind = 'advance' | 'final';
 export type Installment = {
   kind: PaymentKind | 'legacy'; grossCents: number; paidAt: string;
   method: 'card' | 'wallet'; releasedAt?: string; feeCents?: number;
-  payoutCents?: number; legacySurchargeCents?: number;
+  payoutCents?: number; legacySurchargeCents?: number; refundedAt?: string;
 };
 export type Overtime = {
   id: string; minutes: number; amountCents: number;
@@ -24,7 +24,7 @@ export type BookingAction =
   | { type: 'toggle_hold' } | { type: 'release'; kind?: PaymentKind | 'legacy' };
 export interface BookingState {
   quoteCents: number; quoteVersion: number; quoteStatus: QuoteStatus;
-  payment: 'unpaid' | 'held' | 'partial' | 'released';
+  payment: 'unpaid' | 'held' | 'partial' | 'released' | 'refunded';
   performance: 'upcoming' | 'reported' | 'confirmed'; payoutBlocked: boolean;
   advance: 'offered' | 'skipped' | 'paid'; installments: Installment[]; overtime: Overtime[];
   history: { label: string; at: string }[];
@@ -50,16 +50,17 @@ export function settlement(state: BookingState) {
   const receivedCents = state.installments.reduce((sum, item) => sum + item.grossCents, 0);
   const legacyExtra = state.installments.reduce((sum, item) => sum + (item.legacySurchargeCents ?? 0), 0);
   const totalCents = state.quoteCents + overtimeCents + legacyExtra;
-  const heldCents = state.installments.filter(item => !item.releasedAt).reduce((sum, item) => sum + item.grossCents, 0);
+  const heldCents = state.installments.filter(item => !item.releasedAt && !item.refundedAt).reduce((sum, item) => sum + item.grossCents, 0);
   const feeChargedCents = state.installments.reduce((sum, item) => sum + (item.feeCents ?? 0), 0);
   const paidOutCents = state.installments.reduce((sum, item) => sum + (item.payoutCents ?? 0), 0);
+  const refundedCents = state.installments.filter(item => item.refundedAt).reduce((sum, item) => sum + item.grossCents, 0);
   const feeCents = amounts(state.quoteCents).feeCents;
-  return { totalCents, overtimeCents, receivedCents, heldCents, feeCents, feeChargedCents, paidOutCents,
-    remainingCents: Math.max(0, totalCents - receivedCents),
+  return { totalCents, overtimeCents, receivedCents, refundedCents, heldCents, feeCents, feeChargedCents, paidOutCents,
+    remainingCents: state.payment === 'refunded' ? 0 : Math.max(0, totalCents - receivedCents),
     feeDueCents: Math.max(0, feeCents - feeChargedCents), advanceCents: Math.round(state.quoteCents * 0.1) };
 }
 export function checkoutFor(state: BookingState): { kind: PaymentKind; amountCents: number } | null {
-  if (state.quoteStatus !== 'accepted') return null;
+  if (state.quoteStatus !== 'accepted' || state.payment === 'refunded') return null;
   const totals = settlement(state);
   if (state.performance !== 'upcoming') {
     if (!totals.remainingCents || state.overtime.some(item => item.status === 'pending')) return null;
@@ -70,7 +71,7 @@ export function checkoutFor(state: BookingState): { kind: PaymentKind; amountCen
 }
 export function canRelease(state: BookingState, kind: Installment['kind']) {
   const item = state.installments.find(item => item.kind === kind);
-  if (!item || item.releasedAt || state.payoutBlocked) return false;
+  if (!item || item.releasedAt || item.refundedAt || state.payoutBlocked) return false;
   // Settle the advance first so the fee is captured exactly once there.
   if (kind !== 'advance' && state.installments.some(item => item.kind === 'advance' && !item.releasedAt)) return false;
   return kind === 'advance' || state.performance === 'confirmed';
@@ -82,6 +83,7 @@ export function canRespond(state: BookingState, actor: BookingRole) {
 }
 export function bookingStatus(state: BookingState) {
   const totals = settlement(state);
+  if (state.payment === 'refunded') return 'Refunded';
   if (state.payoutBlocked) return 'Payout on hold';
   if (state.payment === 'released') return 'Paid to provider';
   if (state.performance !== 'upcoming' && totals.remainingCents) return state.overtime.some(item => item.status === 'pending') ? 'Overtime approval pending' : 'Final payment due';
@@ -94,6 +96,7 @@ export function bookingStatus(state: BookingState) {
 }
 // replayLegacy is used only to read historical demo events, never by live UI actions.
 export function transitionBooking(state: BookingState, action: BookingAction, actor: BookingRole, at = new Date().toISOString(), replayLegacy = false): BookingState {
+  if (state.payment === 'refunded') return state;
   let patch: Partial<BookingState>; let label: string;
   switch (action.type) {
     case 'counter':

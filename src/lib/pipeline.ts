@@ -1,6 +1,7 @@
 import {
   bookingStatus,
   initialBooking,
+  settlement,
   transitionBooking,
   type BookingAction,
   type BookingRole,
@@ -54,7 +55,11 @@ export type RecordBooking = BookingForm & {
   ledger: BookingState
   paymentMethod?: "card" | "wallet"
   createdAt: string
-  refund?: { reason: string; at: string; status: "requested" | "refunded" }
+  demoStartedAt?: string
+  refund?: {
+    reason: string; at: string; status: "requested" | "refunded" | "declined"
+    amountCents: number; previousHold: boolean; decidedAt?: string; decisionReason?: string
+  }
   activity: { label: string; at: string }[]
 }
 export type Attachment = { id: string; name: string; size: number; type: string }
@@ -66,13 +71,21 @@ export type Message = {
   at: string
   attachment?: Attachment
 }
+export type BookingNotification = {
+  id: string; bookingId: string; title: string; at: string
+  section: "bookings" | "payments"; recipients: BookingRole[]; readBy: BookingRole[]
+}
 export type PipelineState = {
+  notifications: BookingNotification[]
   bookings: RecordBooking[]
   drafts: BookingForm[]
   messages: Message[]
   read: Record<string, string>
 }
-export type PipelineAction = { type: "save_draft"; form: BookingForm } | {
+export type PipelineAction = { type: "read_notification"; id: string }
+  | { type: "demo_start" | "demo_finish"; id: string }
+  | { type: "resolve_refund"; id: string; approve: boolean; reason: string }
+  | { type: "save_draft"; form: BookingForm } | {
   type: "delete_draft"
   id: string
 } | { type: "submit"; form: BookingForm } | {
@@ -236,8 +249,10 @@ export function initialPipeline(): PipelineState {
   refunded.refund = {
     reason: "Event cancelled",
     at: "2026-09-12T10:00:00Z",
-    status: "refunded",
+    status: "refunded", amountCents: settlement(refunded.ledger).heldCents,
+    previousHold: false, decidedAt: "2026-09-12T12:00:00Z", decisionReason: "Cancellation approved before the event.",
   }
+  refunded.ledger = { ...refunded.ledger, payment: "refunded", installments: refunded.ledger.installments.map(item => ({ ...item, refundedAt: refunded.refund!.decidedAt })) }
   return {
     bookings: [
       headline,
@@ -268,6 +283,7 @@ export function initialPipeline(): PipelineState {
       refunded,
     ],
     drafts: [],
+    notifications: [],
     messages: [
       {
         id: "welcome-1",
@@ -296,19 +312,39 @@ export const unreadFor = (
     (message) =>
       message.bookingId === record.id &&
       message.sender !== actor &&
-      message.at > (state.read[`${actor}:${record.id}`] ?? ""),
+      Date.parse(message.at) > Date.parse(state.read[`${actor}:${record.id}`] ?? "1970-01-01T00:00:00Z"),
   ).length
 export const performanceEndsAt = (record: RecordBooking) => new Date(
   new Date(`${record.date}T${record.end}`).getTime() + record.ledger.overtime.filter(item => item.status === "accepted").reduce((minutes, item) => minutes + item.minutes, 0) * 60_000,
 )
+export const refundBlocks = (record: RecordBooking) =>
+  record.refund?.status === "requested" || record.refund?.status === "refunded"
+export const performanceStarted = (record: RecordBooking, now = new Date()) =>
+  !!record.demoStartedAt || new Date(`${record.date}T${record.start}`) <= now
+export const canCancel = (record: RecordBooking, now = new Date()) =>
+  ["pending", "accepted", "active"].includes(record.status) && record.ledger.payment === "unpaid" && !performanceStarted(record, now)
+export const messageSeen = (state: PipelineState, message: Message, record: RecordBooking) => {
+  const recipient = message.sender === "customer" ? serviceFor(record.serviceId).role : "customer"
+  return Date.parse(state.read[`${recipient}:${record.id}`] ?? "") >= Date.parse(message.at)
+}
+export const notificationsFor = (state: PipelineState, actor: BookingRole) =>
+  state.notifications.filter(item => item.recipients.includes(actor))
 export const canRefund = (record: RecordBooking, now = new Date()) =>
   record.ledger.payment === "held" &&
   !record.refund &&
   !["completed", "rejected"].includes(record.status) &&
   record.ledger.performance === "upcoming" &&
-  new Date(`${record.date}T${record.start}`) > now
+  !performanceStarted(record, now)
 export const paymentLabel = (record: RecordBooking) =>
-  record.refund?.status === "refunded" ? "Refunded" : record.refund ? "Refund requested" : bookingStatus(record.ledger)
+  record.refund?.status === "refunded" ? "Refunded" : record.refund?.status === "requested" ? "Refund requested" : bookingStatus(record.ledger)
+function notificationFor(record: RecordBooking, action: PipelineAction, actor: BookingRole, title: string, at: string): BookingNotification {
+  const inner = action.type === "settle" || action.type === "legacy" ? action.action.type : action.type
+  const payment = ["collect", "release", "refund", "resolve_refund", "toggle_hold", "confirm_performance", "pay"].includes(inner)
+  const recipients: BookingRole[] = ["customer", serviceFor(record.serviceId).role]
+  if (["collect", "refund", "complete", "demo_finish", "report_performance", "pay"].includes(inner)) recipients.push("admin")
+  return { id: `${record.id}:${record.activity.length}:${action.type}`, bookingId: record.id, title, at,
+    section: payment ? "payments" : "bookings", recipients: recipients.filter(role => role !== actor), readBy: [] }
+}
 function safeForm(value: unknown): value is BookingForm {
   if (!value || typeof value !== "object") return false
   const form = value as BookingForm
@@ -345,6 +381,11 @@ export function reducePipeline(
     !Number.isFinite(Date.parse(at))
   )
     return state
+  if (action.type === "read_notification") {
+    const item = state.notifications.find(item => item.id === action.id && item.recipients.includes(actor) && !item.readBy.includes(actor))
+    if (!item) return state
+    return { ...state, notifications: state.notifications.map(note => note.id === item.id ? { ...note, readBy: [...note.readBy, actor] } : note) }
+  }
   if (action.type === "save_draft" || action.type === "submit") {
     if (
       actor !== "customer" ||
@@ -377,6 +418,7 @@ export function reducePipeline(
     return {
       ...state,
       bookings: [record, ...state.bookings],
+      notifications: [notificationFor(record, action, actor, "New booking request", at), ...state.notifications],
       drafts: state.drafts.filter((draft) => draft.id !== form.id),
     }
   }
@@ -462,15 +504,14 @@ export function reducePipeline(
     case "cancel":
       if (
         actor !== "customer" ||
-        !["pending", "accepted"].includes(record.status) ||
-        record.ledger.payment !== "unpaid"
+        !canCancel(record, new Date(at))
       )
         return state
       patch = { status: "cancelled" }
       label = "Customer cancelled the booking"
       break
     case "pay": {
-      if (!replayLegacy || record.status !== "accepted" || record.refund) return state
+      if (!replayLegacy || record.status !== "accepted" || refundBlocks(record)) return state
       const ledger = transitionBooking(record.ledger, action, actor, at, replayLegacy)
       if (ledger === record.ledger) return state
       patch = {
@@ -486,7 +527,7 @@ export function reducePipeline(
         actor !== serviceFor(record.serviceId).role ||
         !["active", "accepted"].includes(record.status) ||
         record.ledger.quoteStatus !== "accepted" ||
-        record.refund ||
+        refundBlocks(record) ||
         performanceEndsAt(record) > new Date(at)
       )
         return state
@@ -506,19 +547,49 @@ export function reducePipeline(
       )
         return state
       patch = {
-        refund: { reason: action.reason.trim(), at, status: "requested" },
+        refund: { reason: action.reason.trim(), at, status: "requested", amountCents: settlement(record.ledger).heldCents, previousHold: record.ledger.payoutBlocked },
         ledger: { ...record.ledger, payoutBlocked: true },
       }
       label = "Refund requested · payout paused for review"
       break
+    case "resolve_refund": {
+      if (actor !== "admin" || record.refund?.status !== "requested" || typeof action.approve !== "boolean" ||
+        typeof action.reason !== "string" || action.reason.trim().length < 10 || action.reason.length > 2000) return state
+      const totals = settlement(record.ledger)
+      if (action.approve && (!totals.heldCents || totals.heldCents !== record.refund.amountCents || record.ledger.installments.some(item => item.releasedAt))) return state
+      patch = {
+        refund: { ...record.refund, status: action.approve ? "refunded" : "declined", decidedAt: at, decisionReason: action.reason.trim() },
+        ...(action.approve ? { status: "cancelled" as const } : {}),
+        ledger: action.approve ? { ...record.ledger, payment: "refunded", payoutBlocked: false,
+          installments: record.ledger.installments.map(item => ({ ...item, refundedAt: at })) }
+          : { ...record.ledger, payoutBlocked: record.refund.previousHold },
+      }
+      label = action.approve ? "Admin approved refund to original payment method · booking cancelled (demo)" : "Admin declined refund · booking continues"
+      break
+    }
+    case "demo_start":
+    case "demo_finish": {
+      if (actor !== serviceFor(record.serviceId).role || !["active", "accepted"].includes(record.status) ||
+        record.ledger.quoteStatus !== "accepted" || record.ledger.performance !== "upcoming" || refundBlocks(record)) return state
+      if (action.type === "demo_start") {
+        if (record.demoStartedAt) return state
+        patch = { demoStartedAt: at, status: "active" }
+        label = "Provider started the demo event · overtime is available"
+      } else {
+        if (!record.demoStartedAt || record.ledger.overtime.some(item => item.status === "pending")) return state
+        patch = { status: "completed", ledger: { ...record.ledger, performance: "reported" } }
+        label = "Provider finished the demo event · final payment due"
+      }
+      break
+    }
     case "settle":
     case "legacy": {
-      if (record.refund || ["rejected", "cancelled"].includes(record.status))
+      if (refundBlocks(record) || ["rejected", "cancelled"].includes(record.status))
         return state
       const inner = action.action
       if (action.type === "settle" && (record.status === "pending" || !["collect", "skip_advance", "propose_overtime", "resolve_overtime", "confirm_performance", "toggle_hold", "release"].includes(inner.type))) return state
       if (inner.type === "pay" && !replayLegacy) return state
-      if (["propose_overtime", "resolve_overtime"].includes(inner.type) && (record.serviceId !== "aria" || new Date(`${record.date}T${record.start}`) > new Date(at))) return state
+      if (["propose_overtime", "resolve_overtime"].includes(inner.type) && (record.serviceId !== "aria" || !performanceStarted(record, new Date(at)))) return state
       if (inner.type === "report_performance" && !replayLegacy && (actor !== serviceFor(record.serviceId).role || performanceEndsAt(record) > new Date(at))) return state
       const ledger = transitionBooking(record.ledger, inner, actor, at, replayLegacy)
       if (ledger === record.ledger) return state
@@ -540,6 +611,7 @@ export function reducePipeline(
   }
   return {
     ...state,
+    notifications: [notificationFor({ ...record, ...patch }, action, actor, label, at), ...state.notifications],
     bookings: state.bookings.map((item) =>
       item.id === id
         ? { ...item, ...patch, activity: [...item.activity, { label, at }] }

@@ -21,13 +21,14 @@ Example: a **$2,250** booking with **$400** approved overtime. The customer pays
 2. Checkout offers **Demo card → Use demo card** or **Demo wallet**. The summary identifies the installment, approved overtime, prior payments and the exact amount due. Card fields stay in component memory and are never persisted.
 3. To preview failure, use test card **4000 0000 0000 0002**, a future expiry and a three-digit demo CVV. The failed attempt records no payment.
 4. **Administrator → Payments** opens the settlement desk. Select any booking, inspect held funds and use **Transfer advance**. Review the gross amount, fee and provider payout, then confirm the demo transfer.
-5. During or after the gig, **Customer/Artist → Booking desk → booking → Request overtime**. Enter the extra minutes and price. Switch to the other participant to approve or decline the request.
-6. **Artist → Booking desk → booking → Mark event complete** becomes available after the scheduled end plus approved overtime. Completion is possible without an advance.
+5. To try the future gig immediately, use **Artist → Booking desk → booking → Start demo event**. During or after the gig, **Customer/Artist → Booking desk → booking → Request overtime**. Enter the extra minutes and price. Switch to the other participant to approve or decline the request.
+6. **Artist → Booking desk → booking → Mark event complete** becomes available after the scheduled end plus approved overtime. For a demo started with the button, choose **Finish demo event** and confirm. Pending overtime must be resolved first. Completion is possible without an advance.
 7. **Customer → booking → Pay final balance**. The final bill subtracts the advance and adds approved overtime. All of it enters StageLink's holding account.
 8. **Administrator → Payments → booking**. Verify the performance, then confirm **Transfer final payment**. An already-deducted fee is shown as zero for this transfer.
-9. **Payment details** shows separate advance/final transaction entries, transfer dates, fee deductions, remaining balance and a downloadable receipt. Eligible refunds can be requested before the event while funds are still held.
+9. **Payment details** shows separate advance/final transaction entries, transfer dates, fee deductions, remaining balance and a downloadable receipt. Eligible refunds can be requested before the event or demo start while funds are still held.
+10. **Administrator → Payments → Refund requests**. Select the request, enter a decision reason, and approve or decline with confirmation. Approval returns the full held amount to the original payment method, cancels the booking, and takes no fee. Decline continues the booking and preserves any separate payout hold. Customer/provider notifications link directly to the decision; the downloadable receipt includes the outcome.
 
-The seeded event dates are fixed demo fixtures. To test upcoming/completed states automatically, the browser checks use isolated profiles and simulated dates; they do not change the system clock or a user's existing demo history.
+The seeded event dates are fixed demo fixtures. The start/finish controls let you complete a full demonstration without waiting for those dates or changing the system clock. They are available only to the matching provider on an agreed, open booking.
 
 ## Temporary demo state
 
@@ -39,6 +40,6 @@ Use the role switcher **in the same tab** for customer, performer and admin demo
 
 ## Validation
 
-Run `pnpm typecheck`, `pnpm test` and `pnpm build`. Tests cover installment amounts and rounding, once-only fees, no-advance completion, overtime authorization, pending and stale checkout, duplicate charges/transfers, payout holds, refund blocking and historical replay. The existing booking and chat checks remain in the domain suite.
+Run `pnpm typecheck`, `pnpm test` and `pnpm build`. Tests cover installment amounts and rounding, once-only fees, no-advance completion, overtime authorization, pending and stale checkout, duplicate charges/transfers, payout holds, refund approval/decline, refund accounting, demo progression, role-specific notifications, chat read indicators, refund blocking and historical replay. The existing booking and chat checks remain in the domain suite.
 
 See [FRONTEND_WORKFLOWS.md](FRONTEND_WORKFLOWS.md) for the wider booking/chat UI walkthrough.

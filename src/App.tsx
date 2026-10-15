@@ -66,10 +66,25 @@ function RoleSwitcher({ currentRole, onSwitch, inline = false }: { currentRole: 
 export default function App() {
   const [role, setRole] = useState<Role>('visitor');
   const [view, setView] = useState<View>('main');
+  const [adminTarget, setAdminTarget] = useState<{ id: string; key: number } | undefined>();
   const [bookingTab, setBookingTab] = useState<'chat' | 'checkout'>('chat');
   const [workspace, setWorkspace] = useState<{ section: WorkspaceSection; id?: string; key: number }>({ section: 'bookings', key: 0 });
   const openWorkspace = (section: WorkspaceSection = 'bookings', id?: string) => { setWorkspace(previous => ({ section, id, key: previous.key + 1 })); setView('workspace'); };
-  useEffect(() => { const openThread = (event: Event) => { const id = (event as CustomEvent<string>).detail; if (typeof id === 'string') openWorkspace('chat', id); }; window.addEventListener('stagelink:open-thread', openThread); return () => window.removeEventListener('stagelink:open-thread', openThread); }, []);
+  useEffect(() => { const openThread = (event: Event) => { const id = (event as CustomEvent<string>).detail; if (typeof id === 'string') { const run = () => openWorkspace('chat', id); if (window.dispatchEvent(new CustomEvent('stagelink:before-navigation', { detail: run, cancelable: true }))) run(); } }; window.addEventListener('stagelink:open-thread', openThread); return () => window.removeEventListener('stagelink:open-thread', openThread); }, []);
+  useEffect(() => {
+    const openUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ id: string; section: 'bookings' | 'payments' }>).detail;
+      if (!detail || typeof detail.id !== 'string' || !['bookings', 'payments'].includes(detail.section)) return;
+      const run = () => {
+        if (role === 'admin') { setAdminTarget(previous => ({ id: detail.id, key: (previous?.key ?? 0) + 1 })); setView('main'); }
+        else openWorkspace(detail.section, detail.id);
+      };
+      const guard = new CustomEvent('stagelink:before-navigation', { detail: run, cancelable: true });
+      if (window.dispatchEvent(guard)) run();
+    };
+    window.addEventListener('stagelink:open-update', openUpdate);
+    return () => window.removeEventListener('stagelink:open-update', openUpdate);
+  }, [role]);
   const [authMode, setAuthMode] = useState<AuthType | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isDark, setIsDark] = useState(true);
@@ -166,7 +181,7 @@ export default function App() {
             ) : role === 'renter' ? (
               <RenterDashboard onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : (
-              <AdminDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onGoToLanding={() => setView('landing')} />
+              <AdminDashboard paymentTarget={adminTarget} roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onGoToLanding={() => setView('landing')} />
             )}
 
             {view !== 'workspace' && !(role === 'admin' && view === 'main') && <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />}
