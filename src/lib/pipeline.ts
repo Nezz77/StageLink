@@ -574,7 +574,7 @@ export function reducePipeline(
       if (action.type === "demo_start") {
         if (record.demoStartedAt) return state
         patch = { demoStartedAt: at, status: "active" }
-        label = "Provider started the demo event · overtime is available"
+        label = record.serviceId === "aria" ? "Provider started the demo event · overtime is available" : "Provider started the demo rental event"
       } else {
         if (!record.demoStartedAt || record.ledger.overtime.some(item => item.status === "pending")) return state
         patch = { status: "completed", ledger: { ...record.ledger, performance: "reported" } }
