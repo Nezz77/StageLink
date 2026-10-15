@@ -5,7 +5,7 @@ import { notificationsFor, bookingService, unreadFor, visibleTo } from "../lib/p
 import "../pipeline.css"
 import { useDashboard } from '../lib/DashboardContext'
 import { inquiryUnread } from '../lib/community'
-import type { MemberRole } from '../lib/dashboard' 
+import type { MemberRole } from '../lib/dashboard'
 
 export default function NotificationCenter() {
   const { state, actor, dispatch } = useBooking()
