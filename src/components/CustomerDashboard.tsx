@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Icon } from './Icons';
+import { useDashboard } from '../lib/DashboardContext';
+import MemberProfile from './MemberProfile';
+import { requestDashboardNavigation } from './DashboardUI';
 import DashboardShell, { DashboardIntro, GlassSurface } from './DashboardShell';
 import BrowseArtistsPage from './BrowseArtistsPage';
 import CollectionDetailPage, { type CollectionListing } from './CollectionDetailPage';
@@ -29,14 +32,13 @@ const navItems = [
   { id: 'profile', label: 'My profile', icon: Icon.User },
 ];
 
-export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPayments, onGoToLanding }: { onOpenChat?: () => void, onOpenPayments?: () => void, onOpenBooking?: () => void, onGoToLanding?: () => void }) {
+export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPayments, onGoToLanding, roleControl }: { roleControl?: ReactNode; onOpenChat?: () => void, onOpenPayments?: () => void, onOpenBooking?: () => void, onGoToLanding?: () => void }) {
   const [activeTab, setActiveTab] = useState<CustomerTab>('home');
   const [collection, setCollection] = useState<CollectionListing | null>(null);
-  const [savedIds, setSavedIds] = useState<number[]>([]);
-  const [profileSaved, setProfileSaved] = useState(false);
-  const [profile, setProfile] = useState({ name: 'Jordan Rivera', email: 'jordan.rivera@example.com', city: 'Los Angeles, CA' });
-  const navigate = (tab: string) => { if (tab === 'booking') onOpenBooking?.(); else if (tab === 'payments') onOpenPayments?.(); else if (tab === 'messages') onOpenChat?.(); else setActiveTab(tab as CustomerTab); };
-  const toggleSaved = (id: number) => setSavedIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id]);
+  const { state: dashboard, dispatch } = useDashboard();
+  const savedIds = dashboard.savedArtists;
+  const navigate = (tab: string) => requestDashboardNavigation(() => { if (tab === 'booking') onOpenBooking?.(); else if (tab === 'payments') onOpenPayments?.(); else if (tab === 'messages') onOpenChat?.(); else setActiveTab(tab as CustomerTab); });
+  const toggleSaved = (id: number) => dispatch({ type: 'favorite', id });
   const artistCard = (artist: typeof recommendedArtists[number], index: number) => (
     <article className="card sl-talent-card" key={artist.id}>
       <div className="sl-talent-photo">
@@ -52,10 +54,10 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPay
     </article>
   );
 
-  return <DashboardShell role="customer" navItems={navItems} activeTab={activeTab} onNavigate={navigate} onGoToLanding={onGoToLanding} onOpenChat={onOpenChat}>
+  return <DashboardShell controls={roleControl} role="customer" navItems={navItems} activeTab={activeTab} onNavigate={navigate} onGoToLanding={() => requestDashboardNavigation(() => onGoToLanding?.())} onOpenChat={() => navigate('messages')}>
     <div key={activeTab} className="animate-slide-up">
       {activeTab === 'home' && <>
-        <DashboardIntro eyebrow="YOUR BACKSTAGE PASS" title="Good evening," emphasis="Jordan." description="A little inspiration. A little planning. An unforgettable night." action={<button className="btn-ghost sl-action" onClick={onOpenBooking}><Icon.Calendar className="w-4 h-4" /> My bookings</button>} />
+        <DashboardIntro eyebrow="YOUR BACKSTAGE PASS" title="Good evening," emphasis={`${dashboard.profiles.customer.name.split(' ')[0]}.`} description="A little inspiration. A little planning. An unforgettable night." action={<button className="btn-ghost sl-action" onClick={onOpenBooking}><Icon.Calendar className="w-4 h-4" /> My bookings</button>} />
         <section className="sl-discovery-hero" aria-label="Discover your next performer">
           <div><div className="sl-eyebrow">THE NIGHT STARTS WITH YOU</div><h2>Find your<br /><em>main character.</em></h2><p>From intimate sets to full-stage spectacles. Discover the talent that makes your event feel like yours.</p><button className="btn-primary sl-action" onClick={() => setActiveTab('browse')}><Icon.Search className="w-4 h-4" /> Find a performer <span>↗</span></button></div>
           <GlassSurface className="sl-event-ticket"><div className="sl-eyebrow">YOUR NEXT GREAT NIGHT</div><h3>One stage.<br />Endless possibilities.</h3><p>Live music, movement, and a room full of moments worth keeping.</p><div className="sl-ticket-bottom"><span>ADMIT ONE<br />YOUR IMAGINATION</span><Icon.Music /></div></GlassSurface>
@@ -67,13 +69,7 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPay
         <DashboardIntro eyebrow="YOUR PERSONAL LINEUP" title="Keep them" emphasis="on the list." description={`${savedIds.length} saved artists. Your next great lineup starts with a shortlist.`} />
         {savedIds.length ? <div className="sl-artist-grid">{recommendedArtists.filter(artist => savedIds.includes(artist.id)).map(artistCard)}</div> : <div className="card sl-empty-state"><Icon.Heart /><h2>A little room for favorites.</h2><p>Tap the heart on an artist in Discover to keep them here for your next event.</p><button className="btn-primary" onClick={() => setActiveTab('home')}>Discover artists ↗</button></div>}
       </>}
-      {activeTab === 'profile' && <>
-        <DashboardIntro eyebrow="THE PERSON BEHIND THE EVENT" title="Make it" emphasis="personal." description="The details that help artists get to know you." />
-        <form className="card p-6 max-w-2xl" onSubmit={event => { event.preventDefault(); setProfileSaved(true); }}>
-          {profileSaved && <p role="status" className="sl-feedback">Profile updated for this demo session.</p>}
-          <div className="space-y-5">{([['name', 'Full name'], ['email', 'Email'], ['city', 'City']] as const).map(([key,label]) => <label className="block text-sm text-slate-400" key={key}>{label}<input className="input mt-2" type={key === 'email' ? 'email' : 'text'} required value={profile[key]} onChange={event => { setProfileSaved(false); setProfile({ ...profile, [key]: event.target.value }); }} /></label>)}<button className="btn-primary" type="submit">Save profile ↗</button></div>
-        </form>
-      </>}
+      {activeTab === 'profile' && <MemberProfile />}
       {activeTab === 'browse' && <><button className="btn-ghost mb-6" onClick={() => setActiveTab('home')}>← Back to Discover</button>{collection ? <CollectionDetailPage listing={collection} onBack={() => setCollection(null)} /> : <BrowseArtistsPage onOpenCollection={setCollection} />}</>}
     </div>
   </DashboardShell>;

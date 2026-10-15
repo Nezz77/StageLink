@@ -5,6 +5,8 @@ import '../vendor/liquid-glass.js';
 import '../dashboard.css';
 import '../signed-in-motion.css';
 import NotificationCenter from './NotificationCenter';
+import { useDashboard } from '../lib/DashboardContext';
+import '../management.css';
 import { usePanelEntrance } from './usePanelEntrance';
 
 type GlassInstance = { destroy: () => void; refresh: () => void; supported: boolean };
@@ -41,7 +43,9 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
   role: keyof typeof identities; navItems: DashboardNav[]; activeTab: string;
   onNavigate: (tab: string) => void; onGoToLanding?: () => void; onOpenChat?: () => void; controls?: ReactNode; children: ReactNode;
 }) {
-  const identity = identities[role];
+  const { state: dashboard } = useDashboard();
+  const profile = role === 'admin' ? null : dashboard.profiles[role];
+  const identity = { ...identities[role], ...(profile ? { name: profile.name, initials: profile.name.split(/\s+/).map(part => part[0]).slice(0, 2).join('') } : {}) };
   const contentRef = usePanelEntrance(activeTab);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab, role]);
   return <MotionConfig reducedMotion="user">
@@ -123,7 +127,10 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
             {controls}
           </div>
         </header>
-        <main ref={contentRef} id="dashboard-content" className="sl-main" tabIndex={-1}>{children}</main>
+        <main ref={contentRef} id="dashboard-content" className="sl-main" tabIndex={-1}>
+          {dashboard.maintenance && <div className="mg-workspace-banner mg-maintenance-banner" role="status"><strong>Maintenance preview</strong>The demo is showing a maintenance notice. You can continue exploring the workspace.</div>}
+          {dashboard.announcement && <div className="mg-workspace-banner" role="status"><strong>From the StageLink team · Demo announcement</strong>{dashboard.announcement}</div>}
+{children}</main>
         <footer className="sl-footer"><span>STAGELINK</span><span>Made for moments that matter.</span><span>BACKSTAGE / 2026</span></footer>
       </div>
     </div>

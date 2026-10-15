@@ -13,6 +13,8 @@ import AuthModal from './components/AuthModal';
 import SplashScreen from './components/SplashScreen';
 import { AnimatePresence, LayoutGroup } from 'motion/react';
 import { BookingProvider } from './lib/BookingContext';
+import { DashboardProvider } from './lib/DashboardContext';
+import { requestDashboardNavigation } from './components/DashboardUI';
 
 type Role = 'visitor' | 'customer' | 'artist' | 'renter' | 'admin';
 type View = 'main' | 'booking' | 'landing' | 'workspace';
@@ -139,12 +141,12 @@ export default function App() {
   };
 
   const handleRoleSwitch = (r: Role) => {
-    setRole(r);
-    setView('main');
+    requestDashboardNavigation(() => { setRole(r); setView('main'); });
   };
 
   return (
     <BookingProvider actor={role}>
+      <DashboardProvider>
       <LayoutGroup id="stagelink-brand">
         <AnimatePresence>
           {!isLoaded && <SplashScreen key="splash" onComplete={handleSplashComplete} />}
@@ -175,19 +177,20 @@ export default function App() {
                 )}
               </>
             ) : role === 'customer' ? (
-              <CustomerDashboard onOpenBooking={() => openWorkspace('bookings')} onOpenPayments={() => openWorkspace('payments')} onOpenChat={() => openWorkspace('chat')} onGoToLanding={() => setView('landing')} />
+              <CustomerDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onOpenBooking={() => openWorkspace('bookings')} onOpenPayments={() => openWorkspace('payments')} onOpenChat={() => openWorkspace('chat')} onGoToLanding={() => setView('landing')} />
             ) : role === 'artist' ? (
-              <ArtistDashboard onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
+              <ArtistDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : role === 'renter' ? (
-              <RenterDashboard onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
+              <RenterDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : (
               <AdminDashboard paymentTarget={adminTarget} roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onGoToLanding={() => setView('landing')} />
             )}
 
-            {view !== 'workspace' && !(role === 'admin' && view === 'main') && <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />}
+            {(role === 'visitor' || view === 'landing' || view === 'booking') && <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />}
           </div>
         )}
       </LayoutGroup>
+    </DashboardProvider>
     </BookingProvider>
   );
 }

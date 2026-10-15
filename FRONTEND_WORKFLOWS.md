@@ -48,7 +48,7 @@ For a two-sided chat demonstration, switch between Customer and the appropriate 
 ## Demo scope and integration boundaries
 
 - No backend service, payment gateway, websocket service or deployment is added.
-- Booking data, payments, overtime, drafts, messages and read indicators stay in memory until refresh. Old saved browser records are ignored. The admin settlement desk can select and settle every booking; general admin operations remain outside this UI scope.
+- Booking data, payments, overtime, drafts, messages and read indicators stay in memory until refresh. Old saved browser records are ignored. The admin settlement desk can select and settle every booking. Artist, renter, customer and general admin tabs are now implemented; see [DASHBOARD_DEMO.md](DASHBOARD_DEMO.md) for the full dashboard walkthrough.
 - The frontend checks role, status, availability, quote version and amount before transitions. These are UI safeguards, not security controls. Production must enforce them on a server.
 - Payment fields remain in component memory and are cleared after success. They are not saved in the event log. Demo wallet payments have no real balance.
 - Use the **Use demo card** button for success. To preview failure, use **4000 0000 0000 0002**, a future expiry and a three-digit test CVV. No payment transition is recorded for the declined attempt.
