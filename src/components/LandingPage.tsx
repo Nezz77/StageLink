@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
@@ -64,7 +64,25 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
   const [listingOrigin, setListingOrigin] = useState<'browse' | 'rent'>('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const heroVideoRef = useRef<HTMLVideoElement>(null);
+
+  const startHeroVideo = useCallback(() => {
+    const video = heroVideoRef.current;
+    if (!video || document.visibilityState !== 'visible') return;
+
+    video.muted = true;
+    void video.play().then(
+      () => setAutoplayBlocked(false),
+      error => {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+          setAutoplayBlocked(true);
+          return;
+        }
+        console.error('Unable to play the landing background video.', error);
+      },
+    );
+  }, []);
 
   useEffect(() => {
     const video = heroVideoRef.current;
@@ -72,25 +90,15 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
 
     video.muted = true;
     video.defaultMuted = true;
-
-    const startPlayback = () => {
-      if (document.visibilityState !== 'visible') return;
-
-      void video.play().catch(error => {
-        if (error instanceof DOMException && error.name === 'NotAllowedError') return;
-        console.error('Unable to play the landing background video.', error);
-      });
-    };
-
-    video.addEventListener('canplay', startPlayback);
-    document.addEventListener('visibilitychange', startPlayback);
-    startPlayback();
+    video.addEventListener('canplay', startHeroVideo);
+    document.addEventListener('visibilitychange', startHeroVideo);
+    startHeroVideo();
 
     return () => {
-      video.removeEventListener('canplay', startPlayback);
-      document.removeEventListener('visibilitychange', startPlayback);
+      video.removeEventListener('canplay', startHeroVideo);
+      document.removeEventListener('visibilitychange', startHeroVideo);
     };
-  }, [activeTab]);
+  }, [activeTab, startHeroVideo]);
 
   // Use absolute scrollY to trigger the animation instantly without being delayed by the nav bar height
   const { scrollY } = useScroll();
@@ -138,6 +146,16 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
             className="absolute top-0 left-0 w-full h-full object-cover opacity-60"
             src="/Stage-Link-Background.mp4"
           />
+          {autoplayBlocked && (
+            <button
+              type="button"
+              onClick={startHeroVideo}
+              className="absolute left-1/2 top-1/2 z-10 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-white/20 bg-black/60 px-5 py-3 text-sm font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <Icon.Play className="h-4 w-4" />
+              Play background video
+            </button>
+          )}
           {/* Gradient overlay to blend the bottom of the video into the background color */}
           <div className="landing-video-overlay absolute inset-0 bg-gradient-to-b from-transparent via-[#07090f]/50 to-[#07090f]"></div>
         </div>
