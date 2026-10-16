@@ -2,9 +2,25 @@
 
 All eight items from the frontend priority list are now connected. This is a frontend demo: navigation and role switching preserve state in the current tab; refresh starts a clean session. Separate tabs do not share data.
 
+## Original design restored (2026-10-16)
+
+Browse Artists and Rent Equipment use the original stacked folder cards and fan animation again. Listing details retain the original large photo, glass tabs, gallery and booking panel. Customer Discover retains the original hero, ticket, photo cards and shortlist. These layouts still use the shared catalog and connected booking/chat/review workflows. The generic marketplace grid has been removed. Small-screen tab spacing and profile text contrast in light mode were corrected without changing the desktop layout.
+
+## Preview the animated payment card
+
+1. Refresh the page for a clean demo session.
+2. Use the role switcher to select **Customer**.
+3. Open **My bookings** and select **TechVentures Corporate Gala**.
+4. Choose **Agree to booking price**, then **Pay 10% advance**.
+5. Select **Use demo card** to fill the example details.
+6. Focus **CVV / CVC** to flip the card; focus **Cardholder name** to turn it back.
+7. Choose **PAY $225.00** to see processing and the payment success animation.
+
+No real payment is made. Refresh to repeat. If the device has Reduce Motion enabled, the same states appear without the animated transition.
+
 ## 1. Marketplace → booking and messaging
 
-Customer → Discover shows published artist gigs and rental inventory from the provider dashboards. Open a listing and choose **Book Now** or **Request Rental** to start a booking with that service already selected. **Message** opens an existing booking conversation or creates an enquiry when there is no matching booking. Messages → **Enquiries** holds those conversations, including unread indicators and message drafts. Booking conversations continue to support attachments.
+Customer → Discover → **Find a performer**, or **Equipment** in the sidebar, shows published artist gigs and rental inventory from the provider dashboards. Open a listing and choose **Book Now** or **Request Rental** to start a booking with that service already selected. **Message** opens an existing booking conversation or creates an enquiry when there is no matching booking. Messages → **Enquiries** holds those conversations, including unread indicators and message drafts. Booking conversations continue to support attachments.
 
 Visitors are prompted to sign in, then resume the selected booking or enquiry. Providers browsing the public marketplace confirm switching to the customer demo before creating a request. Saved listings are shared across navigation and reset on refresh.
 
@@ -51,6 +67,8 @@ Customer / Provider → Profile → **Email verification** verifies the saved pr
 Customer → My bookings → Booking history → a completed booking shows a review form. Choose one to five stars, write a review, save it for later or submit it. Each completed booking permits one customer review. The matching listing updates its displayed rating and Reviews tab immediately in the demo session.
 
 ## Validation and remaining production work
+
+Design restoration (2026-10-16): typecheck, production build, all 54 automated domain tests, 10 restoration/payment browser checks, and 3 final visual/navigation checks passed. Original folder motion, desktop layouts, 320/390px mobile layouts, light-theme profile contrast, payment-card front/back transitions, demo success and reset-on-refresh were checked.
 
 Typechecking, the production build and 54 automated domain tests pass. Browser checks cover the eight connected workflows, role transitions, draft recovery, document previews, payment gates, public sign-in routing, rental capacity, mobile light/dark layouts and refresh reset. Twenty new browser checks and ten payment/refund/overtime regression checks passed.
 

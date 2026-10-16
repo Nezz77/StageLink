@@ -1,0 +1,7 @@
+/* The original photo profile keeps its dark glass surfaces in either app theme. */
+.restored-detail { color: #cbd5e1; color-scheme: dark; }
+html[data-theme="light"] :is(.landing-page, .sl-dashboard) .restored-detail .text-white { color: #f1f5f9 !important; }
+html[data-theme="light"] :is(.landing-page, .sl-dashboard) .restored-detail .text-slate-300 { color: #cbd5e1 !important; }
+html[data-theme="light"] :is(.landing-page, .sl-dashboard) .restored-detail :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #94a3b8 !important; }
+html[data-theme="light"] :is(.landing-page, .sl-dashboard) .restored-detail .input { color: #f1f5f9; background: #131928; border-color: rgba(148, 163, 184, .3); }
+html[data-theme="light"] .sl-dashboard .sl-collection-back { color: #484452; border-color: rgba(44, 38, 58, .22); }
