@@ -10,7 +10,7 @@ import { SwitchMode } from './SwitchMode';
 import { FaFire } from 'react-icons/fa';
 import { MdFavorite } from 'react-icons/md';
 import { MorphingDiscoveryBar, type Category } from './watermelon/morphing-discovery-bar';
-import { MotionCarousel } from './MotionCarousel';
+import PricingShowcase from './PricingShowcase';
 
 const DISCOVERY_CATEGORIES: Category[] = [
   {
@@ -36,13 +36,6 @@ const trendingArtists = [
   { id: 4, name: 'Luna Dance Co.', category: 'Dance Troupe', genre: 'Contemporary', rating: 4.9, reviews: 87, price: '$800/event', location: 'Chicago, IL', image: 'photo-1504609813442-a8924e83f76e', bookings: 234, verified: true },
   { id: 5, name: 'Marco Strings', category: 'Solo Violinist', genre: 'Classical / Crossover', rating: 5.0, reviews: 63, price: '$350/hr', location: 'Boston, MA', image: 'photo-1493225457124-a3eb161ffa5f', bookings: 189, verified: true },
   { id: 6, name: 'Sunset Brass', category: 'Brass Quartet', genre: 'Wedding / Events', rating: 4.6, reviews: 271, price: '$950/event', location: 'Austin, TX', image: 'photo-1511192336575-5a79af67a629', bookings: 678, verified: true },
-];
-
-const priceBands = [
-  { label: 'Budget', range: '$100 – $400/hr', icon: <Icon.Music className="w-8 h-8 text-amber-400" />, count: '2,400+ artists', color: 'from-amber-400/20 to-amber-500/5', border: 'hover:border-amber-500/50', glow: 'bg-amber-500/20' },
-  { label: 'Mid-Range', range: '$400 – $1,000/hr', icon: <Icon.Mic className="w-8 h-8 text-emerald-400" />, count: '1,800+ artists', color: 'from-emerald-400/20 to-emerald-500/5', border: 'hover:border-emerald-500/50', glow: 'bg-emerald-500/20' },
-  { label: 'Premium', range: '$1,000 – $3,000/event', icon: <Icon.Award className="w-8 h-8 text-violet-400" />, count: '640+ artists', color: 'from-violet-400/20 to-violet-500/5', border: 'hover:border-violet-500/50', glow: 'bg-violet-500/20' },
-  { label: 'Enterprise', range: 'Custom quote', icon: <Icon.Globe className="w-8 h-8 text-blue-400" />, count: '120+ artists', color: 'from-blue-400/20 to-blue-500/5', border: 'hover:border-blue-500/50', glow: 'bg-blue-500/20' },
 ];
 
 const stats = [
@@ -325,77 +318,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
             </section>
 
 
-            Price Bands - Premium Redesign
-            <section className="py-24 px-6 relative overflow-hidden" style={{ background: 'var(--color-surface)' }}>
-              {/* Background ambient glow */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none"></div>
-              
-              <div className="max-w-6xl mx-auto relative z-10">
-                <div className="text-center mb-16">
-                  <motion.span 
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="text-violet-400 font-semibold tracking-widest uppercase text-sm mb-3 block"
-                  >
-                    Pricing Models
-                  </motion.span>
-                  <motion.h2 
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
-                    className="font-display text-4xl md:text-5xl font-bold text-white mb-4"
-                  >
-                    Every Budget, Every Event
-                  </motion.h2>
-                  <motion.p 
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.2 }}
-                    className="text-slate-400 text-lg max-w-2xl mx-auto"
-                  >
-                    Transparent pricing across all talent tiers, with no hidden fees.
-                  </motion.p>
-                </div>
-                
-                <div className="w-full">
-                  <MotionCarousel 
-                    options={{ loop: true }}
-                    slides={priceBands.map((band, i) => (
-                      <div 
-                        key={band.label} 
-                        className={`relative group rounded-3xl p-px bg-gradient-to-b from-slate-700/50 to-slate-900/50 overflow-hidden cursor-pointer hover:shadow-2xl transition-all duration-500 h-full`}
-                      >
-                        {/* Animated Glow on Hover */}
-                        <div className={`absolute -inset-2 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 ${band.glow}`}></div>
-                        
-                        {/* Card Content */}
-                        <div className={`relative h-full bg-slate-950 rounded-[23px] p-8 flex flex-col items-center text-center border border-transparent transition-colors duration-500 ${band.border}`}>
-                          {/* Top Gradient Mesh */}
-                          <div className={`absolute top-0 inset-x-0 h-32 bg-gradient-to-b ${band.color} opacity-20 group-hover:opacity-40 transition-opacity duration-500 rounded-t-[23px]`}></div>
-                          
-                          <div className="relative mb-6 p-4 rounded-2xl bg-slate-900 border border-slate-800 group-hover:scale-110 transition-transform duration-500 shadow-inner">
-                            {band.icon}
-                          </div>
-                          
-                          <h3 className="font-display text-2xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-300 transition-all">
-                            {band.label}
-                          </h3>
-                          
-                          <div className="h-px w-12 bg-slate-800 my-4 group-hover:w-full group-hover:bg-slate-700 transition-all duration-500"></div>
-                          
-                          <div className="font-mono text-slate-300 font-medium mb-3 group-hover:text-white transition-colors">{band.range}</div>
-                          <div className="text-sm text-slate-500 mt-auto">{band.count}</div>
-                        </div>
-                      </div>
-                    ))}
-                  />
-                </div>
-              </div>
-            </section>
-            
+            <PricingShowcase onBrowse={() => { setActiveTab('browse'); window.scrollTo({ top: 0, behavior: 'instant' }); }} />
 
             {/* CTA Banner */}
             <section className="py-16 px-6 relative z-10 bg-[#07090f]">

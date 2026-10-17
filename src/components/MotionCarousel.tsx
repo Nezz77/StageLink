@@ -1,90 +1,81 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import type { EmblaOptionsType } from 'embla-carousel';
-import { motion } from 'motion/react';
-import { Icon } from './Icons';
+import { motion, useInView, useReducedMotion } from 'motion/react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
-type PropType = {
-  slides: React.ReactNode[];
-  options?: EmblaOptionsType;
-};
+const prefersStill = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export const MotionCarousel: React.FC<PropType> = ({ slides, options }) => {
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    align: 'center',
-    containScroll: false,
-    ...options
-  });
-  const [selectedIndex, setSelectedIndex] = useState(0);
+type Props = { slides: ReactNode[]; labels?: string[]; options?: EmblaOptionsType };
 
-  const scrollPrev = useCallback(() => emblaApi && emblaApi.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi && emblaApi.scrollNext(), [emblaApi]);
-  const scrollTo = useCallback((index: number) => emblaApi && emblaApi.scrollTo(index), [emblaApi]);
-
+export function MotionCarousel({ slides, labels = [], options }: Props) {
+  const root = useRef<HTMLDivElement>(null);
+  const revealed = useInView(root, { once: true, amount: .18 });
+  const reduced = useReducedMotion();
+  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'center', containScroll: false, duration: 32, ...options });
+  const [selectedIndex, setSelectedIndex] = useState(options?.startIndex ?? 0);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(false);
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
     setSelectedIndex(emblaApi.selectedScrollSnap());
-  }, [emblaApi, setSelectedIndex]);
+    setCanPrev(emblaApi.canScrollPrev());
+    setCanNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
 
   useEffect(() => {
     if (!emblaApi) return;
     onSelect();
-    emblaApi.on('select', onSelect);
-    emblaApi.on('reInit', onSelect);
-  }, [emblaApi, onSelect]);
+    emblaApi.on('select', onSelect).on('reInit', onSelect);
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotion = () => emblaApi.reInit({ duration: preference.matches ? 0 : options?.duration ?? 32 });
+    updateMotion();
+    preference.addEventListener('change', updateMotion);
+    return () => {
+      emblaApi.off('select', onSelect).off('reInit', onSelect);
+      preference.removeEventListener('change', updateMotion);
+    };
+  }, [emblaApi, onSelect, options?.duration]);
 
-  return (
-    <div className="relative w-full max-w-6xl mx-auto px-4 md:px-12">
-      <div className="overflow-hidden rounded-3xl" ref={emblaRef}>
-        <div className="flex -ml-4 items-center">
-          {slides.map((slide, index) => {
-            const isActive = index === selectedIndex;
-            return (
-              <motion.div
-                key={index}
-                className="flex-[0_0_80%] sm:flex-[0_0_50%] lg:flex-[0_0_35%] min-w-0 pl-4 relative py-8"
-                initial={false}
-                animate={{
-                  scale: isActive ? 1 : 0.85,
-                  opacity: isActive ? 1 : 0.4,
-                  zIndex: isActive ? 10 : 0
-                }}
-                transition={{ duration: 0.4, type: 'spring', bounce: 0.1 }}
-              >
+  const previous = () => emblaApi?.scrollPrev(prefersStill());
+  const next = () => emblaApi?.scrollNext(prefersStill());
+  const goTo = (index: number) => emblaApi?.scrollTo(index, prefersStill());
+  const show = revealed || reduced;
+
+  return <div ref={root} className={`mc-carousel${show ? ' is-revealed' : ''}`} role="region" aria-roledescription="carousel" aria-label="Performance price ranges" tabIndex={0}
+    onFocusCapture={() => { root.current?.classList.add('mc-has-focus'); }}
+    onKeyDown={event => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); previous(); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); next(); }
+      if (event.key === 'Home') { event.preventDefault(); goTo(0); }
+      if (event.key === 'End') { event.preventDefault(); goTo(slides.length - 1); }
+    }}>
+    <div className="mc-viewport" ref={emblaRef}>
+      <div className="mc-track">
+        {slides.map((slide, index) => {
+          const active = index === selectedIndex;
+          // Keep Embla's loop positioning on the outer slide, separate from visual motion.
+          return <div className={`mc-slide${active ? ' is-active' : ''}`} key={labels[index] ?? index} role="group" aria-roledescription="slide" aria-label={`${labels[index] ?? 'Price range'}, ${index + 1} of ${slides.length}`}>
+            <motion.div className="mc-reveal" initial={reduced ? false : { opacity: 0, y: 60, rotateX: 8 }}
+              animate={show ? { opacity: 1, y: 0, rotateX: 0 } : { opacity: 0, y: 60, rotateX: 8 }}
+              transition={{ duration: reduced ? 0 : .75, delay: reduced ? 0 : .06 + Math.abs(index - (options?.startIndex ?? 0)) * .09, ease: [.22, 1, .36, 1] }}>
+              <motion.div className="mc-slide-visual" initial={false}
+                animate={{ scale: active ? 1 : .92, y: active ? 0 : 18, opacity: active ? 1 : .9 }}
+                transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 160, damping: 24, mass: .85 }}>
                 {slide}
               </motion.div>
-            );
-          })}
-        </div>
-      </div>
-      
-      {/* Navigation Buttons */}
-      <button 
-        onClick={scrollPrev}
-        className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-white shadow-xl backdrop-blur-md z-20 transition-all hover:scale-105"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      <button 
-        onClick={scrollNext}
-        className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-white shadow-xl backdrop-blur-md z-20 transition-all hover:scale-105"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-      </button>
-      
-      {/* Pagination Dots */}
-      <div className="flex justify-center items-center mt-6 gap-3">
-        <span className="text-xs text-slate-300 font-medium mr-4 bg-white/10 px-4 py-1.5 rounded-full border border-white/5 shadow-inner backdrop-blur">
-          Slide {selectedIndex + 1}
-        </span>
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => scrollTo(index)}
-            className={`h-2.5 rounded-full transition-all duration-300 ${index === selectedIndex ? 'bg-white w-8 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-slate-600 w-2.5 hover:bg-slate-400'}`}
-          />
-        ))}
+            </motion.div>
+          </div>;
+        })}
       </div>
     </div>
-  );
-};
+    <div className="mc-controls">
+      <button type="button" className="mc-arrow" onClick={previous} disabled={!canPrev} aria-label="Previous price range"><ArrowLeft size={21} aria-hidden="true" /></button>
+      <div className="mc-pagination">
+        <div className="mc-status" role="status" aria-live="polite" aria-atomic="true"><span>{labels[selectedIndex] ?? 'Price range'}</span><span className="mc-position">{String(selectedIndex + 1).padStart(2, '0')} <i>/ {String(slides.length).padStart(2, '0')}</i></span></div>
+        <div className="mc-dots" aria-label="Choose a price range">{slides.map((_, index) => <button type="button" key={index} className={selectedIndex === index ? 'is-active' : ''} onClick={() => goTo(index)} aria-label={`Show ${labels[index] ?? `price range ${index + 1}`}`} aria-pressed={selectedIndex === index}><span /></button>)}</div>
+      </div>
+      <button type="button" className="mc-arrow" onClick={next} disabled={!canNext} aria-label="Next price range"><ArrowRight size={21} aria-hidden="true" /></button>
+    </div>
+  </div>;
+}
