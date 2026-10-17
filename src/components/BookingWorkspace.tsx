@@ -1077,7 +1077,9 @@ export default function BookingWorkspace({
     (sum, record) => sum + unreadFor(state, record, actor),
     0,
   )
+  const dashboardLabel = role === "artist" ? "Artist dashboard" : role === "renter" ? "Equipment dashboard" : "Customer dashboard"
   const navItems: DashboardNav[] = [
+    { id: "dashboard", label: dashboardLabel, icon: ArrowLeft },
     { id: "bookings", label: "Booking desk", icon: Ticket },
     { id: "calendar", label: "Calendar", icon: CalendarDays },
     ...(actor !== "customer"
@@ -1151,7 +1153,7 @@ export default function BookingWorkspace({
       navItems={navItems}
       activeTab={section}
       onNavigate={(target) =>
-        requestNavigation(() => navigate(target as WorkspaceSection))
+        requestNavigation(target === "dashboard" ? onBack : () => navigate(target as WorkspaceSection))
       }
       onGoToLanding={() => requestNavigation(onGoToLanding)}
       onOpenChat={() => requestNavigation(() => navigate("chat"))}
@@ -1163,7 +1165,7 @@ export default function BookingWorkspace({
             onClick={() => requestNavigation(onBack)}
           >
             <ArrowLeft size={13} />{" "}
-            {role === "customer" ? "Discover" : "Your studio"}
+            Back to {dashboardLabel}
           </button>
           <span>BOOK · PAY · CONNECT</span>
         </div>
