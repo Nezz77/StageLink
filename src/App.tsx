@@ -17,6 +17,7 @@ import { DashboardProvider } from './lib/DashboardContext';
 import { requestDashboardNavigation } from './components/DashboardUI';
 import { MarketplaceBridge, type MarketIntent } from './components/Marketplace';
 import ConfirmDialog from './components/ConfirmDialog';
+import { AppearanceProvider } from './lib/AppearanceContext';
 
 type Role = 'visitor' | 'customer' | 'artist' | 'renter' | 'admin';
 type View = 'main' | 'booking' | 'landing' | 'workspace';
@@ -154,6 +155,7 @@ export default function App() {
   };
 
   return (
+    <AppearanceProvider isDark={isDark} onThemeChange={handleThemeChange}>
     <DashboardProvider actor={role}>
       <BookingProvider actor={role}>
       <MarketplaceBridge actor={role} pending={pendingMarket} onDone={marketDone} onBook={marketBook} onChat={marketChat} onNeedCustomer={intent => { setPendingMarket(intent); if (role === 'visitor') setAuthMode('login'); else setCustomerPrompt(true); }} />
@@ -203,5 +205,6 @@ export default function App() {
       </LayoutGroup>
     </BookingProvider>
     </DashboardProvider>
+    </AppearanceProvider>
   );
 }

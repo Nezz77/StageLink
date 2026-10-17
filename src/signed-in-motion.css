@@ -1,22 +1,49 @@
-/* Motion only. Scoped to authenticated workspaces; no visitor styles or colors. */
+/* Scoped to signed-in workspaces. Finished entrances leave the original layout intact. */
+.sl-dashboard .sl-main > .animate-slide-up,
+.sl-dashboard .sl-main .sl-stat { animation: none; }
+.sl-arrival-light {
+  position: absolute; inset: 0 0 auto; height: min(740px, 100dvh);
+  overflow: clip; pointer-events: none; z-index: -1; contain: paint;
+}
+.sl-arrival-light::before {
+  content: ''; position: absolute; inset: -15%; opacity: 0;
+  background: radial-gradient(ellipse at var(--sl-light-origin, 75%) 15%, rgba(var(--sl-accent-rgb), .22), transparent 55%);
+}
+.sl-customer { --sl-light-origin: 35%; }
+.sl-artist { --sl-light-origin: 75%; }
+.sl-renter { --sl-light-origin: 60%; }
+.sl-admin { --sl-light-origin: 90%; }
+.sl-dashboard .sl-topbar { position: relative; }
+.sl-dashboard .sl-topbar::after {
+  content: ''; position: absolute; inset: auto 0 -1px; height: 1px; opacity: 0;
+  pointer-events: none; transform-origin: left;
+  background: linear-gradient(90deg, transparent, var(--sl-accent), transparent);
+}
+.sl-dashboard .mg-stat { position: relative; }
+.sl-dashboard .mg-stat::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit;
+  border: 1px solid rgba(var(--sl-accent-rgb), .55); opacity: 0; pointer-events: none;
+}
 @media (prefers-reduced-motion: no-preference) {
+  .sl-arrival-light::before { animation: dashboard-lights-up 1.25s .05s ease-out backwards; }
+  .sl-dashboard .sl-topbar::after { animation: dashboard-light-line .95s .16s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-dashboard .sl-nav-item { animation: workspace-rail-in .48s calc(55ms + var(--sl-nav-order, 0) * 22ms) cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-dashboard .sl-nav-item:focus-visible { animation: none; }
+  .sl-dashboard .sl-intro .sl-line { transform-origin: left; animation: dashboard-rule-in .65s .12s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-customer .sl-event-ticket { animation: dashboard-ticket-in .85s .18s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-artist .mg-hero-symbol { animation: dashboard-artist-in .9s .16s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-renter .mg-hero-symbol { animation: dashboard-equipment-in .75s .2s cubic-bezier(.22,1,.36,1) backwards; }
+  .sl-dashboard .mg-stat::after { animation: dashboard-outline-in .9s .22s ease-out backwards; }
+  .sl-dashboard .mg-stat:nth-child(2)::after { animation-delay: .28s; }
+  .sl-dashboard .mg-stat:nth-child(3)::after { animation-delay: .34s; }
+  .sl-dashboard .mg-stat:nth-child(4)::after { animation-delay: .4s; }
+  .sl-admin .mg-chart i { transform-origin: bottom; animation: workspace-chart-grow .75s .2s cubic-bezier(.22,1,.36,1) backwards; }
   .sl-dashboard .sl-sidebar { animation: workspace-rail-in .55s cubic-bezier(.22,1,.36,1) backwards; }
   .sl-dashboard .sl-topbar, .bc-studio .bc-masthead { animation: workspace-header-in .5s ease backwards; }
-  .sl-dashboard .sl-intro .sl-eyebrow, .bc-studio .bc-intro .bc-eyebrow { animation: workspace-rise .45s .06s backwards; }
-  .sl-dashboard .sl-intro h1, .bc-studio .bc-intro h1 { animation: workspace-rise .65s .1s cubic-bezier(.22,1,.36,1) backwards; }
-  .sl-dashboard .sl-intro p, .bc-studio .bc-intro > p { animation: workspace-rise .6s .16s backwards; }
-  .sl-dashboard .sl-intro-action { animation: workspace-rise .6s .2s backwards; }
-
-  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight) {
-    animation: workspace-card-in .55s cubic-bezier(.22,1,.36,1) backwards;
-  }
-  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(2) { animation-delay: .055s; }
-  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(3) { animation-delay: .11s; }
-  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(4) { animation-delay: .165s; }
-  .sl-dashboard .sl-main :is(.grid,.sl-artist-grid,.space-y-3,.space-y-4) > :is(.card,.card-2,.sl-stat,.sl-spotlight):nth-child(n+5) { animation-delay: .2s; }
+  .bc-studio .bc-intro .bc-eyebrow { animation: workspace-rise .45s .06s backwards; }
+  .bc-studio .bc-intro h1 { animation: workspace-rise .65s .1s cubic-bezier(.22,1,.36,1) backwards; }
+  .bc-studio .bc-intro > p { animation: workspace-rise .6s .16s backwards; }
   .sl-dashboard .sl-main .rounded-t { transform-origin: bottom; animation: workspace-chart-grow .75s .12s cubic-bezier(.22,1,.36,1) backwards; }
-  .sl-dashboard .sl-lineup-item { animation: workspace-rise .5s backwards; }
-  .sl-dashboard .sl-lineup-item:nth-child(2n) { animation-delay: .08s; }
   .sl-dashboard .sl-feedback { animation: workspace-notice-in .3s ease-out backwards; }
   .sl-dashboard .sl-dialog[open] { animation: workspace-dialog-in .28s cubic-bezier(.22,1,.36,1) backwards; }
   .sl-dashboard .sl-dialog[open]::backdrop { animation: workspace-fade .25s ease backwards; }
@@ -65,6 +92,21 @@
   .bc-studio .bc-send:hover:not(:disabled) svg { translate: 2px -2px; rotate: -7deg; }
   .bc-studio .bc-event-pass:hover { translate: 0 -3px; }
 }
+@keyframes dashboard-lights-up {
+  0% { opacity: 0; transform: translateX(-8%) scale(.94); }
+  35% { opacity: .9; }
+  100% { opacity: 0; transform: translateX(6%) scale(1.06); }
+}
+@keyframes dashboard-light-line {
+  0% { opacity: 0; transform: scaleX(.05); }
+  40% { opacity: .85; }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+@keyframes dashboard-rule-in { from { scale: .1 1; } to { scale: 1 1; } }
+@keyframes dashboard-ticket-in { from { rotate: -7deg; translate: 0 16px; } to { rotate: 0deg; translate: 0 0; } }
+@keyframes dashboard-artist-in { from { rotate: 16deg; scale: .92; } to { rotate: 0deg; scale: 1; } }
+@keyframes dashboard-equipment-in { from { scale: .88; translate: 0 12px; } to { scale: 1; translate: 0 0; } }
+@keyframes dashboard-outline-in { 0%, 100% { opacity: 0; } 40% { opacity: .65; } }
 @keyframes workspace-rise { from { opacity: 0; translate: 0 9px; } to { opacity: 1; translate: 0 0; } }
 @keyframes workspace-card-in { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
 @keyframes workspace-rail-in { from { opacity: 0; translate: -10px 0; } to { opacity: 1; translate: 0 0; } }
@@ -80,4 +122,10 @@
 @media (prefers-reduced-motion: reduce) {
   .sl-dashboard *, .sl-dashboard *::before, .sl-dashboard *::after,
   .bc-studio *, .bc-studio *::before, .bc-studio *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  .sl-dashboard .sl-sidebar { animation-name: workspace-header-in; }
+  .sl-arrival-light::before { animation-duration: .9s; }
+  .sl-customer .sl-event-ticket, .sl-artist .mg-hero-symbol, .sl-renter .mg-hero-symbol { animation: none; }
 }

@@ -1,5 +1,10 @@
-import { useEffect, useRef, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useRef, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { MotionConfig } from 'motion/react';
+import { PanelLeftClose, PanelLeftOpen, Sun, Moon } from 'lucide-react';
+import { useAppearance } from '../lib/AppearanceContext';
+import { useBooking } from '../lib/BookingContext';
+import { unreadFor, visibleTo } from '../lib/pipeline';
+import { inquiryUnread } from '../lib/community';
 import { Icon } from './Icons';
 import '../vendor/liquid-glass.js';
 import '../dashboard.css';
@@ -7,6 +12,7 @@ import '../signed-in-motion.css';
 import NotificationCenter from './NotificationCenter';
 import { useDashboard } from '../lib/DashboardContext';
 import '../management.css';
+import '../sidebar.css';
 import { usePanelEntrance } from './usePanelEntrance';
 
 type GlassInstance = { destroy: () => void; refresh: () => void; supported: boolean };
@@ -44,33 +50,53 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
   onNavigate: (tab: string) => void; onGoToLanding?: () => void; onOpenChat?: () => void; controls?: ReactNode; children: ReactNode;
 }) {
   const { state: dashboard } = useDashboard();
+  const { state: bookings } = useBooking();
+  const { collapsed, toggleSidebar, isDark, onThemeChange } = useAppearance();
+  const unreadMessages = role === 'admin' ? 0 :
+    bookings.bookings.filter(record => visibleTo(record, role)).reduce((sum, record) => sum + unreadFor(bookings, record, role), 0) +
+    dashboard.inquiries.filter(item => role === 'customer' || item.provider === role).reduce((sum, item) => sum + inquiryUnread(item, role), 0);
   const profile = role === 'admin' ? null : dashboard.profiles[role];
   const identity = { ...identities[role], ...(profile ? { name: profile.name, initials: profile.name.split(/\s+/).map(part => part[0]).slice(0, 2).join('') } : {}) };
   if ((role === 'artist' || role === 'renter') && dashboard.cases.some(item => item.owner === role && item.kind === 'verification' && item.status === 'approved')) identity.tag = 'Profile reviewed in demo';
-  const contentRef = usePanelEntrance(activeTab);
+  const contentRef = usePanelEntrance(`${role}:${activeTab}`);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab, role]);
   return <MotionConfig reducedMotion="user">
-    <div className={`sl-dashboard sl-${role}`}>
+    <div className={`sl-dashboard sl-${role}${collapsed ? ' sl-sidebar-collapsed' : ''}`} data-dashboard-view={activeTab}>
+      <div key={role} className="sl-arrival-light" aria-hidden="true" />
       <a className="sl-skip" href="#dashboard-content">Skip to dashboard</a>
-      <aside className="sl-sidebar">
-        <button className="sl-brand" onClick={() => onNavigate(navItems[0].id)} aria-label="StageLink dashboard home">
-          <img className="sl-brand-logo" src="/stagelink-logo.png" alt="StageLink" />
-        </button>
+      <aside className="sl-sidebar" aria-label={`${identity.title} sidebar`}>
+        <div className="sl-sidebar-head">
+          <button className="sl-brand" onClick={() => onNavigate(navItems[0].id)} aria-label="StageLink dashboard home">
+            <img className="sl-brand-logo" src="/stagelink-logo.png" alt="StageLink" />
+          </button>
+          <button className="sl-sidebar-toggle" onClick={toggleSidebar} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="dashboard-sidebar-navigation" title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            {collapsed ? <PanelLeftOpen size={19} aria-hidden="true" /> : <PanelLeftClose size={19} aria-hidden="true" />}
+          </button>
+        </div>
         <div className="sl-sidebar-caption">{identity.title}</div>
-        <nav className="sl-navigation" aria-label={`${identity.title} navigation`}>
-          {navItems.map((item, index) => <button key={item.id} onClick={() => onNavigate(item.id)} aria-current={activeTab === item.id ? 'page' : undefined} className={`sl-nav-item ${activeTab === item.id ? 'is-active' : ''}`}>
-            <item.icon className="sl-nav-icon" /><span>{item.label}</span>
-            {item.count ? <span className="sl-nav-count">{item.count}</span> : <span className="sl-nav-index">0{index + 1}</span>}
-          </button>)}
+        <nav id="dashboard-sidebar-navigation" className="sl-navigation" aria-label={`${identity.title} navigation`}>
+          {navItems.map((item, index) => {
+            const count = ['messages', 'chat'].includes(item.id) ? unreadMessages : item.count ?? 0;
+            const label = count > 0 ? `${item.label}, ${count} updates` : item.label;
+            return <button key={item.id} style={{ '--sl-nav-order': Math.min(index, 9) } as CSSProperties} onClick={() => onNavigate(item.id)} aria-label={label} title={collapsed ? label : undefined} aria-current={activeTab === item.id ? 'page' : undefined} className={`sl-nav-item ${activeTab === item.id ? 'is-active' : ''}`}>
+              <item.icon className="sl-nav-icon" /><span className="sl-nav-label">{item.label}</span>
+              {count > 0 ? <span className="sl-nav-count" aria-hidden="true">{count > 99 ? '99+' : count}</span> : <span className="sl-nav-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>}
+            </button>;
+          })}
         </nav>
-        {onGoToLanding && <button className="sl-public-site-link" onClick={onGoToLanding}><Icon.Home className="sl-nav-icon" /><span>Landing page</span><span aria-hidden="true">↗</span></button>}
+        <div className="sl-sidebar-tools">
+          <button className="sl-theme-toggle" onClick={event => onThemeChange(!isDark, event)} aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`} title={collapsed ? `Switch to ${isDark ? 'light' : 'dark'} mode` : undefined}>
+            {isDark ? <Sun className="sl-nav-icon" aria-hidden="true" /> : <Moon className="sl-nav-icon" aria-hidden="true" />}<span className="sl-nav-label">{isDark ? 'Light mode' : 'Dark mode'}</span>
+          </button>
+          {onGoToLanding && <button className="sl-public-site-link" onClick={onGoToLanding} aria-label="Landing page" title={collapsed ? 'Landing page' : undefined}><Icon.Home className="sl-nav-icon" /><span className="sl-nav-label">Landing page</span><span className="sl-nav-index" aria-hidden="true">↗</span></button>}
+        </div>
         {role !== 'admin' && <GlassSurface className="sl-access-pass">
           <span className="sl-eyebrow">ALL ACCESS</span>
           <div className="sl-pass-symbol" aria-hidden="true">✳</div>
           <p>{identity.note}</p><div className="sl-barcode" aria-hidden="true" />
           <span className="sl-pass-id">STAGELINK / {role.toUpperCase()}</span>
         </GlassSurface>}
-        <div className="sl-account"><span className="sl-avatar">{identity.initials}</span><div><strong>{identity.name}</strong><small>{identity.tag}</small></div></div>
+        <div className="sl-account" title={collapsed ? identity.name : undefined}><span className="sl-avatar">{identity.initials}</span><div className="sl-account-details"><strong>{identity.name}</strong><small>{identity.tag}</small></div></div>
       </aside>
       <div className="sl-workspace">
         <header className="sl-topbar">

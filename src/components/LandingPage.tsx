@@ -325,7 +325,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
             </section>
 
 
-            {/* Price Bands - Premium Redesign */}
+            Price Bands - Premium Redesign
             <section className="py-24 px-6 relative overflow-hidden" style={{ background: 'var(--color-surface)' }}>
               {/* Background ambient glow */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/5 rounded-full blur-[100px] pointer-events-none"></div>
@@ -395,6 +395,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
                 </div>
               </div>
             </section>
+            
 
             {/* CTA Banner */}
             <section className="py-16 px-6 relative z-10 bg-[#07090f]">
