@@ -3,6 +3,8 @@ import { createContext, useContext, useState, type MouseEvent, type ReactNode } 
 type Appearance = {
   collapsed: boolean;
   toggleSidebar: () => void;
+  hoverExpanded: boolean;
+  setHoverExpanded: (expanded: boolean) => void;
   isDark: boolean;
   onThemeChange: (dark: boolean, event: MouseEvent<HTMLButtonElement>) => void;
 };
@@ -10,8 +12,9 @@ const AppearanceContext = createContext<Appearance | null>(null);
 
 /** Shared for this demo session; navigation keeps preferences and refresh resets them. */
 export function AppearanceProvider({ isDark, onThemeChange, children }: Pick<Appearance, 'isDark' | 'onThemeChange'> & { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
-  return <AppearanceContext.Provider value={{ collapsed, toggleSidebar: () => setCollapsed(value => !value), isDark, onThemeChange }}>
+  const [collapsed, setCollapsed] = useState(true);
+  const [hoverExpanded, setHoverExpanded] = useState(false);
+  return <AppearanceContext.Provider value={{ collapsed, hoverExpanded, setHoverExpanded, toggleSidebar: () => setCollapsed(value => !value), isDark, onThemeChange }}>
     {children}
   </AppearanceContext.Provider>;
 }

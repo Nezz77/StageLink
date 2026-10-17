@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentType, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { MotionConfig } from 'motion/react';
 import { PanelLeftClose, PanelLeftOpen, Sun, Moon } from 'lucide-react';
 import { useAppearance } from '../lib/AppearanceContext';
@@ -51,7 +51,38 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
 }) {
   const { state: dashboard } = useDashboard();
   const { state: bookings } = useBooking();
-  const { collapsed, toggleSidebar, isDark, onThemeChange } = useAppearance();
+  const { collapsed, toggleSidebar, hoverExpanded, setHoverExpanded, isDark, onThemeChange } = useAppearance();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const [hoverAvailable, setHoverAvailable] = useState(() => window.matchMedia('(min-width: 901px) and (hover: hover) and (pointer: fine)').matches);
+  const [focusExpanded, setFocusExpanded] = useState(false);
+  const isCollapsed = collapsed && !(hoverAvailable && hoverExpanded) && !focusExpanded;
+  const sidebarAction = hoverAvailable
+    ? collapsed ? 'Keep sidebar expanded' : 'Use hover to expand'
+    : isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
+  useLayoutEffect(() => {
+    const preference = window.matchMedia('(min-width: 901px) and (hover: hover) and (pointer: fine)');
+    const update = () => {
+      setHoverAvailable(preference.matches);
+      // A booking view may replace the shell while the pointer is still on its navigation.
+      setHoverExpanded(preference.matches && Boolean(sidebarRef.current?.matches(':hover')));
+    };
+    update();
+    preference.addEventListener('change', update);
+    return () => preference.removeEventListener('change', update);
+  }, [setHoverExpanded]);
+  const pointerInsideSidebar = (x: number, y: number) => {
+    const bounds = sidebarRef.current?.getBoundingClientRect();
+    return Boolean(bounds && x >= bounds.left && x < bounds.right && y >= bounds.top && y < bounds.bottom);
+  };
+  useEffect(() => {
+    if (!hoverAvailable || !hoverExpanded) return;
+    // The theme reveal temporarily covers the sidebar. Track real pointer exits through it.
+    const move = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse' && !pointerInsideSidebar(event.clientX, event.clientY)) setHoverExpanded(false);
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    return () => window.removeEventListener('pointermove', move);
+  }, [hoverAvailable, hoverExpanded, setHoverExpanded]);
   const unreadMessages = role === 'admin' ? 0 :
     bookings.bookings.filter(record => visibleTo(record, role)).reduce((sum, record) => sum + unreadFor(bookings, record, role), 0) +
     dashboard.inquiries.filter(item => role === 'customer' || item.provider === role).reduce((sum, item) => sum + inquiryUnread(item, role), 0);
@@ -61,16 +92,23 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
   const contentRef = usePanelEntrance(`${role}:${activeTab}`);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab, role]);
   return <MotionConfig reducedMotion="user">
-    <div className={`sl-dashboard sl-${role}${collapsed ? ' sl-sidebar-collapsed' : ''}`} data-dashboard-view={activeTab}>
+    <div className={`sl-dashboard sl-${role}${isCollapsed ? ' sl-sidebar-collapsed' : ''}`} data-dashboard-view={activeTab}>
       <div key={role} className="sl-arrival-light" aria-hidden="true" />
       <a className="sl-skip" href="#dashboard-content">Skip to dashboard</a>
-      <aside className="sl-sidebar" aria-label={`${identity.title} sidebar`}>
+      <aside ref={sidebarRef} className="sl-sidebar" aria-label={`${identity.title} sidebar`}
+        onPointerEnter={event => { if (hoverAvailable && event.pointerType === 'mouse') setHoverExpanded(true); }}
+        onPointerLeave={event => { if (!pointerInsideSidebar(event.clientX, event.clientY)) setHoverExpanded(false); }}
+        onPointerCancel={() => setHoverExpanded(false)}
+        onPointerDown={() => setFocusExpanded(false)}
+        onFocusCapture={event => { if (event.target instanceof HTMLElement && event.target.matches(':focus-visible')) setFocusExpanded(true); }}
+        onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocusExpanded(false); }}
+      >
         <div className="sl-sidebar-head">
           <button className="sl-brand" onClick={() => onNavigate(navItems[0].id)} aria-label="StageLink dashboard home">
             <img className="sl-brand-logo" src="/stagelink-logo.png" alt="StageLink" />
           </button>
-          <button className="sl-sidebar-toggle" onClick={toggleSidebar} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="dashboard-sidebar-navigation" title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-            {collapsed ? <PanelLeftOpen size={19} aria-hidden="true" /> : <PanelLeftClose size={19} aria-hidden="true" />}
+          <button className="sl-sidebar-toggle" onClick={() => { toggleSidebar(); setFocusExpanded(false); }} aria-label={sidebarAction} aria-expanded={!isCollapsed} aria-pressed={hoverAvailable ? !collapsed : undefined} aria-controls="dashboard-sidebar-navigation" title={sidebarAction}>
+            {isCollapsed ? <PanelLeftOpen size={19} aria-hidden="true" /> : <PanelLeftClose size={19} aria-hidden="true" />}
           </button>
         </div>
         <div className="sl-sidebar-caption">{identity.title}</div>
@@ -78,17 +116,17 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
           {navItems.map((item, index) => {
             const count = ['messages', 'chat'].includes(item.id) ? unreadMessages : item.count ?? 0;
             const label = count > 0 ? `${item.label}, ${count} updates` : item.label;
-            return <button key={item.id} style={{ '--sl-nav-order': Math.min(index, 9) } as CSSProperties} onClick={() => onNavigate(item.id)} aria-label={label} title={collapsed ? label : undefined} aria-current={activeTab === item.id ? 'page' : undefined} className={`sl-nav-item ${activeTab === item.id ? 'is-active' : ''}`}>
+            return <button key={item.id} style={{ '--sl-nav-order': Math.min(index, 9) } as CSSProperties} onClick={() => onNavigate(item.id)} aria-label={label} title={isCollapsed ? label : undefined} aria-current={activeTab === item.id ? 'page' : undefined} className={`sl-nav-item ${activeTab === item.id ? 'is-active' : ''}`}>
               <item.icon className="sl-nav-icon" /><span className="sl-nav-label">{item.label}</span>
               {count > 0 ? <span className="sl-nav-count" aria-hidden="true">{count > 99 ? '99+' : count}</span> : <span className="sl-nav-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>}
             </button>;
           })}
         </nav>
         <div className="sl-sidebar-tools">
-          <button className="sl-theme-toggle" onClick={event => onThemeChange(!isDark, event)} aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`} title={collapsed ? `Switch to ${isDark ? 'light' : 'dark'} mode` : undefined}>
+          <button className="sl-theme-toggle" onClick={event => onThemeChange(!isDark, event)} aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`} title={isCollapsed ? `Switch to ${isDark ? 'light' : 'dark'} mode` : undefined}>
             {isDark ? <Sun className="sl-nav-icon" aria-hidden="true" /> : <Moon className="sl-nav-icon" aria-hidden="true" />}<span className="sl-nav-label">{isDark ? 'Light mode' : 'Dark mode'}</span>
           </button>
-          {onGoToLanding && <button className="sl-public-site-link" onClick={onGoToLanding} aria-label="Landing page" title={collapsed ? 'Landing page' : undefined}><Icon.Home className="sl-nav-icon" /><span className="sl-nav-label">Landing page</span><span className="sl-nav-index" aria-hidden="true">↗</span></button>}
+          {onGoToLanding && <button className="sl-public-site-link" onClick={onGoToLanding} aria-label="Landing page" title={isCollapsed ? 'Landing page' : undefined}><Icon.Home className="sl-nav-icon" /><span className="sl-nav-label">Landing page</span><span className="sl-nav-index" aria-hidden="true">↗</span></button>}
         </div>
         {role !== 'admin' && <GlassSurface className="sl-access-pass">
           <span className="sl-eyebrow">ALL ACCESS</span>
@@ -96,7 +134,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
           <p>{identity.note}</p><div className="sl-barcode" aria-hidden="true" />
           <span className="sl-pass-id">STAGELINK / {role.toUpperCase()}</span>
         </GlassSurface>}
-        <div className="sl-account" title={collapsed ? identity.name : undefined}><span className="sl-avatar">{identity.initials}</span><div className="sl-account-details"><strong>{identity.name}</strong><small>{identity.tag}</small></div></div>
+        <div className="sl-account" title={isCollapsed ? identity.name : undefined}><span className="sl-avatar">{identity.initials}</span><div className="sl-account-details"><strong>{identity.name}</strong><small>{identity.tag}</small></div></div>
       </aside>
       <div className="sl-workspace">
         <header className="sl-topbar">

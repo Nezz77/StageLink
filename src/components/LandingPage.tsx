@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
 import BrowseArtistsPage from './BrowseArtistsPage';
 import RentEquipmentPage from './RentEquipmentPage';
@@ -99,11 +99,11 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
     };
   }, [activeTab, startHeroVideo]);
 
-  // Use absolute scrollY to trigger the animation instantly without being delayed by the nav bar height
   const { scrollY } = useScroll();
-  // Gracefully fade in over the first 300px of scroll
-  const textOpacity = useTransform(scrollY, [0, 50, 300], [0, 0, 1]);
-  const textY = useTransform(scrollY, [0, 50, 300], [40, 40, 0]);
+  const reducedMotion = useReducedMotion();
+  // Reveal on the first small scroll, with no initial dead zone.
+  const textOpacity = useTransform(scrollY, [0, 140], [0, 1]);
+  const textY = useTransform(scrollY, [0, 140], [24, 0]);
   const filters = ['All', 'Vocalist', 'Band', 'DJ', 'Dancer', 'Classical'];
 
   const openCollection = (listing: CollectionListing) => {
@@ -228,7 +228,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
             transition={{ duration: 0.5 }}
           >
             {/* Hero — Scroll Linked Animation */}
-            <div className="relative h-[200vh] w-full z-10">
+            <div className="relative h-[150vh] w-full z-10">
               <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                   <div style={{ position: 'absolute', top: '10%', left: '15%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.15), transparent 70%)', filter: 'blur(40px)' }} />
@@ -236,7 +236,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
                 </div>
                 <motion.div
                   className="max-w-4xl mx-auto relative z-10 text-center px-6"
-                  style={{ opacity: textOpacity, y: textY }}
+                  style={{ opacity: reducedMotion ? 1 : textOpacity, y: reducedMotion ? 0 : textY }}
                 >
                   <h1 className="font-display text-5xl md:text-7xl font-black text-white mb-6 leading-tight drop-shadow-2xl">
                     Book the Perfect <span className="gradient-text">Performance</span><br />for Any Event
