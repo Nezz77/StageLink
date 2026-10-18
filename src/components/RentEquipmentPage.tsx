@@ -3,6 +3,7 @@ import { collectionsFor } from '../lib/catalogPresentation';
 import { motion } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
 import type { CollectionListing } from './CollectionDetailPage';
+import '../collections.css';
 
 export default function RentEquipmentPage({ onOpenCollection }: { onOpenCollection: (listing: CollectionListing) => void }) {
   const { state } = useDashboard();

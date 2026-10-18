@@ -17,7 +17,7 @@ export default function ArtistCollectionCard({ listing, onOpen }: ArtistCollecti
 
   return (
     <motion.div
-      className="relative isolate z-0 w-[300px] max-w-full h-[350px] select-none rounded-[40px] bg-[#F5F5F0] cursor-pointer shadow-sm hover:shadow-xl transition-shadow duration-500 mx-auto"
+      className={`relative isolate z-0 w-[300px] max-w-full h-[350px] select-none rounded-[40px] ${listing.type === 'equipment' ? 'restored-equipment-card' : 'bg-[#F5F5F0]'} cursor-pointer shadow-sm hover:shadow-xl transition-shadow duration-500 mx-auto`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => { setIsHovered(false); setIsExpanded(false); }}
       onDoubleClick={(event) => {

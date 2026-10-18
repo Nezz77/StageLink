@@ -16,6 +16,34 @@
   isolation: isolate;
   color-scheme: dark;
 }
+.sl-dashboard.sl-renter {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .25), rgba(7, 9, 15, .5)), url('/equipment-rent-background.webp');
+  background-position: center, center top;
+  background-size: cover, cover;
+  background-attachment: fixed;
+}
+.sl-dashboard.sl-artist {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .25), rgba(7, 9, 15, .5)), url('/artist-background.webp');
+  background-position: center, center top;
+  background-size: cover, cover;
+  background-attachment: fixed;
+}
+.sl-dashboard.sl-customer {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .25), rgba(7, 9, 15, .5)), url('/customer-background.webp');
+  background-position: center, center top;
+  background-size: cover, cover;
+  background-attachment: fixed;
+}
+.sl-dashboard.sl-admin {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .25), rgba(7, 9, 15, .5)), url('/admin-background.webp');
+  background-position: center, center top;
+  background-size: cover, cover;
+  background-attachment: fixed;
+}
 .sl-dashboard button { cursor: pointer; }
 .sl-dashboard :is(button,a,input,textarea,select):focus-visible { outline: 2px solid var(--sl-accent); outline-offset: 5px; }
 .sl-dashboard button:disabled { opacity: .45; cursor: not-allowed; }
@@ -224,6 +252,22 @@ html[data-theme="light"] .sl-dashboard {
     radial-gradient(ellipse at 78% 4%, rgba(var(--sl-accent-rgb), .12), transparent 42%),
     radial-gradient(ellipse at 12% 78%, rgba(124, 58, 237, .06), transparent 45%),
     #f6f4f8;
+}
+html[data-theme="light"] .sl-dashboard.sl-renter {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/equipment-rent-background.webp');
+}
+html[data-theme="light"] .sl-dashboard.sl-artist {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/artist-background.webp');
+}
+html[data-theme="light"] .sl-dashboard.sl-customer {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/customer-background.webp');
+}
+html[data-theme="light"] .sl-dashboard.sl-admin {
+  background-color: #07090f;
+  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/admin-background.webp');
 }
 html[data-theme="light"] .sl-sidebar {
   background: linear-gradient(140deg, #f4f0fc, #faf9fc);

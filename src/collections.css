@@ -1,5 +1,15 @@
 /* The original photo profile keeps its dark glass surfaces in either app theme. */
 .restored-detail { color: #cbd5e1; color-scheme: dark; }
+.restored-collections {
+  background-color: #080b13;
+  background-image: linear-gradient(180deg, rgba(7, 9, 15, .16), rgba(7, 9, 15, .42)), url('/equipment-rent-background.webp');
+  background-position: center top;
+  background-size: cover;
+}
+.restored-collections .restored-equipment-card {
+  background-color: rgba(13, 17, 32, .84);
+  border: 1px solid rgba(167, 139, 250, .18);
+}
 html[data-theme="light"] :is(.landing-page, .sl-dashboard) .restored-detail .text-white { color: #f1f5f9 !important; }
 html[data-theme="light"] :is(.landing-page, .sl-dashboard) .restored-detail .text-slate-300 { color: #cbd5e1 !important; }
 html[data-theme="light"] :is(.landing-page, .sl-dashboard) .restored-detail :is(.text-slate-400, .text-slate-500, .text-slate-600) { color: #94a3b8 !important; }
