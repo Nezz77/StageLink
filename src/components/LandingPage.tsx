@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { motion, AnimatePresence, useReducedMotion, useScroll, useTransform } from 'motion/react';
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from 'motion/react';
 import ArtistCollectionCard from './ArtistCollectionCard';
 import BrowseArtistsPage from './BrowseArtistsPage';
 import RentEquipmentPage from './RentEquipmentPage';
@@ -11,6 +11,8 @@ import { FaFire } from 'react-icons/fa';
 import { MdFavorite } from 'react-icons/md';
 import { MorphingDiscoveryBar, type Category } from './watermelon/morphing-discovery-bar';
 import PricingShowcase from './PricingShowcase';
+import MusicNoteField from './MusicNoteField';
+import { useMotionEnvironment } from '../lib/useMotionEnvironment';
 
 const DISCOVERY_CATEGORIES: Category[] = [
   {
@@ -93,10 +95,14 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
   }, [activeTab, startHeroVideo]);
 
   const { scrollY } = useScroll();
-  const reducedMotion = useReducedMotion();
+  const { reducedMotion } = useMotionEnvironment();
+  const [headlineRevealed, setHeadlineRevealed] = useState(false);
+  useMotionValueEvent(scrollY, 'change', value => { if (activeTab === 'home' && value >= 140) setHeadlineRevealed(true); });
+  useEffect(() => { setHeadlineRevealed(activeTab === 'home' && (Boolean(reducedMotion) || scrollY.get() >= 140)); }, [activeTab, reducedMotion, scrollY]);
   // Reveal on the first small scroll, with no initial dead zone.
   const textOpacity = useTransform(scrollY, [0, 140], [0, 1]);
   const textY = useTransform(scrollY, [0, 140], [24, 0]);
+  const videoOpacity = useTransform(scrollY, [140, 720], [1, 0]);
   const filters = ['All', 'Vocalist', 'Band', 'DJ', 'Dancer', 'Classical'];
 
   const openCollection = (listing: CollectionListing) => {
@@ -123,11 +129,13 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
   };
 
   return (
-    <div className="landing-page min-h-screen relative bg-[#07090f]">
+    <div className={`landing-page min-h-screen relative bg-[#07090f]${headlineRevealed && activeTab === 'home' ? ' has-music-field' : ''}`}>
+      {headlineRevealed && activeTab === 'home' && <MusicNoteField isDark={isDark} />}
       {/* Fixed Background Video */}
-      <div
+      <motion.div
         aria-hidden="true"
-        className={`fixed inset-0 z-0 h-screen w-full overflow-hidden ${activeTab === 'home' ? 'visible' : 'invisible'}`}
+        style={{ opacity: videoOpacity }}
+        className={`fixed inset-0 z-[-2] h-screen w-full overflow-hidden ${activeTab === 'home' ? 'visible' : 'invisible'}`}
       >
           <video
             ref={heroVideoRef}
@@ -161,7 +169,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
           )}
           {/* Gradient overlay to blend the bottom of the video into the background color */}
         <div className="landing-video-overlay pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-[#07090f]/50 to-[#07090f]"></div>
-      </div>
+      </motion.div>
 
       {/* Nav */}
       <motion.nav

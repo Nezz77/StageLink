@@ -1,6 +1,6 @@
 .ps-section {
   --ps-bg: #090b12;
-  --ps-surface: #10131e;
+  --ps-surface: rgba(16, 19, 30, .9);
   --ps-text: #f3f0e8;
   --ps-muted: #a8abbc;
   --ps-rule: rgba(205, 194, 244, .14);
@@ -50,10 +50,13 @@
 .mc-carousel:focus-visible { outline: 2px solid #c3a6ff; outline-offset: 5px; }
 .mc-viewport { overflow: hidden; padding: 32px 0 54px; touch-action: pan-y pinch-zoom; cursor: grab; }
 .mc-viewport:active { cursor: grabbing; }
-.mc-track { display: flex; }
-.mc-slide { flex: 0 0 34%; min-width: 0; padding: 0 9px; perspective: 1000px; }
+.mc-track { display: grid; grid-auto-flow: column; grid-auto-columns: 34%; }
+.mc-slide { position: relative; min-width: 0; padding: 0 9px; perspective: 1000px; }
 .mc-reveal, .mc-slide-visual { height: 100%; }
-.mc-has-focus .mc-reveal { opacity: 1 !important; transform: none !important; }
+.mc-reveal { position: relative; transform-origin: center; }
+.mc-slide-visual { will-change: transform; }
+.mc-deck-running .ps-card, .mc-deck-running .ps-art-icon, .mc-deck-running .ps-sound-bars i { transform: none !important; transition: none !important; }
+.mc-deck-running .ps-card-sheen { animation: none; opacity: 0; }
 
 .ps-card {
   position: relative;
@@ -122,7 +125,7 @@
 .ps-explore svg { color: #c3a6ff; transition: transform .3s ease; }
 
 @media (hover: hover) and (pointer: fine) {
-  .ps-card:hover { transform: translateY(-5px); border-color: rgba(var(--ps-rgb), .6); }
+  .ps-card:hover { border-color: rgba(var(--ps-rgb), .6); }
   .ps-card:hover::before { opacity: 1; }
   .ps-card:hover .ps-art-icon { transform: rotate(-7deg) scale(1.08); }
   .ps-card:hover .ps-sound-bars i:nth-child(odd) { transform: scaleY(.6); }
@@ -133,7 +136,7 @@
   .ps-explore:hover svg { transform: translate(2px, -2px); }
 }
 
-html[data-theme='light'] .ps-section { --ps-bg: #f7f5fc; --ps-surface: #fff; --ps-text: #252331; --ps-muted: #5e596d; --ps-rule: rgba(77, 59, 107, .16); }
+html[data-theme='light'] .ps-section { --ps-bg: #f7f5fc; --ps-surface: rgba(255, 255, 255, .9); --ps-text: #252331; --ps-muted: #5e596d; --ps-rule: rgba(77, 59, 107, .16); }
 html[data-theme='light'] .ps-card.ps-amber { --ps-accent: #8c610c !important; --ps-rgb: 140,97,12 !important; }
 html[data-theme='light'] .ps-card.ps-mint { --ps-accent: #147b67 !important; --ps-rgb: 20,123,103 !important; }
 html[data-theme='light'] .ps-card.ps-violet { --ps-accent: #7750b5 !important; --ps-rgb: 119,80,181 !important; }
@@ -145,7 +148,7 @@ html[data-theme='light'] .mc-slide.is-active .ps-card { box-shadow: 0 24px 48px 
 
 @media (max-width: 1000px) {
   .ps-section { padding-inline: 24px; }
-  .mc-slide { flex-basis: 48%; }
+  .mc-track { grid-auto-columns: 48%; }
   .ps-card-price strong { font-size: 29px; }
   .ps-card-copy h3 { font-size: 34px; }
 }
@@ -158,7 +161,8 @@ html[data-theme='light'] .mc-slide.is-active .ps-card { box-shadow: 0 24px 48px 
   .ps-eyebrow { gap: 8px; font-size: 8px; letter-spacing: .12em; }
   .ps-eyebrow > span { width: 16px; }
   .ps-description { max-width: 310px; font-size: 12px; line-height: 1.8; }
-  .mc-slide { flex-basis: 86%; padding-inline: 5px; }
+  .mc-track { grid-auto-columns: 86%; }
+  .mc-slide { padding-inline: 5px; }
   .mc-viewport { padding-block: 22px 42px; }
   .ps-card { min-height: 405px; padding: 22px 24px 0; border-radius: 22px; }
   .ps-art { height: 112px; }
@@ -184,3 +188,13 @@ html[data-theme='light'] .mc-slide.is-active .ps-card { box-shadow: 0 24px 48px 
   .ps-card:hover, .ps-card:hover .ps-art-icon, .ps-card:hover .ps-sound-bars i, .ps-explore:hover svg { transform: none; }
   .ps-card-sheen { display: none; }
 }
+
+/* The border rotates inside a masked ring, leaving the copy untouched. */
+.ps-card { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.ps-border-ring { position: absolute; inset: 0; padding: 1px; z-index: 3; border-radius: inherit; pointer-events: none; mask-image: linear-gradient(#fff, #fff), linear-gradient(#fff, #fff); mask-origin: content-box, border-box; mask-clip: content-box, border-box; mask-composite: exclude; }
+.ps-border-light { position: absolute; width: 200%; height: 200%; left: -50%; top: -50%; background: conic-gradient(from 0deg, transparent 0deg, transparent 70deg, rgba(var(--ps-rgb), .12) 110deg, var(--ps-accent) 145deg, transparent 170deg, transparent 250deg, rgba(var(--ps-rgb), .8) 320deg, transparent 350deg); }
+.mc-deck-running .ps-border-ring { opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .ps-card { transform: none !important; } .ps-border-light { transform: none !important; } }
+
+.mc-deck-running .ps-card { background-color: #10131e; }
+html[data-theme='light'] .mc-deck-running .ps-card { background-color: #fff; }

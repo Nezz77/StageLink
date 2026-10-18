@@ -1,7 +1,8 @@
-import { useRef, type CSSProperties } from 'react';
+import { useRef } from 'react';
 import { motion, useInView, useReducedMotion } from 'motion/react';
 import { ArrowUpRight, Award, Globe2, Mic2, MoveHorizontal, Music2, Sparkles } from 'lucide-react';
 import { MotionCarousel } from './MotionCarousel';
+import PricingCard from './PricingCard';
 import '../pricing-showcase.css';
 
 const priceBands = [
@@ -31,20 +32,7 @@ export default function PricingShowcase({ onBrowse }: { onBrowse: () => void }) 
         <motion.h2 id="pricing-showcase-title" data-reveal {...entrance(.07)}>Every budget.<br /><em>Extraordinary possibilities.</em></motion.h2>
         <motion.p className="ps-description" data-reveal {...entrance(.14)}>Find a price range that feels right. Then find the artist who makes it yours.</motion.p>
       </header>
-      <MotionCarousel options={{ loop: true, startIndex: 1 }} labels={priceBands.map(band => band.label)} slides={priceBands.map((band, index) => <article key={band.label} className={`ps-card ps-${band.tone}`} style={{ '--ps-accent': band.accent, '--ps-rgb': band.rgb } as CSSProperties}
-        onPointerMove={event => {
-          if (event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-          const bounds = event.currentTarget.getBoundingClientRect();
-          event.currentTarget.style.setProperty('--ps-spot-x', `${event.clientX - bounds.left}px`);
-          event.currentTarget.style.setProperty('--ps-spot-y', `${event.clientY - bounds.top}px`);
-        }}>
-        <div className="ps-card-sheen" aria-hidden="true" />
-        <div className="ps-card-top"><span><i /> STAGE PASS</span><span>No. {String(index + 1).padStart(2, '0')}</span></div>
-        <div className="ps-art" aria-hidden="true"><div className="ps-orbit" /><div className="ps-art-icon"><band.icon strokeWidth={1.25} /></div><span className="ps-art-number">0{index + 1}</span><div className="ps-sound-bars">{[12, 23, 16, 34, 24, 42, 29, 18, 30, 12].map((height, i) => <i key={i} style={{ height }} />)}</div></div>
-        <div className="ps-card-copy"><h3>{band.label}</h3><p>{band.note}</p></div>
-        <div className="ps-card-price"><span className="ps-range-label">YOUR STARTING RANGE</span><div><strong>{band.range}</strong><span>{band.unit}</span></div></div>
-        <div className="ps-card-footer"><span>{band.count}</span><span className="ps-barcode" aria-hidden="true" /></div>
-      </article>)} />
+      <MotionCarousel options={{ loop: true, startIndex: 1 }} labels={priceBands.map(band => band.label)} slides={priceBands.map((band, index) => <PricingCard key={band.label} band={band} index={index} />)} />
       <motion.div className="ps-bottom" data-reveal {...entrance(0)}>
         <div><span className="ps-drag-hint"><MoveHorizontal size={16} aria-hidden="true" /> Drag to explore the lineup</span><p>Illustrative demo prices. Final quotes are agreed with your artist.</p></div>
         <button type="button" className="ps-explore" onClick={onBrowse}>Explore artist collections <ArrowUpRight size={19} aria-hidden="true" /></button>

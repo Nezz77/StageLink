@@ -1,0 +1,142 @@
+{
+  "hash": "8f14e75e",
+  "configHash": "5d6f4afd",
+  "lockfileHash": "da240541",
+  "browserHash": "c6027cf9",
+  "optimized": {
+    "@react-three/drei": {
+      "src": "../../node_modules/.pnpm/@react-three+drei@10.7.9_@react-three+fiber@9.8.2_@types+react@19.2.14_react-dom@19.2.4_cb32e8d0a6269f100cbacb6cc104216e/node_modules/@react-three/drei/index.js",
+      "file": "@react-three_drei.js",
+      "fileHash": "71538df6",
+      "needsInterop": false
+    },
+    "@react-three/fiber": {
+      "src": "../../node_modules/.pnpm/@react-three+fiber@9.8.2_@types+react@19.2.14_react-dom@19.2.4_react@19.2.4__react@19.2.4_three@0.186.1/node_modules/@react-three/fiber/dist/react-three-fiber.esm.js",
+      "file": "@react-three_fiber.js",
+      "fileHash": "5231817b",
+      "needsInterop": false
+    },
+    "@react-three/postprocessing": {
+      "src": "../../node_modules/.pnpm/@react-three+postprocessing@3.2.0_@react-three+fiber@9.8.2_@types+react@19.2.14_react-d_a9c9e5024627c3474fdafcd53afcbe55/node_modules/@react-three/postprocessing/dist/index.js",
+      "file": "@react-three_postprocessing.js",
+      "fileHash": "88b897fd",
+      "needsInterop": false
+    },
+    "@vercel/analytics/react": {
+      "src": "../../node_modules/.pnpm/@vercel+analytics@2.0.1_react@19.2.4/node_modules/@vercel/analytics/dist/react/index.mjs",
+      "file": "@vercel_analytics_react.js",
+      "fileHash": "b1b7732c",
+      "needsInterop": false
+    },
+    "embla-carousel-react": {
+      "src": "../../node_modules/.pnpm/embla-carousel-react@8.6.0_react@19.2.4/node_modules/embla-carousel-react/esm/embla-carousel-react.esm.js",
+      "file": "embla-carousel-react.js",
+      "fileHash": "b20ec4dd",
+      "needsInterop": false
+    },
+    "framer-motion": {
+      "src": "../../node_modules/.pnpm/framer-motion@13.4.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/framer-motion/dist/es/index.mjs",
+      "file": "framer-motion.js",
+      "fileHash": "7b005008",
+      "needsInterop": false
+    },
+    "lucide-react": {
+      "src": "../../node_modules/.pnpm/lucide-react@1.47.0_react@19.2.4/node_modules/lucide-react/dist/esm/lucide-react.mjs",
+      "file": "lucide-react.js",
+      "fileHash": "93369509",
+      "needsInterop": false
+    },
+    "motion/react": {
+      "src": "../../node_modules/.pnpm/motion@13.4.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/motion/dist/es/react.mjs",
+      "file": "motion_react.js",
+      "fileHash": "db4a1b79",
+      "needsInterop": false
+    },
+    "react-dom": {
+      "src": "../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom/index.js",
+      "file": "react-dom.js",
+      "fileHash": "675bb169",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "95e698f8",
+      "needsInterop": true
+    },
+    "react-icons/fa": {
+      "src": "../../node_modules/.pnpm/react-icons@5.7.0_react@19.2.4/node_modules/react-icons/fa/index.mjs",
+      "file": "react-icons_fa.js",
+      "fileHash": "9388c49b",
+      "needsInterop": false
+    },
+    "react-icons/md": {
+      "src": "../../node_modules/.pnpm/react-icons@5.7.0_react@19.2.4/node_modules/react-icons/md/index.mjs",
+      "file": "react-icons_md.js",
+      "fileHash": "15769e89",
+      "needsInterop": false
+    },
+    "react": {
+      "src": "../../node_modules/.pnpm/react@19.2.4/node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "f0cee336",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/.pnpm/react@19.2.4/node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "bde0d853",
+      "needsInterop": true
+    },
+    "react/jsx-runtime": {
+      "src": "../../node_modules/.pnpm/react@19.2.4/node_modules/react/jsx-runtime.js",
+      "file": "react_jsx-runtime.js",
+      "fileHash": "b7525fc4",
+      "needsInterop": true
+    },
+    "three": {
+      "src": "../../node_modules/.pnpm/three@0.186.1/node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "147406de",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-BoAXSpZd": {
+      "file": "chunk-BoAXSpZd.js",
+      "isDynamicEntry": false
+    },
+    "client-CQfrWwZk": {
+      "file": "client-CQfrWwZk.js",
+      "isDynamicEntry": false
+    },
+    "es-BAAV_AUy": {
+      "file": "es-BAAV_AUy.js",
+      "isDynamicEntry": false
+    },
+    "hls-b9Id9iA2": {
+      "file": "hls-b9Id9iA2.js",
+      "isDynamicEntry": false
+    },
+    "iconBase-XwOwjOOO": {
+      "file": "iconBase-XwOwjOOO.js",
+      "isDynamicEntry": false
+    },
+    "maath.esm-BW1kdXTz": {
+      "file": "maath.esm-BW1kdXTz.js",
+      "isDynamicEntry": false
+    },
+    "react-three-fiber.esm-C-x0RuCV": {
+      "file": "react-three-fiber.esm-C-x0RuCV.js",
+      "isDynamicEntry": false
+    },
+    "three.module-K-PmCeyw": {
+      "file": "three.module-K-PmCeyw.js",
+      "isDynamicEntry": false
+    },
+    "vision_bundle-C75tGCww": {
+      "file": "vision_bundle-C75tGCww.js",
+      "isDynamicEntry": true
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import type { EmblaOptionsType } from 'embla-carousel';
-import { motion, useInView, useReducedMotion } from 'motion/react';
+import { usePricingDeck } from '../lib/usePricingDeck';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 const prefersStill = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -10,9 +10,8 @@ type Props = { slides: ReactNode[]; labels?: string[]; options?: EmblaOptionsTyp
 
 export function MotionCarousel({ slides, labels = [], options }: Props) {
   const root = useRef<HTMLDivElement>(null);
-  const revealed = useInView(root, { once: true, amount: .18 });
-  const reduced = useReducedMotion();
-  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'center', containScroll: false, duration: 32, ...options });
+  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'center', containScroll: false, duration: 42, ...options });
+  const deck = usePricingDeck(emblaApi, root);
   const [selectedIndex, setSelectedIndex] = useState(options?.startIndex ?? 0);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -28,7 +27,7 @@ export function MotionCarousel({ slides, labels = [], options }: Props) {
     onSelect();
     emblaApi.on('select', onSelect).on('reInit', onSelect);
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updateMotion = () => emblaApi.reInit({ duration: preference.matches ? 0 : options?.duration ?? 32 });
+    const updateMotion = () => emblaApi.reInit({ duration: preference.matches ? 0 : options?.duration ?? 42 });
     updateMotion();
     preference.addEventListener('change', updateMotion);
     return () => {
@@ -37,13 +36,11 @@ export function MotionCarousel({ slides, labels = [], options }: Props) {
     };
   }, [emblaApi, onSelect, options?.duration]);
 
-  const previous = () => emblaApi?.scrollPrev(prefersStill());
-  const next = () => emblaApi?.scrollNext(prefersStill());
-  const goTo = (index: number) => emblaApi?.scrollTo(index, prefersStill());
-  const show = revealed || reduced;
+  const previous = () => { emblaApi?.scrollPrev(prefersStill()); };
+  const next = () => { emblaApi?.scrollNext(prefersStill()); };
+  const goTo = (index: number) => { emblaApi?.scrollTo(index, prefersStill()); };
 
-  return <div ref={root} className={`mc-carousel${show ? ' is-revealed' : ''}`} role="region" aria-roledescription="carousel" aria-label="Performance price ranges" tabIndex={0}
-    onFocusCapture={() => { root.current?.classList.add('mc-has-focus'); }}
+  return <div ref={root} className={`mc-carousel${deck.phase === 'settled' ? ' is-revealed' : ''}${deck.busy ? ' mc-deck-running' : ''}`} data-deck-phase={deck.phase} role="region" aria-roledescription="carousel" aria-label="Performance price ranges" tabIndex={0}
     onKeyDown={event => {
       if (event.key === 'ArrowLeft') { event.preventDefault(); previous(); }
       if (event.key === 'ArrowRight') { event.preventDefault(); next(); }
@@ -56,15 +53,9 @@ export function MotionCarousel({ slides, labels = [], options }: Props) {
           const active = index === selectedIndex;
           // Keep Embla's loop positioning on the outer slide, separate from visual motion.
           return <div className={`mc-slide${active ? ' is-active' : ''}`} key={labels[index] ?? index} role="group" aria-roledescription="slide" aria-label={`${labels[index] ?? 'Price range'}, ${index + 1} of ${slides.length}`}>
-            <motion.div className="mc-reveal" initial={reduced ? false : { opacity: 0, y: 60, rotateX: 8 }}
-              animate={show ? { opacity: 1, y: 0, rotateX: 0 } : { opacity: 0, y: 60, rotateX: 8 }}
-              transition={{ duration: reduced ? 0 : .75, delay: reduced ? 0 : .06 + Math.abs(index - (options?.startIndex ?? 0)) * .09, ease: [.22, 1, .36, 1] }}>
-              <motion.div className="mc-slide-visual" initial={false}
-                animate={{ scale: active ? 1 : .92, y: active ? 0 : 18, opacity: active ? 1 : .9 }}
-                transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 160, damping: 24, mass: .85 }}>
-                {slide}
-              </motion.div>
-            </motion.div>
+            <div className="mc-reveal" style={{ opacity: 0 }}>
+              <div className="mc-slide-visual">{slide}</div>
+            </div>
           </div>;
         })}
       </div>
@@ -77,5 +68,6 @@ export function MotionCarousel({ slides, labels = [], options }: Props) {
       </div>
       <button type="button" className="mc-arrow" onClick={next} disabled={!canNext} aria-label="Next price range"><ArrowRight size={21} aria-hidden="true" /></button>
     </div>
+
   </div>;
 }
