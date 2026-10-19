@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ArrowUpRight, CalendarDays, Check, Clock3, CreditCard, Image, LayoutDashboard, MessageCircle, Package, Plus, Repeat, UserRound } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, Check, Clock3, CreditCard, Image, LayoutDashboard, MessageCircle, Music2, Package, Plus, Repeat, UserRound } from 'lucide-react';
 import DashboardShell, { DashboardIntro, type DashboardNav } from './DashboardShell';
 import { useBooking } from '../lib/BookingContext';
 import { useDashboard } from '../lib/DashboardContext';

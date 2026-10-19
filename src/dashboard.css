@@ -262,21 +262,42 @@ html[data-theme="light"] .sl-dashboard {
     radial-gradient(ellipse at 12% 78%, rgba(124, 58, 237, .06), transparent 45%),
     #f6f4f8;
 }
-html[data-theme="light"] .sl-dashboard.sl-renter {
-  background-color: #07090f;
-  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/equipment-rent-background.webp');
+html[data-theme="light"] .sl-dashboard {
+  background-color: #f6f4f8;
+  background-image:
+    radial-gradient(ellipse at 78% 4%, rgba(var(--sl-accent-rgb), .12), transparent 42%),
+    radial-gradient(ellipse at 12% 78%, rgba(124, 58, 237, .06), transparent 45%);
 }
-html[data-theme="light"] .sl-dashboard.sl-artist {
-  background-color: #07090f;
-  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/artist-background.webp');
+html[data-theme="light"] .sl-dashboard:is(.sl-renter, .sl-artist, .sl-customer, .sl-admin) {
+  background-color: #f6f4f8;
+  background-image:
+    radial-gradient(ellipse at 78% 4%, rgba(var(--sl-accent-rgb), .12), transparent 42%),
+    radial-gradient(ellipse at 12% 78%, rgba(124, 58, 237, .06), transparent 45%);
 }
-html[data-theme="light"] .sl-dashboard.sl-customer {
-  background-color: #07090f;
-  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/customer-background.webp');
+html[data-theme="light"] .sl-dashboard::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-position: center, center top;
+  background-repeat: no-repeat;
+  background-size: cover, cover;
+  background-attachment: fixed;
+  filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(1.12);
+  opacity: .42;
 }
-html[data-theme="light"] .sl-dashboard.sl-admin {
-  background-color: #07090f;
-  background-image: linear-gradient(rgba(7, 9, 15, .3), rgba(7, 9, 15, .52)), url('/admin-background.webp');
+html[data-theme="light"] .sl-dashboard.sl-renter::before {
+  background-image: url('/equipment-rent-background.webp');
+}
+html[data-theme="light"] .sl-dashboard.sl-artist::before {
+  background-image: url('/artist-background.webp');
+}
+html[data-theme="light"] .sl-dashboard.sl-customer::before {
+  background-image: url('/customer-background.webp');
+}
+html[data-theme="light"] .sl-dashboard.sl-admin::before {
+  background-image: url('/admin-background.webp');
 }
 html[data-theme="light"] .sl-sidebar {
   background: linear-gradient(140deg, #f4f0fc, #faf9fc);
@@ -303,9 +324,10 @@ html[data-theme="light"] .sl-dashboard .card-2,
 html[data-theme="light"] .sl-dashboard .sl-glass,
 html[data-theme="light"] .sl-dashboard .sl-stat {
   color: #292633;
-  background: linear-gradient(135deg, #fff, #f6f3fa) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.86), rgba(246,243,250,.76)) !important;
   border-color: #2926331c !important;
   box-shadow: 0 10px 28px #2926330c;
+  backdrop-filter: blur(18px);
 }
 html[data-theme="light"] .sl-dashboard .text-slate-400,
 html[data-theme="light"] .sl-dashboard .sl-topbar-label,
