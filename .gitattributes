@@ -34,6 +34,10 @@
 # Serve these public assets as actual files on static hosts such as Vercel.
 public/Stage-Link-Background.mp4 -filter -diff -merge
 public/stagelink-logo.png -filter -diff -merge
+public/admin-background.webp -filter -diff -merge
+public/artist-background.webp -filter -diff -merge
+public/customer-background.webp -filter -diff -merge
+public/equipment-rent-background.webp -filter -diff -merge
 
 # ---------------------------------------------------------------------------
 # Audio
