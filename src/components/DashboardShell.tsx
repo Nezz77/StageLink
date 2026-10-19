@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { MotionConfig } from 'motion/react';
-import { PanelLeftClose, PanelLeftOpen, Sun, Moon } from 'lucide-react';
+import { ArrowUpRight, PanelLeftClose, PanelLeftOpen, Sun, Moon } from 'lucide-react';
 import { useAppearance } from '../lib/AppearanceContext';
 import { useBooking } from '../lib/BookingContext';
 import { unreadFor, visibleTo } from '../lib/pipeline';
@@ -121,8 +121,8 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
               {count > 0 ? <span className="sl-nav-count" aria-hidden="true">{count > 99 ? '99+' : count}</span> : <span className="sl-nav-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>}
             </button>;
           })}
-          {onGoToLanding && <button className="sl-nav-item sl-mobile-nav-action" onClick={onGoToLanding} aria-label="Go to landing page" title="Home">
-            <Icon.Home className="sl-nav-icon" /><span className="sl-nav-label">Home</span>
+          {onGoToLanding && <button className="sl-nav-item sl-mobile-nav-action" onClick={onGoToLanding} aria-label="Go to StageLink landing page" title="Landing page">
+            <ArrowUpRight className="sl-nav-icon" aria-hidden="true" /><span className="sl-nav-label">Landing page</span>
           </button>}
           <button className="sl-nav-item sl-mobile-nav-action" onClick={event => onThemeChange(!isDark, event)} aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`} title={isDark ? 'Light mode' : 'Dark mode'}>
             {isDark ? <Sun className="sl-nav-icon" aria-hidden="true" /> : <Moon className="sl-nav-icon" aria-hidden="true" />}<span className="sl-nav-label">{isDark ? 'Light mode' : 'Dark mode'}</span>

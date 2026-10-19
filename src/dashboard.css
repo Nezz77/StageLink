@@ -199,7 +199,7 @@
 @media (max-width: 600px) {
   .sl-topbar { margin-inline: 16px; }
   .sl-demo-indicator,.sl-open-chat { display: none !important; }
-  .sl-workspace { padding-top: 58px; }
+  .sl-workspace { padding-top: 72px; }
   .sl-main { padding: 25px 17px 100px; }
   .sl-topbar,.sl-footer { margin-inline: 18px; }
   .sl-topbar-label { font-size: 9px; } .sl-topbar-divider { padding: 0 10px; }
