@@ -84,6 +84,8 @@
 .sl-workspace { flex: 1; min-width: 0; }
 .sl-topbar { margin: 0 40px; height: 81px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e3edd217; font-size: 11px; color: #d7dece; }
 .sl-topbar-label { font-size: 9px; letter-spacing: .14em; color: #8b9686; }
+.sl-topbar-home { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; transition: color .2s; }
+.sl-topbar-home:hover { color: var(--sl-accent); }
 .sl-topbar-divider { color: #64748b; padding: 0 18px; }
 .sl-demo-indicator { display: flex; align-items: center; gap: 7px; font-size: 9px; color: #a3ac9d; }
 .sl-demo-indicator i,.sl-status i { width: 5px; height: 5px; border-radius: 50%; background: #bbdf92; box-shadow: 0 0 10px #bbdf9255; }
@@ -152,7 +154,9 @@
 .sl-section-heading h2 { font-family: var(--font-display); font-weight: 400; font-size: 28px; letter-spacing: -.03em; }
 .sl-section-heading p { color: #8f9b86; font-size: 10px; margin-top: 5px; }
 .sl-text-link { color: var(--sl-accent); font-size: 10px; display: inline-flex; align-items: center; gap: 15px; padding: 8px 0; }
+.sl-section-action { display: flex; justify-content: center; margin-top: 16px; }
 .sl-artist-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 17px; }
+.sl-featured-grid { grid-template-columns: repeat(3,minmax(0,1fr)); max-width: 1080px; margin-inline: auto; }
 .sl-talent-card { min-width: 0; overflow: hidden; }
 .sl-talent-photo { position: relative; height: 190px; overflow: hidden; background: #131928; }
 .sl-talent-photo img { height: 100%; width: 100%; object-fit: cover; filter: saturate(.65); transition: transform .7s, filter .7s; }
@@ -189,7 +193,7 @@
 .sl-app-controls .card { background: #0d1120f5; border: 1px solid rgba(var(--sl-accent-rgb), .28); }
 @media (min-width: 1600px) { .sl-sidebar { width: 244px; flex-basis: 244px; padding-inline: 25px; } .sl-main { padding-top: 45px; } }
 @media (max-height: 760px) and (min-width: 901px) { .sl-access-pass { padding: 12px; margin-top: 30px; margin-bottom: 15px; } .sl-pass-symbol { font-size: 37px; } .sl-access-pass p { font-size: 16px; } .sl-barcode { height: 15px; } .sl-sidebar-caption { margin-top: 30px; } }
-@media (max-width: 1150px) { .sl-sidebar { width: 190px; flex-basis: 190px; padding-inline: 13px; } .sl-main { padding: 28px; } .sl-topbar,.sl-footer { margin-inline: 28px; } .sl-intro { align-items: flex-start; } .sl-intro-action { margin-top: 28px; } .sl-artist-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .sl-discovery-hero { grid-template-columns: minmax(0,1fr) 230px; padding: 28px; } .sl-intro h1 { font-size: 38px; } }
+@media (max-width: 1150px) { .sl-sidebar { width: 190px; flex-basis: 190px; padding-inline: 13px; } .sl-main { padding: 28px; } .sl-topbar,.sl-footer { margin-inline: 28px; } .sl-intro { align-items: flex-start; } .sl-intro-action { margin-top: 28px; } .sl-artist-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .sl-featured-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } .sl-discovery-hero { grid-template-columns: minmax(0,1fr) 230px; padding: 28px; } .sl-intro h1 { font-size: 38px; } }
 @media (max-width: 900px) { .sl-dashboard { display: block; } .sl-sidebar { width: auto; height: auto; padding: 18px 22px 12px; border-right: 0; border-bottom: 1px solid #ffffff17; background: #0d1120ed; backdrop-filter: blur(20px); } .sl-brand-logo { width: 138px; } .sl-sidebar-caption,.sl-access-pass,.sl-account { display: none; } .sl-navigation { flex-direction: row; overflow-x: auto; gap: 8px; margin-top: 15px; padding: 2px; } .sl-nav-item { width: auto; flex-shrink: 0; gap: 6px; padding: 10px 12px; font-size: 11px; } .sl-nav-icon { width: 15px; height: 15px; } .sl-nav-index { display: none; } .sl-public-site-link { width: fit-content; margin-top: 10px; padding: 8px 10px; font-size: 10px; } .sl-public-site-link .sl-nav-icon { width: 14px; height: 14px; } .sl-topbar { height: 54px; } .sl-main { padding-bottom: 90px; } .sl-intro h1 { font-size: 42px; } .sl-discovery-hero { min-height: 330px; } }
 @media (max-width: 600px) {
   .sl-topbar { margin-inline: 16px; }
@@ -206,6 +210,7 @@
   .sl-event-ticket h3 { font-size: 24px; margin: 10px 0; }
   .sl-event-ticket p { margin-bottom: 13px; }
   .sl-artist-grid { gap: 11px; }
+  .sl-featured-grid { grid-template-columns: 1fr; max-width: 360px; }
   .sl-talent-photo { height: 165px; }
   .sl-talent-details { padding: 12px; }
   .sl-talent-details h3 { font-size: 19px; }

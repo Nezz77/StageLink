@@ -144,7 +144,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
       </aside>
       <div className="sl-workspace">
         <header className="sl-topbar">
-          <div><span className="sl-topbar-label">WORKSPACE</span><span className="sl-topbar-divider">/</span><span>{navItems.find(item => item.id === activeTab)?.label ?? 'Discover'}</span></div>
+          <div><button className="sl-topbar-label sl-topbar-home" onClick={onGoToLanding} aria-label="Go to landing page">WORKSPACE</button><span className="sl-topbar-divider">/</span><span>{navItems.find(item => item.id === activeTab)?.label ?? 'Discover'}</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="sl-demo-indicator"><i /> Demo workspace</span>
             <NotificationCenter />

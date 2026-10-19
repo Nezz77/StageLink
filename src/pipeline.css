@@ -155,7 +155,7 @@ html[data-theme="light"] .pw-workspace .sl-intro h1 em { color:#8058b3; }
 html[data-theme="light"] :is(.pw-drafts h2,.pw-drafts .pw-panel-heading>small,.pw-date-block small,.pw-list-heading h2>span) { color:#7c5b91; }
 html[data-theme="light"] .sl-dashboard .sl-open-chat { color:#71489d!important; background:#eadff9!important; }
 html[data-theme="light"] .sl-inline-role .card button { color:#584065; }
-@media(max-width:600px) { .sl-topbar:has(.sl-inline-role) .sl-demo-indicator,.sl-topbar:has(.sl-inline-role) .sl-open-chat { display:none!important; }.sl-topbar:has(.sl-inline-role) .sl-topbar-label { display:none; }.sl-topbar:has(.sl-inline-role) .sl-topbar-divider { display:none; } }
+@media(max-width:600px) { .sl-topbar:has(.sl-inline-role) .sl-demo-indicator,.sl-topbar:has(.sl-inline-role) .sl-open-chat { display:none!important; }.sl-topbar:has(.sl-inline-role) .sl-topbar-divider { display:none; } }
 
 /* Booking settlement: one fee, optional advance, and agreed overtime. */
 .sl-settlement-lines { margin: 20px 0; display: grid; gap: 12px; }
