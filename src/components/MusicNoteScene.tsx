@@ -11,13 +11,18 @@ import { StillMusicNotes } from './MusicNoteField';
 function DocumentScroll() {
   const scroll = useScroll();
   const position = useRef<number | null>(null);
+  const section = useRef<HTMLElement | null>(null);
   useEffect(() => {
+    section.current = document.querySelector('.ps-section');
     scroll.el.tabIndex = -1;
     scroll.el.setAttribute('aria-hidden', 'true');
   }, [scroll]);
   useFrame((_, delta) => {
-    const length = Math.max(1, document.documentElement.scrollHeight - innerHeight - 140);
-    const target = Math.max(0, Math.min(1, (window.scrollY - 140) / length));
+    // Keep the entry at the requested upper-right spot while that boundary
+    // first enters view; begin its journey once the heading approaches centre.
+    const start = Math.max(0, documentTop(section.current, innerHeight) - innerHeight * .45);
+    const end = Math.max(start + 1, document.documentElement.scrollHeight - innerHeight);
+    const target = Math.max(0, Math.min(1, (window.scrollY - start) / (end - start)));
     const previous = position.current;
     const next = previous === null ? target : previous + (target - previous) * (1 - Math.exp(-30 * Math.min(delta, .1)));
     position.current = Math.abs(target - next) < .00001 ? target : next;
@@ -37,36 +42,39 @@ function documentTop(element: HTMLElement | null, fallback: number) {
   return top;
 }
 
-function createQueuePath(width: number, height: number) {
-  const headings = Array.from(document.querySelectorAll<HTMLElement>('.landing-page h2'));
-  const artist = headings[0]?.closest('section') ?? null;
+function createQueuePath(width: number, height: number, count: number) {
+  const section = document.querySelector<HTMLElement>('.ps-section');
+  const inner = section?.querySelector<HTMLElement>('.ps-inner');
   const cards = document.querySelector<HTMLElement>('.mc-viewport');
   const title = document.querySelector<HTMLElement>('#pricing-showcase-title');
-  const artistTop = documentTop(artist, height * 1.8);
-  const artistBottom = artistTop + (artist?.offsetHeight ?? height);
-  const cardTop = documentTop(cards, artistBottom + height * .5);
+  const footer = document.querySelector<HTMLElement>('.landing-page footer');
+  const join = document.querySelector<HTMLElement>('.landing-page .card h2');
+  const top = documentTop(section, 0);
+  const bottom = documentTop(footer, top + (section?.offsetHeight ?? height));
+  const contentWidth = inner?.offsetWidth ?? width;
+  const left = inner?.getBoundingClientRect().left ?? 0;
+  const cardTop = documentTop(cards, top + height * .5);
   const cardHeight = cards?.offsetHeight ?? height * .7;
   const titleTop = documentTop(title, cardTop - height * .3);
-  const joinTop = documentTop(headings.at(-1) ?? null, cardTop + cardHeight + height * .5);
-  const end = Math.max(joinTop + height * .22, document.documentElement.scrollHeight - height * .45);
-  const hero = 140 + height * .58;
-  // An authored, asymmetric route: broad sweeps and a small curl at the title.
-  // Only a short train occupies it; the rest of the path is never drawn.
+  const joinTop = documentTop(join, cardTop + cardHeight + height * .4);
+  const spacing = Math.min(44, Math.max(28, width * .035));
+  const exitLength = (count - 1) * spacing + 80;
+  // Enter at the upper-right edge below Trending Artists, wind through the
+  // pricing and join sections, then let the whole train cross the footer edge.
   const knots = [
-    [.26, hero], [.60, hero - height * .08], [.79, hero + height * .12],
-    [.76, artistTop - height * .12], [.40, artistTop + height * .02],
-    [.18, artistTop + height * .24], [.30, artistBottom - height * .16],
-    [.66, artistBottom - height * .06], [.83, titleTop - height * .10],
+    [.88, top + 24], [.86, top + 80], [.75, titleTop - 24],
     [.66, titleTop + height * .14], [.46, titleTop + height * .04],
     [.50, titleTop - height * .07], [.72, titleTop + height * .16],
     [.84, cardTop + cardHeight * .28], [.65, cardTop + cardHeight * .55],
     [.32, cardTop + cardHeight * .58], [.18, cardTop + cardHeight * .84],
-    [.40, cardTop + cardHeight + height * .14], [.78, joinTop - height * .12],
-    [.78, joinTop + height * .18], [.46, end],
+    [.40, cardTop + cardHeight + height * .08], [.78, joinTop - height * .10],
+    [.80, joinTop + height * .18], [.55, joinTop + height * .32],
+    [.27, bottom - height * .20], [.24, bottom - height * .05],
+    [.28, bottom + 40], [.28, bottom + exitLength],
   ];
-  const path = new CatmullRomCurve3(knots.map(([x, y]) => new Vector3(x * width, y, 0)), false, 'centripetal');
+  const path = new CatmullRomCurve3(knots.map(([x, y]) => new Vector3(left + x * contentWidth, Math.max(top + 24, y), 0)), false, 'centripetal');
   path.arcLengthDivisions = 1024;
-  return { path, length: path.getLength(), width, height, spacing: Math.min(44, Math.max(28, width * .035)) };
+  return { path, length: path.getLength(), width, height, spacing };
 }
 
 function FloatingNote({ index, count, route }: { index: number; count: number; route: ReturnType<typeof createQueuePath> }) {
@@ -82,7 +90,7 @@ function FloatingNote({ index, count, route }: { index: number; count: number; r
     route.path.getPointAt(distance / route.length, point.current);
     const z = Math.sin(distance / Math.max(100, trainLength * .8) * Math.PI * 2) * 1.2;
     const screen = viewport.getCurrentViewport(camera, [0, camera.position.y, 0], size);
-    const documentScroll = 140 + progress * Math.max(1, document.documentElement.scrollHeight - innerHeight - 140);
+    const documentScroll = window.scrollY;
     // Perspective compensation keeps every note on the same clean screen-space
     // curve while its depth changes from behind the HTML to in front of it.
     const perspective = (camera.position.z - z) / camera.position.z;
@@ -109,7 +117,7 @@ function Notes({ count, isDark }: { count: number; isDark: boolean }) {
     document.fonts.addEventListener('loadingdone', update);
     return () => { observer.disconnect(); document.fonts.removeEventListener('loadingdone', update); };
   }, []);
-  const route = useMemo(() => createQueuePath(size.width, size.height), [size.width, size.height, layoutRevision]);
+  const route = useMemo(() => createQueuePath(size.width, size.height, count), [size.width, size.height, count, layoutRevision]);
   return <>{noteKinds.map((kind, variant) => {
     const indices = Array.from({ length: count }, (_, i) => i).filter(i => i % noteKinds.length === variant);
     return <Instances key={kind} limit={4} range={indices.length} geometry={(model.nodes[kind] as Mesh).geometry} frustumCulled={false}>
@@ -126,7 +134,7 @@ function HtmlDepthSurfaces() {
   const elements = useRef<HTMLElement[]>([]);
   const transform = useRef(new Object3D());
   const scroll = useScroll();
-  useEffect(() => { elements.current = Array.from(document.querySelectorAll('.ps-card, .landing-page h1, .landing-page h2, .landing-page .group, .landing-page .card')); }, []);
+  useEffect(() => { elements.current = Array.from(document.querySelectorAll('.ps-card, .landing-page h2, .landing-page .card')); }, []);
   useFrame(({ camera, viewport, size, gl }) => {
     camera.position.y = -scroll.offset * 24;
     camera.updateMatrixWorld();
@@ -172,7 +180,7 @@ export default function MusicNoteScene({ isDark, active }: { isDark: boolean; ac
   }, [ready]);
   if (failed) return <StillMusicNotes />;
   return <div ref={host} className="dna-canvas" data-dna-ready={ready} data-note-count={small ? 8 : 16} data-note-variants={noteKinds.join(",")}>
-    <Canvas flat camera={{ position: [0, 0, 12], fov: 45, near: .1, far: 60 }} dpr={[1, small ? 1 : 1.5]} frameloop={active ? 'always' : 'demand'} gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }} fallback={<StillMusicNotes />} onCreated={({ gl }) => { canvas.current = gl.domElement; setReady(true); }}>
+    <Canvas flat camera={{ position: [0, 0, 12], fov: 45, near: .1, far: 60 }} dpr={[1, small ? 1 : 1.5]} frameloop={active ? 'always' : 'never'} gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }} fallback={<StillMusicNotes />} onCreated={({ gl }) => { canvas.current = gl.domElement; setReady(true); }}>
       <ScrollControls pages={1} enabled={false} damping={0} style={{ pointerEvents: 'none', overflow: 'hidden' }}>
         <DocumentScroll />
         <View track={host}>
