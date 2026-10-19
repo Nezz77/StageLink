@@ -21,16 +21,16 @@ export default function MusicNoteField({ isDark }: { isDark: boolean }) {
   const [section, setSection] = useState({ visible: false, loaded: false });
   useEffect(() => {
     const pricing = document.querySelector<HTMLElement>('.ps-section');
-    const footer = document.querySelector<HTMLElement>('.landing-page footer');
-    if (!pricing || !footer || !field.current) return;
+    if (!pricing || !field.current) return;
     let wasVisible = false;
     const update = () => {
       if (!field.current) return;
       const rect = pricing.getBoundingClientRect();
-      const bottom = footer.getBoundingClientRect().top;
+      // Pricing ends at the upper border of the performer/supplier section.
+      const bottom = rect.bottom;
       const visible = bottom > 0 && rect.top < innerHeight;
       // Clip the fixed canvas (including static/error fallbacks) to the actual
-      // start and footer edges, so foreground notes cannot cross either boundary.
+      // pricing edges, so notes disappear behind the following section.
       field.current.style.clipPath = `inset(${Math.max(0, rect.top)}px ${Math.max(0, innerWidth - rect.right)}px ${Math.max(0, innerHeight - bottom)}px ${Math.max(0, rect.left)}px)`;
       field.current.style.visibility = visible ? 'visible' : 'hidden';
       if (visible !== wasVisible) {
@@ -41,7 +41,6 @@ export default function MusicNoteField({ isDark }: { isDark: boolean }) {
     update();
     const observer = new ResizeObserver(update);
     observer.observe(pricing);
-    observer.observe(footer);
     const page = document.querySelector('.landing-page');
     if (page) observer.observe(page);
     window.addEventListener('scroll', update, { passive: true });
@@ -53,7 +52,7 @@ export default function MusicNoteField({ isDark }: { isDark: boolean }) {
     };
   }, []);
   const active = pageVisible && section.visible;
-  return <div ref={field} className="dna-field fixed inset-0 pointer-events-none" aria-hidden="true" data-dna-scope="pricing-to-footer" data-dna-state={!section.visible ? 'outside' : reducedMotion ? 'still' : active ? 'scrolling' : 'paused'}>
+  return <div ref={field} className="dna-field fixed inset-0 pointer-events-none" aria-hidden="true" data-dna-scope="pricing" data-dna-state={!section.visible ? 'outside' : reducedMotion ? 'still' : active ? 'scrolling' : 'paused'}>
     {section.loaded && (reducedMotion ? <StillMusicNotes /> : <SceneBoundary><Suspense fallback={null}><MusicNoteScene isDark={isDark} active={active} /></Suspense></SceneBoundary>)}
   </div>;
 }

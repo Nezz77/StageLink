@@ -34,7 +34,7 @@ const DISCOVERY_CATEGORIES: Category[] = [
 const trendingArtists = [
   { id: 1, name: 'Aria Nova', category: 'Solo Vocalist', genre: 'R&B / Soul', rating: 4.9, reviews: 312, price: '$450/hr', location: 'Los Angeles, CA', image: 'photo-1516450360452-9312f5e86fc7', bookings: 847, verified: true },
   { id: 2, name: 'The Midnight Collective', category: 'Live Band', genre: 'Jazz / Funk', rating: 4.8, reviews: 198, price: '$1,200/event', location: 'New York, NY', image: 'photo-1470225620780-dba8ba36b745', bookings: 523, verified: true },
-  { id: 3, name: 'DJ Neon Pulse', category: 'DJ', genre: 'Electronic / House', rating: 4.7, reviews: 445, price: '$600/hr', location: 'Miami, FL', image: 'photo-1571266028243-e4733b0f0bb0', bookings: 1203, verified: true },
+  { id: 3, name: 'DJ Neon Pulse', category: 'DJ', genre: 'Electronic / House', rating: 4.7, reviews: 445, price: '$600/hr', location: 'Miami, FL', image: 'photo-1514525253161-7a46d19cd819', bookings: 1203, verified: true },
   { id: 4, name: 'Luna Dance Co.', category: 'Dance Troupe', genre: 'Contemporary', rating: 4.9, reviews: 87, price: '$800/event', location: 'Chicago, IL', image: 'photo-1504609813442-a8924e83f76e', bookings: 234, verified: true },
   { id: 5, name: 'Marco Strings', category: 'Solo Violinist', genre: 'Classical / Crossover', rating: 5.0, reviews: 63, price: '$350/hr', location: 'Boston, MA', image: 'photo-1493225457124-a3eb161ffa5f', bookings: 189, verified: true },
   { id: 6, name: 'Sunset Brass', category: 'Brass Quartet', genre: 'Wedding / Events', rating: 4.6, reviews: 271, price: '$950/event', location: 'Austin, TX', image: 'photo-1511192336575-5a79af67a629', bookings: 678, verified: true },
@@ -291,6 +291,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
                         src={`https://images.unsplash.com/${artist.image}?w=800&h=800&fit=crop&auto=format`}
                         alt={artist.name}
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/20 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-500" />
 
