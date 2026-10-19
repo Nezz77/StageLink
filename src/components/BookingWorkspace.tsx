@@ -1,3 +1,5 @@
+import BookingDocuments from './BookingDocuments'
+import BookingMilestones from './BookingMilestones'
 import CompletedBookingReview from './BookingReview'
 import { useEffect, useState, type ReactNode } from "react"
 import {
@@ -476,20 +478,6 @@ function BookingDetails({
   }
   const service = bookingService(record)
   const provider = actor === service.role
-  const steps = [
-    "Request sent",
-    "Provider accepted",
-    "Ready for the event",
-    "Event complete",
-  ]
-  const step =
-    record.status === "completed"
-      ? 3
-      : record.status === "active"
-        ? 2
-        : record.status === "accepted"
-          ? 1
-          : 0
   return (
     <>
       <button className="pw-back" onClick={onBack}>
@@ -607,42 +595,8 @@ function BookingDetails({
           <DemoPerformance record={record} />
             <CompletedBookingReview record={record} />
           <OvertimePanel record={record} />
-          <section className="pw-panel pw-review">
-            <span className="sl-eyebrow">FROM HELLO TO ENCORE</span>
-            <ol className="pw-journey">
-              {steps.map((label, index) => (
-                <li
-                  key={label}
-                  className={
-                    index <= step &&
-                    !["rejected", "cancelled"].includes(record.status)
-                      ? "done"
-                      : ""
-                  }
-                >
-                  <span>
-                    {index <= step ? <Check size={15} /> : `0${index + 1}`}
-                  </span>
-                  <strong>{label}</strong>
-                </li>
-              ))}
-            </ol>
-            {["rejected", "cancelled"].includes(record.status) && (
-              <p className="pw-alert">This booking was {record.status}.</p>
-            )}
-            <h3>Activity</h3>
-            <ul className="pw-activity">
-              {record.activity
-                .slice()
-                .reverse()
-                .map((activity, i) => (
-                  <li key={`${activity.at}-${i}`}>
-                    <span>{activity.label}</span>
-                    <time>{new Date(activity.at).toLocaleString()}</time>
-                  </li>
-                ))}
-            </ul>
-          </section>
+          <BookingMilestones record={record} />
+          <BookingDocuments record={record} />
         </div>
         <SettlementSummary record={record} />
       </div>
@@ -882,35 +836,6 @@ function PaymentDetails({
   const [error, setError] = useState("")
   const totals = settlement(record.ledger)
   const refundEligible = canRefund(record)
-  const receipt = () => {
-    const text = [
-      "STAGELINK · DEMO RECEIPT",
-      `Receipt: TX-${record.id}`,
-      `Booking: ${record.id}`,
-      `Event: ${record.event}`,
-      `Provider: ${bookingService(record).name}`,
-      `Date: ${dayLabel(record.date)}`,
-      `Performance / rental: ${money(record.ledger.quoteCents)}`,
-      `Approved overtime: ${money(totals.overtimeCents)}`,
-      `Total agreed: ${money(totals.totalCents)}`,
-      `Customer paid: ${money(totals.receivedCents)}`,
-      `Remaining due: ${money(totals.remainingCents)}`,
-      `StageLink fee deducted: ${money(totals.feeChargedCents)}`,
-      ...record.ledger.installments.flatMap(item => [
-        `TX-${record.id}-${item.kind.toUpperCase()} | ${item.paidAt} | ${item.method} | Received ${money(item.grossCents)}`,
-        item.refundedAt ? `Refunded to original payment method ${item.refundedAt}: ${money(item.grossCents)}` : item.releasedAt ? `Admin transfer ${item.releasedAt}: ${money(item.payoutCents ?? 0)} to provider bank; fee ${money(item.feeCents ?? 0)}` : "Held by StageLink; awaiting admin transfer",
-      ]),
-      ...(record.refund ? [`Refund: ${record.refund.status}`, `Requested: ${record.refund.at} | ${record.refund.reason}`, `Refund amount: ${money(record.refund.amountCents)}`, ...(record.refund.decidedAt ? [`Admin decision ${record.refund.decidedAt}: ${record.refund.decisionReason}`] : [])] : []),
-      `Status: ${paymentLabel(record)}`,
-      "Demo record only. No real payment was made.",
-    ].join("\n")
-    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }))
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `StageLink-${record.id}-receipt.txt`
-    anchor.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
   return (
     <>
       <button className="pw-back" onClick={onBack}>
@@ -929,10 +854,10 @@ function PaymentDetails({
             <p>{bookingService(record).name} · {record.id}</p>
             <PaymentChoice record={record} onPay={onPay} />
             <div className="pw-actions">
-              <button className="btn-primary sl-action" disabled={!totals.receivedCents} onClick={receipt}><Download size={15} /> Download receipt</button>
               <button className="btn-ghost" onClick={onBooking}>View booking</button>
             </div>
           </section>
+          <BookingDocuments record={record} />
           <InstallmentHistory record={record} />
           <DemoPerformance record={record} />
             <CompletedBookingReview record={record} />
@@ -1228,6 +1153,7 @@ export default function BookingWorkspace({
             paymentCents={screen.offer.amountCents}
             paidCents={screen.offer.paidCents}
             overtimeCents={screen.offer.overtimeCents}
+            onFailed={() => dispatch({type:"payment_failed",id:selected.id,version:screen.offer.version,amountCents:screen.offer.amountCents})}
             onPaid={(method) => dispatch({ type: "settle", id: selected.id, action: { type: "collect", kind: screen.offer.kind, method, quoteVersion: screen.offer.version, totalCents: screen.offer.amountCents } })}
             onBack={() => open(selected.id)}
             onViewBooking={() => open(selected.id)}

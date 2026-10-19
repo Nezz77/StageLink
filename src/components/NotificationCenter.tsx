@@ -17,7 +17,7 @@ export default function NotificationCenter() {
   const trigger = useRef<HTMLButtonElement>(null)
   const records = actor === "admin" ? [] : state.bookings.filter(record => visibleTo(record, actor) && unreadFor(state, record, actor) > 0)
   const notifications = notificationsFor(state, actor)
-  const count = enquiries.reduce((sum,item) => sum + inquiryUnread(item, actor as MemberRole), 0) + notifications.filter(item => !item.readBy.includes(actor)).length + records.reduce((sum, record) => sum + unreadFor(state, record, actor), 0)
+  const count = enquiries.reduce((sum,item) => sum + inquiryUnread(item, actor as MemberRole), 0) + notifications.filter(item => !item.readBy.includes(actor)).length
   const shown = notifications.filter(item => !onlyUnread || !item.readBy.includes(actor))
   const close = () => { setOpen(false); trigger.current?.focus() }
   useEffect(() => {
@@ -45,16 +45,12 @@ export default function NotificationCenter() {
       </div>
       <div className="pw-notification-list">
         {enquiries.map(item => <button className="pw-notification-item" key={item.id} onClick={() => { setOpen(false); window.dispatchEvent(new CustomEvent('stagelink:open-inquiry',{detail:item.id})); }}><MessageCircle size={18}/><span><strong>{actor === 'customer' ? item.providerName : item.customerName}</strong><small>{item.title} · Enquiry</small><span>{inquiryUnread(item,actor as MemberRole)} unread messages</span></span></button>)}
-        {records.map(record => <button className="pw-notification-item" key={record.id} onClick={() => {
-          setOpen(false)
-          window.dispatchEvent(new CustomEvent("stagelink:open-thread", { detail: record.id }))
-        }}><MessageCircle size={18} /><span><strong>{actor === "customer" ? bookingService(record).name : record.organizer ?? "Jordan Rivera"}</strong><small>{record.event}</small><span>{unreadFor(state, record, actor)} unread {unreadFor(state, record, actor) === 1 ? "message" : "messages"}</span></span></button>)}
         {shown.map(item => <button className={`pw-notification-item ${item.readBy.includes(actor) ? "is-read" : ""}`} key={item.id} onClick={() => {
           dispatch({ type: "read_notification", id: item.id })
           setOpen(false)
           window.dispatchEvent(new CustomEvent("stagelink:open-update", { detail: { id: item.bookingId, section: item.section } }))
         }}><Ticket size={18} /><span><strong>{item.title}</strong><small>{state.bookings.find(record => record.id === item.bookingId)?.event}</small><time dateTime={item.at}>{new Date(item.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></span>{item.readBy.includes(actor) && <Check size={14} aria-label="Read" />}</button>)}
-        {!enquiries.length && !records.length && !shown.length && <p className="pw-notification-empty">You’re all caught up. Booking, payment and message updates will appear here.</p>}
+        {!enquiries.length && !shown.length && <p className="pw-notification-empty">You’re all caught up. Booking, payment and message updates will appear here.</p>}
       </div>
       <footer>Demo updates · Cleared on refresh</footer>
     </section>}

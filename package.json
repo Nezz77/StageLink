@@ -23,6 +23,7 @@
     "embla-carousel": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^13.4.0",
+    "jspdf": "4.2.1",
     "lucide-react": "^1.47.0",
     "motion": "^13.4.0",
     "postprocessing": "^6.39.5",

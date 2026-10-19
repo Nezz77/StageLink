@@ -46,7 +46,7 @@ export function reduceCommunity(state:DashboardState,action:DashboardAction,acto
  const clear=(key:string)=>{const drafts={...state.drafts};delete drafts[`${actor}:${key}`];return drafts;};
  switch(action.type){
  case 'save_listing':
-  if(actor!=='customer'||!state.listings.some(item=>item.id===action.id))return state;
+  if(actor!=='customer'||(!state.savedListings.includes(action.id)&&!state.listings.some(item=>item.id===action.id&&item.status==='live')))return state;
   return {...state,savedListings:state.savedListings.includes(action.id)?state.savedListings.filter(id=>id!==action.id):[...state.savedListings,action.id]};
  case 'inquiry':{
   const listing=state.listings.find(item=>item.id===action.listingId&&item.status==='live');

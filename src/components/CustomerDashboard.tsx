@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import SavedItems from './SavedItems';
 import { Package, LifeBuoy } from 'lucide-react';
 import { collectionsFor } from '../lib/catalogPresentation';
 import { money } from '../lib/booking';
@@ -26,7 +27,7 @@ type SpotlightListing = {
 };
 const navItems = [
   { id: 'home', label: 'Discover', icon: Icon.Home },
-  { id: 'saved', label: 'Saved artists', icon: Icon.Heart },
+  { id: 'saved', label: 'Saved items', icon: Icon.Heart },
   { id: 'booking', label: 'My bookings', icon: Icon.Calendar },
   { id: 'payments', label: 'Payments', icon: Icon.DollarSign },
   { id: 'messages', label: 'Messages', icon: Icon.MessageCircle },
@@ -63,7 +64,6 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPay
       collection,
     };
   });
-  const savedArtists = recommendedArtists.filter(artist => savedIds.includes(artist.id));
   const trendingArtists = recommendedArtists;
   const openCollection = (listing: CollectionListing) => { setCollection(listing); setActiveTab(listing.type === 'artist' ? 'browse' : 'equipment'); };
   const navigate = (tab: string) => requestDashboardNavigation(() => { if (tab === 'booking') onOpenBooking?.(); else if (tab === 'payments') onOpenPayments?.(); else if (tab === 'messages') onOpenChat?.(); else { setActiveTab(tab as CustomerTab); setCollection(null); } });
@@ -73,7 +73,7 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPay
       <div className="sl-talent-photo">
         <img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }} loading="lazy" src={`https://images.unsplash.com/${artist.image}?w=500&h=500&fit=crop&auto=format`} alt={artist.name} />
         <span className="sl-talent-number">SELECT / 0{index + 1}</span>
-        {artist.collection.type === 'artist' && <button className="sl-save-button" aria-label={`${savedIds.includes(artist.id) ? 'Unsave' : 'Save'} ${artist.name}`} aria-pressed={savedIds.includes(artist.id)} onClick={() => toggleSaved(artist.id)}><Icon.Heart filled={savedIds.includes(artist.id)} /></button>}
+        {<button className="sl-save-button" aria-label={`${savedIds.includes(artist.id) ? 'Unsave' : 'Save'} ${artist.category}`} aria-pressed={savedIds.includes(artist.id)} onClick={() => toggleSaved(artist.id)}><Icon.Heart filled={savedIds.includes(artist.id)} /></button>}
       </div>
       <div className="sl-talent-details">
         <div className="sl-talent-meta"><span>{artist.category}</span><span>{artist.rating ? `★ ${artist.rating.toFixed(1)}` : 'New'}</span></div>
@@ -95,10 +95,7 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPay
         <section aria-labelledby="equipment-title"><div className="sl-section-heading"><div><h2 id="equipment-title">Equipment for your event</h2><p>A few essentials from our rental partners.</p></div></div><div className="sl-artist-grid sl-featured-grid">{featuredEquipment.map((item, index) => spotlightCard(item, index))}</div><div className="sl-section-action"><button className="btn-ghost sl-action" onClick={() => navigate('equipment')}>Browse all equipment <span>↗</span></button></div></section>
         <section aria-labelledby="lineup-title"><div className="sl-section-heading"><div><h2 id="lineup-title">Your next headliner</h2><p>Meet the artists making a little noise.</p></div><span className="sl-eyebrow">THE SHORTLIST / {String(trendingArtists.length).padStart(2,'0')}</span></div><div className="sl-lineup">{trendingArtists.map((artist, index) => <button className="sl-lineup-item" key={artist.id} onClick={() => openCollection(artist.collection)}><span>0{index + 1}</span><img onError={event => { event.currentTarget.src = '/dashboard-stage-fallback.svg'; }} loading="lazy" src={`https://images.unsplash.com/${artist.image}?w=120&h=120&fit=crop&auto=format`} alt="" /><span><strong>{artist.name}</strong><small>{artist.category}{artist.rating ? ` · ★ ${artist.rating.toFixed(1)}` : ''}</small></span><span>↗</span></button>)}</div></section>
       </>}
-      {activeTab === 'saved' && <>
-        <DashboardIntro eyebrow="YOUR PERSONAL LINEUP" title="Keep them" emphasis="on the list." description={`${savedArtists.length} saved artists. Your next great lineup starts with a shortlist.`} />
-        {savedArtists.length ? <div className="sl-artist-grid">{savedArtists.map(spotlightCard)}</div> : <div className="card sl-empty-state"><Icon.Heart /><h2>A little room for favorites.</h2><p>Tap the heart on an artist in Discover to keep them here for your next event.</p><button className="btn-primary" onClick={() => setActiveTab('home')}>Discover artists ↗</button></div>}
-      </>}
+      {activeTab === 'saved' && <SavedItems onOpen={openCollection} onBrowse={() => navigate('browse')} />}
       {activeTab === 'support' && <div className="mg-page"><CasePortal mode="support" /></div>}
       {activeTab === 'equipment' && <><button className="btn-ghost sl-collection-back mb-6" onClick={() => navigate('home')}>← Back to Discover</button>{collection ? <CollectionDetailPage listing={collection} onBack={() => setCollection(null)} /> : <RentEquipmentPage onOpenCollection={setCollection} />}</>}
       {activeTab === 'profile' && <MemberProfile />}

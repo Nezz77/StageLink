@@ -1,3 +1,5 @@
+import DemoReset from './DemoReset';
+import '../module4.css';
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { MotionConfig } from 'motion/react';
 import { ArrowUpRight, PanelLeftClose, PanelLeftOpen, Sun, Moon } from 'lucide-react';
@@ -147,7 +149,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
           <div><button className="sl-topbar-label sl-topbar-home" onClick={onGoToLanding} aria-label="Go to landing page">WORKSPACE</button><span className="sl-topbar-divider">/</span><span>{navItems.find(item => item.id === activeTab)?.label ?? 'Discover'}</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="sl-demo-indicator"><i /> Demo workspace</span>
-            <NotificationCenter />
+            <DemoReset /><NotificationCenter />
             {onOpenChat && (
               <button
                 onClick={onOpenChat}

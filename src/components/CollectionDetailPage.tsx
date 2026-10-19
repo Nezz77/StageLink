@@ -1,3 +1,4 @@
+import SaveListingButton from './SaveListingButton';
 import { useState, useRef } from 'react';
 import '../collections.css';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
@@ -740,6 +741,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
                 ))}
               </div>
 
+              {chosen && <SaveListingButton id={chosen.id} />}
               <motion.button
                 disabled={!available} onClick={() => chosen && marketAction(chosen.id, 'book')}
                 className="btn-primary w-full py-3.5 rounded-xl font-bold text-sm mb-3"

@@ -1,7 +1,9 @@
+import { quoteError, quoteTotal, type Quotation, type QuoteInput } from './quotations.ts'
 import { type Service, type Availability } from './catalog.ts'
 import {
   bookingStatus,
   initialBooking,
+  checkoutFor,
   settlement,
   transitionBooking,
   type BookingAction,
@@ -53,6 +55,7 @@ export type BookingForm = {
   quantity?: string
 }
 export type RecordBooking = BookingForm & {
+  quotations: Quotation[]
   service?: Service
   organizer?: string
   review?: { rating: number; text: string; at: string }
@@ -65,7 +68,7 @@ export type RecordBooking = BookingForm & {
     reason: string; at: string; status: "requested" | "refunded" | "declined"
     amountCents: number; previousHold: boolean; decidedAt?: string; decisionReason?: string
   }
-  activity: { label: string; at: string }[]
+  activity: { label: string; at: string; actor?: BookingRole }[]
 }
 export type Attachment = { id: string; name: string; size: number; type: string }
 export type Message = {
@@ -74,20 +77,31 @@ export type Message = {
   sender: BookingRole
   text: string
   at: string
+  quotationId?: string
+  simulated?: boolean
   attachment?: Attachment
 }
 export type BookingNotification = {
   id: string; bookingId: string; title: string; at: string
-  section: "bookings" | "payments"; recipients: BookingRole[]; readBy: BookingRole[]
+  section: "bookings" | "payments" | "chat"; recipients: BookingRole[]; readBy: BookingRole[]
 }
 export type PipelineState = {
+  messageDrafts: Record<string, string>
   notifications: BookingNotification[]
   bookings: RecordBooking[]
   drafts: BookingForm[]
   messages: Message[]
+  readMessageIds: Record<string, string[]>
   read: Record<string, string>
 }
-export type PipelineAction = { type: "review"; id: string; rating: number; text: string } | { type: "read_notification"; id: string }
+export type PipelineAction =
+  | { type: "quotation"; id: string; expectedVersion: number; input: QuoteInput }
+  | { type: "quote_response"; id: string; quotationId: string; accept: boolean }
+  | { type: "message_draft"; id: string; text: string }
+  | { type: "demo_reply"; id: string; text: string }
+  | { type: "demo_seen"; id: string } | { type: "demo_unread"; id: string }
+  | { type: "payment_failed"; id: string; version: number; amountCents: number }
+  | { type: "review"; id: string; rating: number; text: string } | { type: "read_notification"; id: string }
   | { type: "demo_start" | "demo_finish"; id: string }
   | { type: "resolve_refund"; id: string; approve: boolean; reason: string }
   | { type: "save_draft"; form: BookingForm } | {
@@ -210,6 +224,7 @@ function seedRecord(
 ): RecordBooking {
   return {
     id,
+    quotations: [],
     event,
     serviceId,
     date,
@@ -241,12 +256,13 @@ function seedRecord(
     ],
   }
 }
-export function initialPipeline(): PipelineState {
+export function initialPipeline(now = new Date()): PipelineState {
+  const future = (days: number) => { const day = new Date(now); day.setDate(day.getDate() + days); return dateKey(day) }
   const headline = seedRecord(
     "BK-2901",
     "TechVentures Corporate Gala",
     "aria",
-    "2026-10-18",
+    future(14),
     "accepted",
     "unpaid",
   )
@@ -266,14 +282,15 @@ export function initialPipeline(): PipelineState {
     previousHold: false, decidedAt: "2026-09-12T12:00:00Z", decisionReason: "Cancellation approved before the event.",
   }
   refunded.ledger = { ...refunded.ledger, payment: "refunded", installments: refunded.ledger.installments.map(item => ({ ...item, refundedAt: refunded.refund!.decidedAt })) }
-  return {
+  const initial: PipelineState = {
+    messageDrafts: {},
     bookings: [
       headline,
       seedRecord(
         "BK-2902",
         "Afterglow rooftop sessions",
         "pa",
-        "2026-10-23",
+        future(18),
         "pending",
         "unpaid",
       ),
@@ -314,8 +331,28 @@ export function initialPipeline(): PipelineState {
       },
     ],
     read: {},
+    readMessageIds: {},
   }
+  initial.bookings = initial.bookings.map(record => ({ ...record, quotations: [initialQuotation(record)] }))
+  initial.messages.push(...initial.bookings.filter(record => ['pending', 'accepted'].includes(record.status)).map(record => ({
+    id: `message-${record.quotations[0].id}`, bookingId: record.id, sender: record.quotations[0].offeredBy,
+    text: '', quotationId: record.quotations[0].id, at: record.quotations[0].at,
+  })))
+  return initial
 }
+function initialQuotation(record: RecordBooking): Quotation {
+  const service = bookingService(record)
+  return { id: `${record.id}-Q1`, bookingId: record.id, providerId: service.id, providerName: service.provider,
+    customerName: record.organizer ?? 'Jordan Rivera', eventDate: record.date, start: record.start, end: record.end,
+    description: service.detail, lines: [{ description: service.name, quantity: 1, unitCents: record.ledger.quoteCents }],
+    notes: record.requirements, included: 'Service and event arrangements as described in this booking.',
+    version: record.ledger.quoteVersion, totalCents: record.ledger.quoteCents,
+    offeredBy: record.ledger.quoteStatus === 'awaiting_artist' ? 'customer' : service.role, at: record.createdAt,
+    status: record.ledger.quoteStatus === 'accepted' ? 'accepted' : record.ledger.quoteStatus === 'declined' ? 'declined' : 'pending' }
+}
+export const negotiationOpen = (record: RecordBooking) =>
+  ['pending', 'accepted'].includes(record.status) && record.ledger.installments.length === 0 && record.ledger.advance === 'offered' &&
+  record.ledger.performance === 'upcoming' && !record.demoStartedAt && !record.ledger.overtime.length && !record.ledger.payoutBlocked && !record.refund && record.ledger.quoteStatus !== 'accepted'
 export const unreadFor = (
   state: PipelineState,
   record: RecordBooking,
@@ -325,7 +362,7 @@ export const unreadFor = (
     (message) =>
       message.bookingId === record.id &&
       message.sender !== actor &&
-      Date.parse(message.at) > Date.parse(state.read[`${actor}:${record.id}`] ?? "1970-01-01T00:00:00Z"),
+      (state.readMessageIds[`${actor}:${record.id}`] ? !state.readMessageIds[`${actor}:${record.id}`].includes(message.id) : Date.parse(message.at) > Date.parse(state.read[`${actor}:${record.id}`] ?? "1970-01-01T00:00:00Z")),
   ).length
 export const performanceEndsAt = (record: RecordBooking) => new Date(
   new Date(`${record.date}T${record.end}`).getTime() + record.ledger.overtime.filter(item => item.status === "accepted").reduce((minutes, item) => minutes + item.minutes, 0) * 60_000,
@@ -338,7 +375,7 @@ export const canCancel = (record: RecordBooking, now = new Date()) =>
   ["pending", "accepted", "active"].includes(record.status) && record.ledger.payment === "unpaid" && !performanceStarted(record, now)
 export const messageSeen = (state: PipelineState, message: Message, record: RecordBooking) => {
   const recipient = message.sender === "customer" ? bookingService(record).role : "customer"
-  return Date.parse(state.read[`${recipient}:${record.id}`] ?? "") >= Date.parse(message.at)
+  return state.readMessageIds[`${recipient}:${record.id}`]?.includes(message.id) ?? (Date.parse(state.read[`${recipient}:${record.id}`] ?? "") >= Date.parse(message.at))
 }
 export const notificationsFor = (state: PipelineState, actor: BookingRole) =>
   state.notifications.filter(item => item.recipients.includes(actor))
@@ -352,11 +389,11 @@ export const paymentLabel = (record: RecordBooking) =>
   record.refund?.status === "refunded" ? "Refunded" : record.refund?.status === "requested" ? "Refund requested" : bookingStatus(record.ledger)
 function notificationFor(record: RecordBooking, action: PipelineAction, actor: BookingRole, title: string, at: string): BookingNotification {
   const inner = action.type === "settle" || action.type === "legacy" ? action.action.type : action.type
-  const payment = ["collect", "release", "refund", "resolve_refund", "toggle_hold", "confirm_performance", "pay"].includes(inner)
+  const payment = ["collect", "release", "refund", "resolve_refund", "toggle_hold", "confirm_performance", "pay", "payment_failed"].includes(inner)
   const recipients: BookingRole[] = ["customer", bookingService(record).role]
   if (["collect", "refund", "complete", "demo_finish", "report_performance", "pay"].includes(inner)) recipients.push("admin")
   return { id: `${record.id}:${record.activity.length}:${action.type}`, bookingId: record.id, title, at,
-    section: payment ? "payments" : "bookings", recipients: recipients.filter(role => role !== actor), readBy: [] }
+    section: ["quotation", "quote_response"].includes(inner) ? "chat" : payment ? "payments" : "bookings", recipients: recipients.filter(role => role !== actor), readBy: [] }
 }
 function safeForm(value: unknown): value is BookingForm {
   if (!value || typeof value !== "object") return false
@@ -417,6 +454,7 @@ export function reducePipeline(
       return state
     const record: RecordBooking = {
       ...form,
+      quotations: [],
       service: { ...serviceFor(form.serviceId, options.catalog) },
       organizer: options.organizer ?? "Jordan Rivera",
       event: form.event.trim(),
@@ -429,10 +467,12 @@ export function reducePipeline(
         quoteStatus: "awaiting_artist",
         history: [],
       },
-      activity: [{ label: "Request sent to provider", at }],
+      activity: [{ label: "Request sent to provider", at, actor }],
     }
+    record.quotations = [initialQuotation(record)]
     return {
       ...state,
+      messages: [...state.messages, { id: `message-${record.quotations[0].id}`, bookingId: record.id, sender: actor, text: '', at, quotationId: record.quotations[0].id }],
       bookings: [record, ...state.bookings],
       notifications: [notificationFor(record, action, actor, "New booking request", at), ...state.notifications],
       drafts: state.drafts.filter((draft) => draft.id !== form.id),
@@ -452,6 +492,7 @@ export function reducePipeline(
     )
     if (
       !record ||
+      message.quotationId !== undefined || message.simulated !== undefined ||
       !visibleTo(record, actor) ||
       actor === "admin" ||
       typeof message.id !== "string" ||
@@ -473,20 +514,61 @@ export function reducePipeline(
       return state
     return {
       ...state,
-      messages: [
-        ...state.messages,
-        { ...message, text: message.text.trim(), sender: actor, at },
-      ],
+      messages: [...state.messages, { ...message, text: message.text.trim(), sender: actor, at }],
+      messageDrafts: { ...state.messageDrafts, [`${actor}:${record.id}`]: '' },
+      notifications: [{ id: `message:${message.id}`, bookingId: record.id, title: 'New booking message', at, section: 'chat', recipients: [actor === 'customer' ? bookingService(record).role : 'customer'], readBy: [] }, ...state.notifications],
     }
   }
   const id = action.type === "legacy" ? "BK-2901" : action.id
   const record = state.bookings.find((record) => record.id === id)
   if (!record || !visibleTo(record, actor)) return state
   if (action.type === "read")
-    return { ...state, read: { ...state.read, [`${actor}:${id}`]: at } }
+    return { ...state, readMessageIds: { ...state.readMessageIds, [`${actor}:${id}`]: state.messages.filter(message => message.bookingId === id).map(message => message.id) }, read: { ...state.read, [`${actor}:${id}`]: at }, notifications: state.notifications.map(note => note.bookingId === id && note.section === 'chat' && note.recipients.includes(actor) && !note.readBy.includes(actor) ? { ...note, readBy: [...note.readBy, actor] } : note) }
+  if (action.type === 'message_draft') {
+    if (actor === 'admin' || typeof action.text !== 'string' || action.text.length > 4000) return state
+    return { ...state, messageDrafts: { ...state.messageDrafts, [`${actor}:${id}`]: action.text } }
+  }
+  if (action.type === 'demo_reply' || action.type === 'demo_seen' || action.type === 'demo_unread') {
+    if (actor === 'admin') return state
+    const other = actor === 'customer' ? bookingService(record).role : 'customer'
+    if (action.type === 'demo_seen') return { ...state, readMessageIds: { ...state.readMessageIds, [`${other}:${id}`]: state.messages.filter(message => message.bookingId === id).map(message => message.id) }, read: { ...state.read, [`${other}:${id}`]: at } }
+    if (action.type === 'demo_unread') return { ...state, readMessageIds: { ...state.readMessageIds, [`${actor}:${id}`]: [] }, read: { ...state.read, [`${actor}:${id}`]: '1970-01-01T00:00:00Z' }, notifications: state.notifications.map(note => note.bookingId === id && note.section === 'chat' ? { ...note, readBy: note.readBy.filter(role => role !== actor) } : note) }
+    if (typeof action.text !== 'string' || !action.text.trim() || action.text.length > 4000) return state
+    const messageId = `demo-${id}-${state.messages.length}-${at}`
+    return { ...state, messages: [...state.messages, { id: messageId, bookingId: id, sender: other, text: action.text.trim(), simulated: true, at }], notifications: [{ id: `message:${messageId}`, bookingId: id, title: 'Demo incoming reply', at, section: 'chat', recipients: [actor], readBy: [] }, ...state.notifications] }
+  }
   let patch: Partial<RecordBooking> = {}
   let label = ""
   switch (action.type) {
+    case 'quotation': {
+      if (!negotiationOpen(record) || !['customer', bookingService(record).role].includes(actor) || action.expectedVersion !== record.ledger.quoteVersion || quoteError(action.input)) return state
+      const previous = record.quotations.at(-1)
+      if (actor === 'customer' && (!previous || previous.offeredBy === actor || previous.status !== 'pending')) return state
+      if (actor !== 'customer' && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options))) return state
+      const version = record.ledger.quoteVersion + 1
+      const quote: Quotation = { ...initialQuotation(record), ...action.input, lines: action.input.lines.map(line => ({ ...line })),
+        id: `${id}-Q${version}`, version, totalCents: quoteTotal(action.input.lines), offeredBy: actor, at, status: 'pending' }
+      patch = { status: 'accepted', quotations: [...record.quotations.map(item => item.status === 'pending' ? { ...item, status: 'superseded' as const, decidedAt: at, decidedBy: actor } : item), quote],
+        ledger: { ...record.ledger, quoteVersion: version, quoteCents: quote.totalCents, quoteStatus: actor === 'customer' ? 'awaiting_artist' : 'awaiting_customer' } }
+      label = `${actor === 'customer' ? 'Customer counteroffer' : 'Provider quotation'} v${version} · ${quote.totalCents / 100} USD`
+      break
+    }
+    case 'quote_response': {
+      const quote = record.quotations.find(item => item.id === action.quotationId)
+      if (!negotiationOpen(record) || !quote || quote.status !== 'pending' || quote.version !== record.ledger.quoteVersion || quote.offeredBy === actor || !['customer', bookingService(record).role].includes(actor) || typeof action.accept !== 'boolean') return state
+      if (action.accept && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options))) return state
+      const ledger = transitionBooking(record.ledger, { type: action.accept ? 'accept' : 'decline' }, actor === 'renter' ? 'artist' : actor, at)
+      if (ledger === record.ledger) return state
+      patch = { status: 'accepted', ledger, quotations: record.quotations.map(item => item.id === quote.id ? { ...item, status: action.accept ? 'accepted' : 'declined', decidedBy: actor, decidedAt: at } : item) }
+      label = `${actor === 'customer' ? 'Customer' : 'Provider'} ${action.accept ? 'accepted' : 'declined'} quotation v${quote.version}`
+      break
+    }
+    case 'payment_failed': {
+      const due = checkoutFor(record.ledger)
+      if (actor !== 'customer' || !due || action.version !== record.ledger.quoteVersion || action.amountCents !== due.amountCents || refundBlocks(record)) return state
+      label = 'Demo payment declined · no funds collected; retry available'
+      break
+    }
     case "review":
       if (actor !== 'customer' || record.status !== 'completed' || record.review || !Number.isInteger(action.rating) || action.rating < 1 || action.rating > 5 || typeof action.text !== 'string' || action.text.trim().length < 10 || action.text.length > 2000) return state
       patch = { review: { rating: action.rating, text: action.text.trim(), at } }
@@ -499,7 +581,9 @@ export function reducePipeline(
         (action.accept && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options)))
       )
         return state
+      if (action.accept) return reducePipeline(state, { type: 'quote_response', id, quotationId: record.quotations.at(-1)?.id ?? '', accept: true }, actor, at, replayLegacy, options)
       patch = {
+        quotations: record.quotations.map(item => item.status === 'pending' ? { ...item, status: 'declined' as const, decidedBy: actor, decidedAt: at } : item),
         status: action.accept ? "accepted" : "rejected",
         ledger: {
           ...record.ledger,
@@ -517,11 +601,7 @@ export function reducePipeline(
         record.ledger.quoteStatus !== "awaiting_customer"
       )
         return state
-      patch = {
-        ledger: transitionBooking(record.ledger, { type: "accept" }, actor, at),
-      }
-      label = "Customer agreed to the quote"
-      break
+      return reducePipeline(state, { type: 'quote_response', id, quotationId: record.quotations.at(-1)?.id ?? '', accept: true }, actor, at, replayLegacy, options)
     case "cancel":
       if (
         actor !== "customer" ||
@@ -608,6 +688,7 @@ export function reducePipeline(
       if (refundBlocks(record) || ["rejected", "cancelled"].includes(record.status))
         return state
       const inner = action.action
+      if (action.type === "legacy" && !replayLegacy && ["counter", "accept", "decline"].includes(inner.type)) return state
       if (action.type === "settle" && (record.status === "pending" || !["collect", "skip_advance", "propose_overtime", "resolve_overtime", "confirm_performance", "toggle_hold", "release"].includes(inner.type))) return state
       if (inner.type === "pay" && !replayLegacy) return state
       if (["propose_overtime", "resolve_overtime"].includes(inner.type) && (bookingService(record).role !== "artist" || !performanceStarted(record, new Date(at)))) return state
@@ -632,10 +713,11 @@ export function reducePipeline(
   }
   return {
     ...state,
+    messages: action.type === 'quotation' ? [...state.messages, { id: `message-${patch.quotations!.at(-1)!.id}`, bookingId: id, sender: actor, text: '', at, quotationId: patch.quotations!.at(-1)!.id }] : state.messages,
     notifications: [notificationFor({ ...record, ...patch }, action, actor, label, at), ...state.notifications],
     bookings: state.bookings.map((item) =>
       item.id === id
-        ? { ...item, ...patch, activity: [...item.activity, { label, at }] }
+        ? { ...item, ...patch, activity: [...item.activity, { label, at, actor }] }
         : item,
     ),
   }

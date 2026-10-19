@@ -1,9 +1,11 @@
+import { clearAttachments } from './chatAttachments'
 import { useDashboard } from './DashboardContext'
 import { catalogFor } from './catalog'
 import type { BookingOptions } from './pipeline'
 import {
   createContext,
   useCallback,
+  useEffect,
   useContext,
   useRef,
   useState,
@@ -39,6 +41,7 @@ export function BookingProvider({
   // Each page load starts a fresh demo. This provider stays mounted through
   // navigation and role switches; old browser-stored events are never restored.
   const [state, setState] = useState<PipelineState>(initialPipeline)
+  useEffect(() => () => clearAttachments(), [])
   const current = useRef(state)
   const dispatch = useCallback(
     (action: PipelineAction) => {

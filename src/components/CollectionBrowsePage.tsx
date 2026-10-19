@@ -1,3 +1,4 @@
+import SaveListingButton from './SaveListingButton'
 import { useState } from "react"
 import { motion } from "motion/react"
 import type { CollectionListing } from "./CollectionDetailPage"
@@ -133,6 +134,7 @@ export default function CollectionBrowsePage({
                 },
               }}
             >
+              <div className="m4-listing-caption"><strong>{listing.name}</strong><SaveListingButton id={listing.catalogId ?? String(listing.id)} /></div>
               <ArtistCollectionCard
                 listing={{ ...listing, type }}
                 onOpen={onOpenCollection}

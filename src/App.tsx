@@ -69,6 +69,8 @@ function RoleSwitcher({ currentRole, onSwitch, inline = false }: { currentRole: 
 }
 
 export default function App() {
+  const [session, setSession] = useState(0);
+  useEffect(() => { const reset = () => { setSession(value => value + 1); setView('main'); setPendingMarket(null); setAdminTarget(undefined); setCustomerPrompt(false); }; window.addEventListener('stagelink:reset-demo', reset); return () => window.removeEventListener('stagelink:reset-demo', reset); }, []);
   const [role, setRole] = useState<Role>('visitor');
   const [view, setView] = useState<View>('main');
   const [adminTarget, setAdminTarget] = useState<{ id: string; key: number } | undefined>();
@@ -78,8 +80,8 @@ export default function App() {
   useEffect(() => { const openThread = (event: Event) => { const id = (event as CustomEvent<string>).detail; if (typeof id === 'string') { const run = () => openWorkspace('chat', id); if (window.dispatchEvent(new CustomEvent('stagelink:before-navigation', { detail: run, cancelable: true }))) run(); } }; window.addEventListener('stagelink:open-thread', openThread); return () => window.removeEventListener('stagelink:open-thread', openThread); }, []);
   useEffect(() => {
     const openUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<{ id: string; section: 'bookings' | 'payments' }>).detail;
-      if (!detail || typeof detail.id !== 'string' || !['bookings', 'payments'].includes(detail.section)) return;
+      const detail = (event as CustomEvent<{ id: string; section: 'bookings' | 'payments' | 'chat' }>).detail;
+      if (!detail || typeof detail.id !== 'string' || !['bookings', 'payments', 'chat'].includes(detail.section)) return;
       const run = () => {
         if (role === 'admin') { setAdminTarget(previous => ({ id: detail.id, key: (previous?.key ?? 0) + 1 })); setView('main'); }
         else openWorkspace(detail.section, detail.id);
@@ -156,7 +158,7 @@ export default function App() {
 
   return (
     <AppearanceProvider isDark={isDark} onThemeChange={handleThemeChange}>
-    <DashboardProvider actor={role}>
+    <DashboardProvider key={session} actor={role}>
       <BookingProvider actor={role}>
       <MarketplaceBridge actor={role} pending={pendingMarket} onDone={marketDone} onBook={marketBook} onChat={marketChat} onNeedCustomer={intent => { setPendingMarket(intent); if (role === 'visitor') setAuthMode('login'); else setCustomerPrompt(true); }} />
       {customerPrompt && <ConfirmDialog title="Continue as the demo customer?" confirm="Use customer demo" onClose={() => { setCustomerPrompt(false); setPendingMarket(null); }} onConfirm={() => { setCustomerPrompt(false); setRole('customer'); }}>Bookings and enquiries are created by customers. Your provider changes stay in this session.</ConfirmDialog>}

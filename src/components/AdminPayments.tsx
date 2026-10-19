@@ -1,3 +1,4 @@
+import BookingDocuments from './BookingDocuments';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Check, Landmark, ShieldCheck, X } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
@@ -49,7 +50,7 @@ export default function AdminPayments({ initialBookingId }: { initialBookingId?:
     <PayoutAccountReview />
     <label className="pw-field">Booking to settle<select value={id} onChange={event => { setId(event.target.value); setVerified(false); setConfirm(null); setError(''); }}>{state.bookings.map(record => <option key={record.id} value={record.id}>{record.id} · {record.event}</option>)}</select></label>
     <div className="pw-two-col">
-      <div className="pw-stack"><SettlementSummary record={record} /><InstallmentHistory record={record} /></div>
+      <div className="pw-stack"><SettlementSummary record={record} /><InstallmentHistory record={record} /><BookingDocuments record={record} /></div>
       <div className="pw-stack">
         <RefundReview key={record.id} record={record} />
         <section className="pw-panel pw-review" aria-label="Release controls">

@@ -52,7 +52,7 @@ test('demo advances only the matching provider and respects pending overtime, fi
   for (const actor of ['customer', 'renter', 'admin', 'visitor']) assert.equal(run(state, { type: 'demo_start', id }, actor), state);
   assert.equal(run(state, { type: 'demo_finish', id }, 'artist'), state);
   state = run(state, { type: 'demo_start', id }, 'artist');
-  assert.equal(record(state).date, '2026-10-18'); assert.equal(performanceStarted(record(state), new Date(at)), true);
+  assert.equal(record(state).date, record(initialPipeline()).date); assert.equal(performanceStarted(record(state), new Date(at)), true);
   assert.equal(run(state, { type: 'demo_start', id }, 'artist'), state);
   state = settle(state, { type: 'propose_overtime', id: 'OT-DEMO', minutes: 60, amountCents: 40000 });
   assert.equal(run(state, { type: 'demo_finish', id }, 'artist'), state);

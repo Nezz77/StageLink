@@ -16,6 +16,7 @@ interface PaymentCheckoutProps {
   paymentCents: number;
   paidCents: number;
   overtimeCents: number;
+  onFailed?: () => void;
   onPaid: (method: 'card' | 'wallet') => boolean;
   onBack: () => void;
   onViewBooking: () => void;
@@ -25,7 +26,7 @@ const emptyCard: CardFields = { name: '', number: '', expiry: '', cvv: '' };
 const inputClass = 'mt-2 w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-400/15 aria-invalid:border-rose-500';
 
 /** Frontend simulation: card fields never leave this component or enter storage. */
-export default function PaymentCheckout({ bookingId, artist, event, quoteCents, feeCents, paymentKind, paymentCents, paidCents, overtimeCents, onPaid, onBack, onViewBooking }: PaymentCheckoutProps) {
+export default function PaymentCheckout({ bookingId, artist, event, quoteCents, feeCents, paymentKind, paymentCents, paidCents, overtimeCents, onPaid, onFailed, onBack, onViewBooking }: PaymentCheckoutProps) {
   const [method, setMethod] = useState<'card' | 'wallet'>('card');
   const [phase, setPhase] = useState<PaymentState>('form');
   const [fields, setFields] = useState<CardFields>(emptyCard);
@@ -78,6 +79,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
     timer.current = setTimeout(() => {
       timer.current = null;
       if (method === 'card' && fields.number.replace(/\s/g, '') === '4000000000000002') {
+        onFailed?.();
         busy.current = false; setFormGone(false); setPhase('form'); setFailure('Demo payment declined. No funds were taken. Use the demo card button to retry.');
       } else if (onPaid(method)) {
         setFields(emptyCard);

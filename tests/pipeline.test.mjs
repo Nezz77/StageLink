@@ -224,7 +224,7 @@ test("completion is available only after end time and holds payment for review",
 test("messages stay tied to their booking and unread counts are per participant", () => {
   let state = initialPipeline()
   const record = state.bookings[0]
-  assert.equal(unreadFor(state, record, "customer"), 1)
+  assert.equal(unreadFor(state, record, "customer"), 2)
   state = apply(state, { type: "read", id: record.id })
   assert.equal(unreadFor(state, record, "customer"), 0)
   const message = {

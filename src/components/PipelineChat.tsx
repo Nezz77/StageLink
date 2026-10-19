@@ -1,3 +1,7 @@
+import AttachmentPreview from './AttachmentPreview'
+import QuotationCard, { QuoteComposer } from './QuotationCard'
+import ChatDemoControls from './ChatDemoControls'
+import { negotiationOpen } from '../lib/pipeline'
 import { useEffect, useRef, useState } from "react"
 import {
   ArrowLeft,
@@ -12,7 +16,7 @@ import {
   X,
 } from "lucide-react"
 import { useBooking } from "../lib/BookingContext"
-import { downloadAttachment, saveAttachment } from "../lib/chatAttachments"
+import { downloadAttachment, saveAttachment, removeAttachment } from "../lib/chatAttachments"
 import {
   bookingService,
   messageSeen,
@@ -40,7 +44,10 @@ export default function PipelineChat({
   const [search, setSearch] = useState("")
   const [onlyUnread, setOnlyUnread] = useState(false)
   const [mobileThread, setMobileThread] = useState(!!initialBookingId)
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [quoting, setQuoting] = useState(false)
+  const [pauseRead, setPauseRead] = useState(false)
+  const [typing, setTyping] = useState(false)
+  const [notice, setNotice] = useState("")
   const [files, setFiles] = useState<Record<string, File | undefined>>({})
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
@@ -57,13 +64,14 @@ export default function PipelineChat({
   const record = records.find((item) => item.id === selectedId)
   const messages = state.messages.filter(
     (message) => message.bookingId === selectedId,
-  )
+  ).sort((a,b) => Date.parse(a.at)-Date.parse(b.at))
+  const unreadChatUpdates = state.notifications.filter(note => note.bookingId === selectedId && note.section === "chat" && note.recipients.includes(actor) && !note.readBy.includes(actor)).length
   const unread = record ? unreadFor(state, record, actor) : 0
   useEffect(() => {
     const markVisible = () => {
       if (
         record &&
-        unread &&
+        (unread || unreadChatUpdates) && !pauseRead &&
         (mobileThread || window.matchMedia("(min-width: 901px)").matches) &&
         document.visibilityState === "visible"
       )
@@ -78,12 +86,12 @@ export default function PipelineChat({
       window.removeEventListener("focus", markVisible)
       window.removeEventListener("resize", markVisible)
     }
-  }, [record?.id, unread, mobileThread, dispatch])
+  }, [record?.id, unread, unreadChatUpdates, mobileThread, dispatch, pauseRead])
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" })
   }, [selectedId, messages.length])
   const threadName = (record: typeof records[number]) =>
-    actor === "customer" ? bookingService(record).name : record.organizer ?? record.organizer ?? "Jordan Rivera"
+    actor === "customer" ? bookingService(record).name : record.organizer ?? "Jordan Rivera"
   const filtered = records.filter(
     (item) =>
       `${item.event} ${item.id} ${threadName(item)}`
@@ -91,7 +99,7 @@ export default function PipelineChat({
         .includes(search.toLowerCase()) &&
       (!onlyUnread || unreadFor(state, item, actor) > 0),
   )
-  const input = selectedId ? (drafts[selectedId] ?? "") : ""
+  const input = selectedId ? (state.messageDrafts[`${actor}:${selectedId}`] ?? "") : ""
   const file = selectedId ? files[selectedId] : undefined
   const send = async () => {
     if (!record || sending.current || (!input.trim() && !file)) return
@@ -102,10 +110,13 @@ export default function PipelineChat({
     sending.current = true
     setBusy(true)
     setError("")
+    let savedAttachmentId: string | undefined
+    let sent = false
     try {
       let attachment: Attachment | undefined
       if (attached) {
         const id = crypto.randomUUID()
+        savedAttachmentId = id
         await saveAttachment(id, attached)
         attachment = {
           id,
@@ -122,7 +133,8 @@ export default function PipelineChat({
         })
       )
         throw new Error("This message could not be added. Please try again.")
-      setDrafts((previous) => ({ ...previous, [bookingId]: "" }))
+      sent = true
+      setPauseRead(false)
       setFiles((previous) => ({ ...previous, [bookingId]: undefined }))
       if (fileInput.current) fileInput.current.value = ""
     } catch (issue) {
@@ -133,6 +145,7 @@ export default function PipelineChat({
             : "The attachment could not be saved. Remove it or try again.",
         )
     } finally {
+      if (savedAttachmentId && !sent) removeAttachment(savedAttachmentId)
       sending.current = false
       if (mounted.current) setBusy(false)
     }
@@ -179,7 +192,7 @@ export default function PipelineChat({
             {filtered.map((item) => {
               const threadMessages = state.messages.filter(
                 (message) => message.bookingId === item.id,
-              )
+              ).sort((a,b) => Date.parse(a.at)-Date.parse(b.at))
               const last = threadMessages[threadMessages.length - 1]
               const count = unreadFor(state, item, actor)
               return (
@@ -189,6 +202,8 @@ export default function PipelineChat({
                     selectedId === item.id ? "selected" : ""
                   }`}
                   onClick={() => {
+                    setPauseRead(false)
+                    setQuoting(false)
                     setSelectedId(item.id)
                     setMobileThread(true)
                     setError("")
@@ -203,7 +218,7 @@ export default function PipelineChat({
                     <strong>{threadName(item)}</strong>
                     <small>{item.event}</small>
                     <p>
-                      {last?.text ||
+                      {(last?.quotationId ? `Quotation v${item.quotations.find(quote => quote.id === last.quotationId)?.version ?? "—"}` : last?.text) ||
                         (last?.attachment
                           ? `Attachment: ${last.attachment.name}`
                           : "Start the conversation")}
@@ -334,9 +349,12 @@ export default function PipelineChat({
                           })}
                         </time>
                       </div>
+                      {message.simulated && <small className="m4-simulated">Simulated incoming reply</small>}
+                      {message.quotationId && (() => { const quote = record.quotations.find(item => item.id === message.quotationId); return quote ? <QuotationCard quote={quote} record={record} onCounter={() => setQuoting(true)} onBooking={() => onOpenBooking(record.id)} /> : <p>Quotation is no longer available.</p> })()}
                       {message.text && (
                         <p className="pw-bubble">{message.text}</p>
                       )}
+                      {message.attachment && <AttachmentPreview attachment={message.attachment} />}
                       {message.attachment && (
                         <button
                           className="pw-file"
@@ -376,8 +394,12 @@ export default function PipelineChat({
                   </div>
                 )
               })}
+              {typing && <p className="m4-typing" role="status">{threadName(record)} is typing… <span>Demo simulation</span></p>}
               <div ref={endRef} />
             </div>
+            <ChatDemoControls key={record.id} onTyping={setTyping} onReply={text => {setPauseRead(true);dispatch({type:'demo_reply',id:record.id,text})}} onSeen={() => dispatch({type:'demo_seen',id:record.id})} onUnread={() => {setPauseRead(true);dispatch({type:'demo_unread',id:record.id})}} />
+            {pauseRead && <div className="m4-read-demo"><span>Unread state held for demonstration.</span><button className="pw-text-button" onClick={() => {dispatch({type:'read',id:record.id});setPauseRead(false)}}>Read this conversation</button></div>}
+            {actor === bookingService(record).role && negotiationOpen(record) && <button className="btn-ghost m4-new-quote" onClick={() => setQuoting(true)}>Create quotation</button>}
             <form
               className="pw-composer"
               onSubmit={(event) => {
@@ -416,12 +438,7 @@ export default function PipelineChat({
                   rows={2}
                   value={input}
                   disabled={busy}
-                  onChange={(event) =>
-                    setDrafts((previous) => ({
-                      ...previous,
-                      [record.id]: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => {dispatch({type:'message_draft',id:record.id,text:event.target.value});setNotice('')}}
                   onKeyDown={(event) => {
                     if (
                       event.key === "Enter" &&
@@ -476,9 +493,12 @@ export default function PipelineChat({
                 >
                   <Paperclip size={15} /> Add attachment
                 </button>
+                <button type="button" onClick={() => setNotice('Message draft saved for later in this session. Attachments must be sent before leaving.')} disabled={!input.trim()}>Save for later</button>
                 <span>Enter to send · up to 5 MB</span>
               </div>
+              {notice && <p role="status">{notice}</p>}
             </form>
+            {quoting && <QuoteComposer key={record.id} record={record} onClose={() => setQuoting(false)} />}
           </section>
         ) : (
           <EmptyState title="Your inbox is ready.">
