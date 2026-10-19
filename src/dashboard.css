@@ -6,7 +6,8 @@
   --color-surface: #0d1120;
   --color-surface-2: #131928;
   --color-border: rgba(124, 58, 237, .18);
-  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   color: #f1f5f9;
   font-family: var(--font-sans);
   min-height: 100vh;
