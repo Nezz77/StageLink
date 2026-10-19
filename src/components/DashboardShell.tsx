@@ -121,6 +121,12 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
               {count > 0 ? <span className="sl-nav-count" aria-hidden="true">{count > 99 ? '99+' : count}</span> : <span className="sl-nav-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>}
             </button>;
           })}
+          {onGoToLanding && <button className="sl-nav-item sl-mobile-nav-action" onClick={onGoToLanding} aria-label="Go to landing page" title="Home">
+            <Icon.Home className="sl-nav-icon" /><span className="sl-nav-label">Home</span>
+          </button>}
+          <button className="sl-nav-item sl-mobile-nav-action" onClick={event => onThemeChange(!isDark, event)} aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`} title={isDark ? 'Light mode' : 'Dark mode'}>
+            {isDark ? <Sun className="sl-nav-icon" aria-hidden="true" /> : <Moon className="sl-nav-icon" aria-hidden="true" />}<span className="sl-nav-label">{isDark ? 'Light mode' : 'Dark mode'}</span>
+          </button>
         </nav>
         <div className="sl-sidebar-tools">
           <button className="sl-theme-toggle" onClick={event => onThemeChange(!isDark, event)} aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`} title={isCollapsed ? `Switch to ${isDark ? 'light' : 'dark'} mode` : undefined}>
