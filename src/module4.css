@@ -33,3 +33,19 @@
 .m4-attachment-preview { width:150px; max-height:130px; object-fit:cover; border-radius:12px; }
 @media(max-width:600px){ .m4-quote { padding:16px; }.m4-charge { grid-template-columns:minmax(0,1fr) 65px 44px; }.m4-charge .mg-field:first-child { grid-column:1/-1; }.m4-document-row > div { min-width:calc(100% - 40px); }.m4-demo-controls { padding-inline:12px; }.m4-milestone-list { grid-template-columns:1fr; }.m4-reset { font-size:11px; padding:7px; }.m4-quote .btn-primary,.m4-quote .btn-ghost { padding:10px 12px; } }
 @media(prefers-reduced-motion:reduce){ .m4-quote,.m4-saved-card { animation:none!important; transition:none!important; } }
+/* Keep reset, notifications and role selection usable on a narrow header. */
+@media (max-width: 600px) {
+  .sl-topbar {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-block: 12px;
+  }
+  .sl-topbar > div:last-child {
+    margin-left: auto;
+    max-width: 100%;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+}

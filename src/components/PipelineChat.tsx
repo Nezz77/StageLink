@@ -397,7 +397,7 @@ export default function PipelineChat({
               {typing && <p className="m4-typing" role="status">{threadName(record)} is typing… <span>Demo simulation</span></p>}
               <div ref={endRef} />
             </div>
-            <ChatDemoControls key={record.id} onTyping={setTyping} onReply={text => {setPauseRead(true);dispatch({type:'demo_reply',id:record.id,text})}} onSeen={() => dispatch({type:'demo_seen',id:record.id})} onUnread={() => {setPauseRead(true);dispatch({type:'demo_unread',id:record.id})}} />
+            <ChatDemoControls key={`demo:${record.id}`} onTyping={setTyping} onReply={text => {setPauseRead(true);dispatch({type:'demo_reply',id:record.id,text})}} onSeen={() => dispatch({type:'demo_seen',id:record.id})} onUnread={() => {setPauseRead(true);dispatch({type:'demo_unread',id:record.id})}} />
             {pauseRead && <div className="m4-read-demo"><span>Unread state held for demonstration.</span><button className="pw-text-button" onClick={() => {dispatch({type:'read',id:record.id});setPauseRead(false)}}>Read this conversation</button></div>}
             {actor === bookingService(record).role && negotiationOpen(record) && <button className="btn-ghost m4-new-quote" onClick={() => setQuoting(true)}>Create quotation</button>}
             <form
@@ -498,7 +498,7 @@ export default function PipelineChat({
               </div>
               {notice && <p role="status">{notice}</p>}
             </form>
-            {quoting && <QuoteComposer key={record.id} record={record} onClose={() => setQuoting(false)} />}
+            {quoting && <QuoteComposer key={`quote:${record.id}`} record={record} onClose={() => setQuoting(false)} />}
           </section>
         ) : (
           <EmptyState title="Your inbox is ready.">

@@ -1,6 +1,6 @@
 # StageLink Module 4 — Implementation & Evaluation
 
-Updated: 19 October 2026. Owner: Nesandu Hesitha. Target: `/Users/nezz/Desktop/Git/Antigravity/StageLink_UI`.
+Updated: 20 October 2026 (QA performed 19–20 October). Owner: Nesandu Hesitha. Target: `/Users/nezz/Desktop/Git/Antigravity/StageLink_UI`.
 
 This is a connected **frontend demonstration** built on the existing React 19, TypeScript, Vite and Tailwind application. It does not process money, authenticate real users or send remote messages.
 
@@ -72,11 +72,13 @@ Switch roles without refreshing to see the same quotation/payment/message data. 
 
 ## Verification evidence
 
-- TypeScript: passed on the staged integration, including the user's latest unmodified styling/provider updates.
-- Domain tests: **69 passed**, including 14 new Module 4 tests. Coverage includes stale/own/duplicate offers, current checkout amounts, availability, skipped advance, overtime, once-only fee, refunds, saved references, scoped chat simulations, acceptance notification reads and isolated initialization.
-- Production build: passed. Vite reports existing large application/3D chunks and a Node deprecation warning. PDF code is lazy loaded. No deployment was performed.
+- Applied to the main project, with the user's concurrent styling and mobile navigation changes preserved. File backups and guarded hashes were saved before promotion.
+- TypeScript: passed in the updated main project.
+- Domain tests in the updated main project: **69 passed**, including 14 new Module 4 tests. Coverage includes stale/own/duplicate offers, current checkout amounts, availability, skipped advance, overtime, once-only fee, refunds, saved references, scoped chat simulations, acceptance notification reads and isolated initialization.
+- Production build: passed in the updated main project. Vite reports existing large application/3D chunks and a Node deprecation warning. PDF code is lazy loaded. No deployment was performed.
 - Browser completed: provider $2,200 quote → customer $2,000 counteroffer → provider acceptance; old/own action buttons absent; updated $200 checkout; declined card unchanged ledger and successful retry; hold blocks transfer; advance release; pending OT gate; $300 approved OT; event completion; $2,100 final collection; final release blocked until verification; final release with no further fee; notifications opened corresponding quote/event/booking records; role switching retained progress throughout.
 - Actual browser PDF downloads: invoice (2 pages), advance receipt (3), completed provider settlement (3). Extracted totals matched live state and all eight pages were rendered and visually inspected. Separate long-text fixtures (3/4/4 pages) exercised wrapping and pagination; all eleven pages were rendered and inspected.
+- Final log review found a duplicate React key between the new quote editor and demo controls; distinct keys now fix it. Development hot updates also produced a transient context-provider error and existing splash/view-transition `flushSync` warnings. A fresh-load browser smoke check is still required after re-enabling browser access; production compilation passes, but console-clean runtime is not claimed.
 - **Remaining browser checks:** saved-item interactions; skipped-advance and refund UI walkthroughs; chat demo controls and local attachment preview/download; explicit refresh/reset and second-tab isolation; mobile and both themes; final post-promotion smoke check. Browser control became disabled in Work settings during QA. Domain checks pass for these rules, but that is not a substitute for the remaining browser validation.
 
 Evidence lives under `/Users/nezz/Desktop/UOM/Software Project/work/stagelink-module4/qa`: test/typecheck/build logs, baseline and promotion manifest, reconciliation record, downloaded PDF copies, extracted text, rendered pages, and long-text fixtures. No successful visual browser check is claimed for the post-QA polishing changes until browser access is available again.
