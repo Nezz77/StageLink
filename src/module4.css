@@ -1,6 +1,9 @@
 /* Connected Module 4 surfaces inherit StageLink's theme and type system. */
-.m4-listing-caption { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 20px; min-height:55px; }
-.m4-listing-caption strong { font-weight:500; max-width:70%; }
+.m4-listing-caption { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 20px; min-height:55px; color:#f1f5f9; }
+.m4-listing-caption strong { color:inherit; font-size:14px; font-weight:600; line-height:1.5; max-width:70%; overflow-wrap:anywhere; text-shadow:0 1px 8px #07090f80; }
+.m4-listing-caption .m4-save { color:inherit; }
+html[data-theme="light"] .m4-listing-caption { color:#292633; }
+html[data-theme="light"] .m4-listing-caption strong { text-shadow:none; }
 .m4-save { margin-block:8px; flex-shrink:0; }
 .m4-saved-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr)); gap:22px; }
 .m4-saved-card { display:flex; flex-direction:column; gap:14px; }

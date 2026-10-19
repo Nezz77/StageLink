@@ -136,10 +136,9 @@ export default function ArtistCollectionCard({ listing, onOpen }: ArtistCollecti
               View<br />{listing.type === 'artist' ? 'Collection' : 'Listing'}
             </h3>
           </div>
-          <div className="flex items-end gap-1 mb-2">
-            <span className="text-3xl font-light">{listing.date.split(' ')[0]}</span>
-            <span className="text-sm text-white/50 mb-1">{listing.date.split(' ')[1]}</span>
-          </div>
+          <p className="mb-2 line-clamp-3 text-xs leading-relaxed text-white/75">
+            {listing.description}
+          </p>
         </div>
       </motion.div>
     </motion.div>

@@ -14,7 +14,7 @@ export interface CollectionListing {
   id: number | string;
   catalogId?: string;
   name: string;
-  date: string;
+  description: string;
   images: string[];
   type: 'artist' | 'equipment';
 }
@@ -778,11 +778,6 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
               }}
             >
               {[
-                {
-                  icon: <Icon.Calendar className="w-4 h-4 text-slate-500" />,
-                  label: 'Listed',
-                  val: listing.date,
-                },
                 {
                   icon: <Icon.Clock className="w-4 h-4 text-slate-500" />,
                   label: 'Response time',
