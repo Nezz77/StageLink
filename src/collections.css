@@ -6,7 +6,7 @@
   background-position: center top;
   background-size: cover;
 }
-.restored-collections .restored-equipment-card {
+.restored-collections :is(.restored-equipment-card, .restored-artist-card) {
   background-color: rgba(13, 17, 32, .84);
   border: 1px solid rgba(167, 139, 250, .18);
 }

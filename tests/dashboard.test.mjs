@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initialDashboard, reduceDashboard, draftKey, profileErrors, listingErrors } from '../src/lib/dashboard.ts';
+import { collectionsFor } from '../src/lib/catalogPresentation.ts';
 const at = '2026-10-15T09:00:00Z';
 const run = (state, action, actor = 'artist') => reduceDashboard(state, action, actor, at);
 const validListing = () => ({ ...initialDashboard().listings[0], id: 'GIG-NEW', title: 'An acoustic evening' });
 const getCase = (state, id = 'VRF-881') => state.cases.find(item => item.id === id);
+
+test('initial demo catalog populates artist and equipment collection pages', () => {
+  const state = initialDashboard();
+  assert.equal(collectionsFor(state, 'artist').length, 5);
+  assert.equal(collectionsFor(state, 'equipment').length, 5);
+});
 
 test('profile validation rejects invalid details and a member can change only their own profile', () => {
   const state = initialDashboard(), profile = { ...state.profiles.artist, name: '  Aria Live  ' };
