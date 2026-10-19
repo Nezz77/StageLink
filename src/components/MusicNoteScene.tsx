@@ -18,9 +18,9 @@ function DocumentScroll() {
     scroll.el.setAttribute('aria-hidden', 'true');
   }, [scroll]);
   useFrame((_, delta) => {
-    // Keep the entry at the requested upper-right spot while that boundary
-    // first enters view; begin its journey once the heading approaches centre.
-    const start = Math.max(0, documentTop(section.current, innerHeight) - innerHeight * .45);
+    // Start with the whole queue hidden behind the artist section. As the
+    // budget section enters view, notes cross its border one by one.
+    const start = Math.max(0, documentTop(section.current, innerHeight) - innerHeight * .85);
     const end = Math.max(start + 1, document.documentElement.scrollHeight - innerHeight);
     const target = Math.max(0, Math.min(1, (window.scrollY - start) / (end - start)));
     const previous = position.current;
@@ -58,9 +58,9 @@ function createQueuePath(width: number, height: number, count: number) {
   const titleTop = documentTop(title, cardTop - height * .3);
   const joinTop = documentTop(join, cardTop + cardHeight + height * .4);
   const spacing = Math.min(44, Math.max(28, width * .035));
-  const exitLength = (count - 1) * spacing + 80;
-  // Enter at the upper-right edge below Trending Artists, wind through the
-  // pricing and join sections, then let the whole train cross the footer edge.
+  const hiddenLength = (count - 1) * spacing + 80;
+  // A full train fits behind each boundary. The shared canvas clip reveals
+  // notes crossing the top edge and hides them crossing into the footer.
   const knots = [
     [.88, top + 24], [.86, top + 80], [.75, titleTop - 24],
     [.66, titleTop + height * .14], [.46, titleTop + height * .04],
@@ -70,9 +70,13 @@ function createQueuePath(width: number, height: number, count: number) {
     [.40, cardTop + cardHeight + height * .08], [.78, joinTop - height * .10],
     [.80, joinTop + height * .18], [.55, joinTop + height * .32],
     [.27, bottom - height * .20], [.24, bottom - height * .05],
-    [.28, bottom + 40], [.28, bottom + exitLength],
+    [.28, bottom + 40], [.28, bottom + hiddenLength],
   ];
-  const path = new CatmullRomCurve3(knots.map(([x, y]) => new Vector3(left + x * contentWidth, Math.max(top + 24, y), 0)), false, 'centripetal');
+  const path = new CatmullRomCurve3([
+    new Vector3(left + .88 * contentWidth, top - hiddenLength, 0),
+    new Vector3(left + .88 * contentWidth, top - 40, 0),
+    ...knots.map(([x, y]) => new Vector3(left + x * contentWidth, Math.max(top + 24, y), 0)),
+  ], false, 'centripetal');
   path.arcLengthDivisions = 1024;
   return { path, length: path.getLength(), width, height, spacing };
 }

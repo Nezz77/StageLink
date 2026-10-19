@@ -54,6 +54,6 @@ export default function MusicNoteField({ isDark }: { isDark: boolean }) {
   }, []);
   const active = pageVisible && section.visible;
   return <div ref={field} className="dna-field fixed inset-0 pointer-events-none" aria-hidden="true" data-dna-scope="pricing-to-footer" data-dna-state={!section.visible ? 'outside' : reducedMotion ? 'still' : active ? 'scrolling' : 'paused'}>
-    {section.loaded && (reducedMotion ? <StillMusicNotes /> : <SceneBoundary><Suspense fallback={<StillMusicNotes />}><MusicNoteScene isDark={isDark} active={active} /></Suspense></SceneBoundary>)}
+    {section.loaded && (reducedMotion ? <StillMusicNotes /> : <SceneBoundary><Suspense fallback={null}><MusicNoteScene isDark={isDark} active={active} /></Suspense></SceneBoundary>)}
   </div>;
 }
