@@ -45,7 +45,7 @@ const equipmentArtwork = [
   },
   {
     "images": [
-      "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=500&h=600&fit=crop",
+      "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=500&h=600&fit=crop",
       "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&h=600&fit=crop",
       "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&h=600&fit=crop",
       "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500&h=600&fit=crop",

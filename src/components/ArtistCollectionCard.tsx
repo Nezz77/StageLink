@@ -78,7 +78,15 @@ export default function ArtistCollectionCard({ listing, onOpen }: ArtistCollecti
                 delay: isExpanded ? index * 0.05 : (isHovered ? index * 0.05 : 0) // Stagger
               }}
             >
-              <img src={src} alt={`${listing.name} collection ${index + 1}`} className="w-full h-full object-cover" />
+              <img
+                src={src}
+                alt={`${listing.name} collection ${index + 1}`}
+                className="w-full h-full object-cover"
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = '/dashboard-stage-fallback.svg';
+                }}
+              />
               
               {/* Optional ID tag on the first image like in the screenshot */}
               {index === 0 && (
