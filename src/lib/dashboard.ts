@@ -1,3 +1,4 @@
+import { equipmentErrors, type EquipmentFields } from './equipmentSpecs.ts';
 import { depositErrors, type DepositFields } from './securityDeposit.ts';
 import { initialAIEngine, reduceAIEngine, type AIEngineState, type AIAction } from './aiEngine.ts';
 import { initialCommunity, reduceCommunity, type CommunityState, type CommunityAction } from './community.ts';
@@ -5,7 +6,7 @@ import type { BookingRole } from './booking.ts';
 
 export type MemberRole = 'customer' | 'artist' | 'renter';
 export type Profile = { name: string; email: string; city: string; phone: string; specialty: string; bio: string };
-export type Listing = DepositFields & {
+export type Listing = DepositFields & EquipmentFields & {
   id: string; owner: 'artist' | 'renter'; title: string; category: string; description: string;
   price: string; unit: 'hour' | 'event' | 'day'; quantity: string;
   status: 'live' | 'paused' | 'maintenance'; condition: string;
@@ -68,7 +69,7 @@ export function listingErrors(item: Listing) {
   if (!['hour', 'event', 'day'].includes(item.unit)) errors.unit = 'Choose a pricing unit.';
   if (!['live', 'paused', 'maintenance'].includes(item.status) || (item.owner === 'artist' && item.status === 'maintenance')) errors.status = 'Choose an available listing status.';
   if (!validText(item.condition, 0, 100)) errors.condition = 'Keep the condition under 100 characters.';
-  if (item.owner === 'renter') Object.assign(errors, depositErrors(item));
+  if (item.owner === 'renter') Object.assign(errors, depositErrors(item), equipmentErrors(item));
   return errors;
 }
 export function initialDashboard(): DashboardState {

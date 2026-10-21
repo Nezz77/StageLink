@@ -1,4 +1,4 @@
-:root { --deposit-editor-pad: 22px; --deposit-summary-pad: 20px; --deposit-field-pad: 14px; --deposit-mode-gap: var(--deposit-mode-gap); --deposit-gap: 12px; --deposit-section-gap: 24px; --deposit-field-radius: 10px; }
+:root { --deposit-editor-pad: 22px; --deposit-summary-pad: 20px; --deposit-field-pad: 14px; --deposit-mode-gap: 10px; --deposit-gap: 12px; --deposit-section-gap: 24px; --deposit-field-radius: 10px; }
 .sl-deposit-editor { min-width: 0; border: 1px solid var(--color-border, rgba(167,139,250,.22)); border-radius: 16px; padding: var(--deposit-editor-pad); margin: 24px 0; }
 .sl-deposit-editor legend { padding: 0 8px; font-family: 'Fraunces', serif; font-size: 23px; }
 .sl-deposit-modes { display: flex; flex-wrap: wrap; gap: var(--deposit-mode-gap); margin: 16px 0; }
