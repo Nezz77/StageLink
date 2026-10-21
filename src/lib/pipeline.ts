@@ -1,3 +1,4 @@
+import { initialStock, stockAvailability, stockPhase, stockRequestError, STOCK_HOLD_MS, type StockState } from './stock.ts'
 import { snapshotDeposit, repriceDeposit, type DepositSnapshot } from './securityDeposit.ts'
 import { quoteError, quoteTotal, type Quotation, type QuoteInput } from './quotations.ts'
 import { type Service, type Availability } from './catalog.ts'
@@ -57,6 +58,8 @@ export type BookingForm = {
   quantity?: string
 }
 export type RecordBooking = BookingForm & {
+  stockHold?: { expiresAt: string }
+  stockReturnedAt?: string
   securityDeposit?: DepositSnapshot
   quotations: Quotation[]
   service?: Service
@@ -90,6 +93,7 @@ export type BookingNotification = {
   section: "bookings" | "payments" | "chat"; recipients: BookingRole[]; readBy: BookingRole[]
 }
 export type PipelineState = {
+  stock?: StockState
   messageDrafts: Record<string, string>
   notifications: BookingNotification[]
   bookings: RecordBooking[]
@@ -99,6 +103,8 @@ export type PipelineState = {
   read: Record<string, string>
 }
 export type PipelineAction =
+  | { type: "stock_sample"; scenario: "reserve" | "release" | "expire" | "stale" | "unavailable" | "refresh"; serviceId: string; date: string; units?: number; kind?: "confirmed" | "temporary" }
+  | { type: "renew_stock" | "expire_stock"; id: string }
   | { type: "venue_check_in"; id: string; mode: "manual" | "demo" }
   | { type: "quotation"; id: string; expectedVersion: number; input: QuoteInput }
   | { type: "quote_response"; id: string; quotationId: string; accept: boolean; advancePolicy?: 'escrow-50' }
@@ -139,7 +145,8 @@ export const PIPELINE_KEY = "stagelink:pipeline:v1"
 export const serviceFor = (id: ServiceId, catalog: Service[] = services): Service =>
   catalog.find(service => service.id === id) ?? { id, name: 'Unavailable listing', provider: 'Provider', role: 'artist', detail: 'Choose an available listing.', rate: 0, unit: 'event', initials: 'SL', capacity: 0, available: false }
 export const bookingService = (record: RecordBooking): Service => record.service ?? serviceFor(record.serviceId)
-export type BookingOptions = { catalog?: Service[]; availability?: Partial<Record<'artist' | 'renter', Availability>>; organizer?: string }
+export const bookingStockService = (record: RecordBooking, catalog: Service[] = services): Service => catalog.find(service => service.id === record.serviceId) ?? { ...bookingService(record), available: false, capacity: 0, listingStatus: 'paused' }
+export type BookingOptions = { stock?: StockState; catalog?: Service[]; availability?: Partial<Record<'artist' | 'renter', Availability>>; organizer?: string }
 
 export const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
@@ -162,11 +169,15 @@ export const quoteFor = (form: BookingForm, catalog: Service[] = services) => {
 const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
 const active = (record: RecordBooking) => !['rejected', 'cancelled', 'completed'].includes(record.status)
 export const visibleTo = (record: RecordBooking, actor: BookingRole) => actor === 'customer' || actor === 'admin' || bookingService(record).role === actor
-export const conflicts = (form: BookingForm, bookings: RecordBooking[], catalog: Service[] = services) => {
+export const conflicts = (form: BookingForm, bookings: RecordBooking[], catalog: Service[] = services, now = new Date()) => {
   const service = serviceFor(form.serviceId, catalog)
+  if (service.role === 'renter') {
+    const occupied = bookings.filter(r => r.id !== form.id && r.serviceId === form.serviceId && !['none','expired'].includes(stockPhase(r, form.date, now)));
+    return stockAvailability(service, form.date, bookings, undefined, now, form.id).available! >= Number(form.quantity ?? '1') ? [] : occupied;
+  }
   const occupied = bookings.filter(record => record.id !== form.id && active(record) && record.date === form.date &&
     (service.role === 'artist' ? bookingService(record).role === 'artist' && form.start < record.end && form.end > record.start : record.serviceId === form.serviceId))
-  return service.role === 'renter' && occupied.reduce((sum, record) => sum + Number(record.quantity ?? '1'), 0) + Number(form.quantity ?? '1') <= service.capacity ? [] : occupied
+  return occupied
 }
 export function availabilityError(form: BookingForm, options: BookingOptions = {}) {
   const service = serviceFor(form.serviceId, options.catalog)
@@ -215,8 +226,8 @@ export function validateForm(
   if (service.role === 'renter' && (!/^\d+$/.test(quantity) || Number(quantity) < 1 || Number(quantity) > service.capacity)) errors.quantity = `Choose 1–${service.capacity} available units.`
   const unavailable = availabilityError(form, options)
   if (unavailable) errors.serviceId = unavailable
-  if (conflicts(form, bookings, options.catalog).length)
-    errors.date = "This service already has a booking in that time slot."
+  if (service.role === 'renter') { const issue = stockRequestError(form, service, bookings, options.stock, now); if (issue) errors.quantity = issue; }
+  else if (conflicts(form, bookings, options.catalog, now).length) errors.date = "This service already has a booking in that time slot."
   return errors
 }
 function seedRecord(
@@ -437,6 +448,21 @@ export function reducePipeline(
     !Number.isFinite(Date.parse(at))
   )
     return state
+  options = { ...options, stock: state.stock ?? options.stock }
+  const stockNow = new Date(at)
+  if (action.type === 'stock_sample') {
+    const service = serviceFor(action.serviceId, options.catalog), previous = state.stock ?? initialStock(at)
+    if (!['customer','renter','admin'].includes(actor) || service.role !== 'renter' || !/^\d{4}-\d{2}-\d{2}$/.test(action.date)) return state
+    if (['stale','unavailable','refresh'].includes(action.scenario)) return { ...state, stock: { ...previous, status: action.scenario === 'refresh' ? 'current' : action.scenario as 'stale' | 'unavailable', checkedAt: at } }
+    const matches = (h: StockState['samples'][number]) => h.serviceId === action.serviceId && h.date === action.date
+    if (action.scenario === 'release' || action.scenario === 'expire') {
+      if (!previous.samples.some(matches)) return state
+      return { ...state, stock: { ...previous, checkedAt: at, samples: action.scenario === 'release' ? previous.samples.filter(h => !matches(h)) : previous.samples.map(h => matches(h) && h.kind === 'temporary' ? { ...h, expiresAt: new Date(stockNow.getTime()-1).toISOString() } : h) } }
+    }
+    const view = stockAvailability(service, action.date, state.bookings, previous, stockNow), units = action.units ?? 1
+    if (action.scenario !== 'reserve' || !Number.isSafeInteger(units) || units < 1 || view.available === null || units > view.available || !service.available || (action.kind !== 'confirmed' && action.kind !== 'temporary')) return state
+    return { ...state, stock: { ...previous, checkedAt: at, samples: [...previous.samples, { id: `sample-${at}-${previous.samples.length}`, serviceId: service.id, date: action.date, units, kind: action.kind, ...(action.kind === 'temporary' ? { expiresAt: new Date(stockNow.getTime()+STOCK_HOLD_MS).toISOString() } : {}) }] } }
+  }
   if (action.type === "read_notification") {
     const item = state.notifications.find(item => item.id === action.id && item.recipients.includes(actor) && !item.readBy.includes(actor))
     if (!item) return state
@@ -462,6 +488,7 @@ export function reducePipeline(
     const record: RecordBooking = {
       ...form,
       quotations: [],
+      stockHold: service.role === 'renter' ? { expiresAt: new Date(stockNow.getTime()+STOCK_HOLD_MS).toISOString() } : undefined,
       service: { ...service, depositPolicy: policy ? { ...policy } : undefined },
       securityDeposit: service.role === 'renter' ? snapshotDeposit({
         depositMode: policy?.mode, depositValue: policy?.value,
@@ -548,6 +575,15 @@ export function reducePipeline(
     const messageId = `demo-${id}-${state.messages.length}-${at}`
     return { ...state, messages: [...state.messages, { id: messageId, bookingId: id, sender: other, text: action.text.trim(), simulated: true, at }], notifications: [{ id: `message:${messageId}`, bookingId: id, title: 'Demo incoming reply', at, section: 'chat', recipients: [actor], readBy: [] }, ...state.notifications] }
   }
+  if (action.type === 'expire_stock' || action.type === 'renew_stock') {
+    if (!record.stockHold || actor !== 'customer' || !['pending','accepted'].includes(record.status) || record.ledger.quoteStatus === 'accepted' || record.ledger.performance !== 'upcoming' || settlement(record.ledger).receivedCents > 0) return state
+    if (action.type === 'renew_stock' && Date.parse(record.stockHold.expiresAt) > stockNow.getTime()) return state
+    if (action.type === 'renew_stock' && (stockRequestError(record, bookingStockService(record, options.catalog), state.bookings, options.stock, stockNow) || availabilityError(record, options))) return state
+    const expiresAt = new Date(stockNow.getTime() + (action.type === 'renew_stock' ? STOCK_HOLD_MS : -1)).toISOString()
+    return { ...state, bookings: state.bookings.map(item => item.id !== record.id ? item : { ...item, stockHold: { expiresAt }, activity: [...item.activity, { label: action.type === 'renew_stock' ? 'Temporary equipment stock hold renewed' : 'Sample equipment stock hold expired', at, actor }] }) }
+  }
+  const rentalGuard = stockRequestError(record, bookingStockService(record, options.catalog), state.bookings, options.stock, stockNow, !!record.stockHold && record.ledger.quoteStatus !== 'accepted')
+  if (rentalGuard && ((action.type === 'respond' && action.accept) || action.type === 'quotation' || (action.type === 'quote_response' && action.accept) || (action.type === 'agree') || (action.type === 'settle' && action.action.type === 'collect' && record.ledger.performance === 'upcoming'))) return state
   let patch: Partial<RecordBooking> = {}
   let label = ""
   switch (action.type) {
@@ -555,7 +591,7 @@ export function reducePipeline(
       if (!negotiationOpen(record) || !['customer', bookingService(record).role].includes(actor) || action.expectedVersion !== record.ledger.quoteVersion || quoteError(action.input)) return state
       const previous = record.quotations.at(-1)
       if (actor === 'customer' && (!previous || previous.offeredBy === actor || previous.status !== 'pending')) return state
-      if (actor !== 'customer' && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options))) return state
+      if (actor !== 'customer' && (conflicts(record, state.bookings, options.catalog, stockNow).length || availabilityError(record, options))) return state
       const version = record.ledger.quoteVersion + 1
       const quote: Quotation = { ...initialQuotation(record), ...action.input, lines: action.input.lines.map(line => ({ ...line })),
         id: `${id}-Q${version}`, version, totalCents: quoteTotal(action.input.lines), offeredBy: actor, at, status: 'pending' }
@@ -567,7 +603,7 @@ export function reducePipeline(
     case 'quote_response': {
       const quote = record.quotations.find(item => item.id === action.quotationId)
       if (!negotiationOpen(record) || !quote || quote.status !== 'pending' || quote.version !== record.ledger.quoteVersion || quote.offeredBy === actor || !['customer', bookingService(record).role].includes(actor) || typeof action.accept !== 'boolean') return state
-      if (action.accept && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options))) return state
+      if (action.accept && (conflicts(record, state.bookings, options.catalog, stockNow).length || availabilityError(record, options))) return state
       const ledger = transitionBooking(record.ledger, { type: action.accept ? 'accept' : 'decline' }, actor === 'renter' ? 'artist' : actor, at)
       if (ledger === record.ledger) return state
       patch = { status: 'accepted', ledger: action.accept && action.advancePolicy === 'escrow-50' ? { ...ledger, advancePolicy: 'escrow-50' } : ledger, quotations: record.quotations.map(item => item.id === quote.id ? { ...item, status: action.accept ? 'accepted' : 'declined', decidedBy: actor, decidedAt: at } : item) }
@@ -589,7 +625,7 @@ export function reducePipeline(
       if (
         actor !== bookingService(record).role ||
         record.status !== "pending" ||
-        (action.accept && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options)))
+        (action.accept && (conflicts(record, state.bookings, options.catalog, stockNow).length || availabilityError(record, options)))
       )
         return state
       if (action.accept) return reducePipeline(state, { type: 'quote_response', id, quotationId: record.quotations.at(-1)?.id ?? '', accept: true }, actor, at, replayLegacy, options)

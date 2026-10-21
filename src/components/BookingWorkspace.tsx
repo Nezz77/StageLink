@@ -1,3 +1,5 @@
+import StockAvailability from './StockAvailability'
+import { stockRequestError } from '../lib/stock'
 import { DepositSummary } from './SecurityDeposit'
 import { snapshotDeposit } from '../lib/securityDeposit'
 import BookingDrawer from './BookingDrawer'
@@ -51,7 +53,7 @@ import {
   paymentLabel,
   performanceEndsAt,
   quoteFor,
-  bookingService, serviceFor,
+  bookingService, bookingStockService, serviceFor,
   services as seedServices,
   unreadFor,
   validateForm,
@@ -318,6 +320,7 @@ function BookingEditor({
             Times use your local timezone. Bookings must start and end on the
             same day.
           </p>
+          <StockAvailability serviceId={form.serviceId} date={form.date} quantity={form.quantity} demo />
           {field(
             "venue",
             "Venue / location",
@@ -385,7 +388,7 @@ function BookingReview({
   onBack: () => void
   onDone: (id: string) => void
 }) {
-  const { dispatch, options } = useBooking()
+  const { dispatch, options, state, now } = useBooking()
   const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState("")
   return (
@@ -418,6 +421,7 @@ function BookingReview({
               </div>
             ))}
           </dl>
+          <StockAvailability serviceId={form.serviceId} date={form.date} quantity={form.quantity} demo />
           <h3>Your requirements</h3>
           <p className="pw-prewrap">
             {form.requirements || "No extra requirements added."}
@@ -447,7 +451,7 @@ function BookingReview({
                 if (dispatch({ type: "submit", form })) onDone(form.id)
                 else
                   setError(
-                    "The date or availability has changed. Return to the form and review your details.",
+                    stockRequestError(form, serviceFor(form.serviceId, options.catalog), state.bookings, options.stock, now) || "The date or availability has changed. Return to the form and review your details.",
                   )
               }}
             >
@@ -502,6 +506,7 @@ function BookingDetails({
       />
       <div className="pw-two-col">
         <div className="pw-stack">
+          <StockAvailability serviceId={record.serviceId} date={record.date} record={record} demo />
           <section className="pw-panel pw-review">
             <div className="pw-panel-heading">
               <span className="sl-eyebrow">THE EVENT</span>
@@ -856,6 +861,7 @@ function PaymentDetails({
       />
       <div className="pw-two-col">
         <div className="pw-stack">
+          <StockAvailability serviceId={record.serviceId} date={record.date} record={record} demo />
           <section className="pw-panel pw-review">
             <h2>{record.event}</h2>
             <p>{bookingService(record).name} · {record.id}</p>
@@ -1490,6 +1496,8 @@ export default function BookingWorkspace({
             bookingId={checkoutRecord.id}
             artist={bookingService(checkoutRecord).name}
             event={checkoutRecord.event}
+            stockPanel={checkoutRecord.ledger.performance === 'upcoming' ? <StockAvailability serviceId={checkoutRecord.serviceId} date={checkoutRecord.date} record={checkoutRecord} demo /> : undefined}
+            stockIssue={checkoutRecord.ledger.performance === 'upcoming' ? stockRequestError(checkoutRecord, bookingStockService(checkoutRecord, options.catalog), state.bookings, options.stock, new Date(), !!checkoutRecord.stockHold && checkoutRecord.ledger.quoteStatus !== 'accepted') : ''}
             securityDeposit={checkoutRecord.securityDeposit}
             quoteCents={checkout.offer.quoteCents}
             feeCents={checkout.offer.feeCents}

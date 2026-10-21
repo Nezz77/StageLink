@@ -1,6 +1,6 @@
 import { DepositSummary } from './SecurityDeposit';
 import type { DepositSnapshot } from '../lib/securityDeposit';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Check, CircleAlert, Clock3, CreditCard, Landmark, LoaderCircle, LockKeyhole, ShieldCheck, Wifi, X } from 'lucide-react';
 import { money, validateDemoCard } from '../lib/booking';
@@ -12,6 +12,8 @@ type PaymentState = 'form' | DemoPaymentPhase;
 type CardFields = { name: string; number: string; expiry: string; cvv: string };
 interface PaymentCheckoutProps {
   securityDeposit?: DepositSnapshot;
+  stockPanel?: ReactNode;
+  stockIssue?: string;
   bookingId: string;
   artist: string;
   event: string;
@@ -33,7 +35,7 @@ const emptyCard: CardFields = { name: '', number: '', expiry: '', cvv: '' };
 const inputClass = 'mt-2 w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-400/15 aria-invalid:border-rose-500';
 
 /** Frontend simulation: card fields never leave this component or enter storage. */
-export default function PaymentCheckout({ securityDeposit, bookingId, artist, event, quoteCents, feeCents, paymentKind, advancePercent = 10, paymentCents, paidCents, overtimeCents, onPaid, onFailed, onBack, onViewBooking, onViewReceipt }: PaymentCheckoutProps) {
+export default function PaymentCheckout({ stockPanel, stockIssue, securityDeposit, bookingId, artist, event, quoteCents, feeCents, paymentKind, advancePercent = 10, paymentCents, paidCents, overtimeCents, onPaid, onFailed, onBack, onViewBooking, onViewReceipt }: PaymentCheckoutProps) {
   const [method, setMethod] = useState<'card' | 'wallet'>('card');
   const [phase, setPhase] = useState<PaymentState>('form');
   const [fields, setFields] = useState<CardFields>(emptyCard);
@@ -113,7 +115,7 @@ export default function PaymentCheckout({ securityDeposit, bookingId, artist, ev
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (busy.current) return;
+    if (busy.current || stockIssue) return;
     const nextErrors = method === 'card' ? validateDemoCard(fields) : {};
     setErrors(nextErrors);
     const invalidField = Object.keys(nextErrors)[0];
@@ -270,9 +272,11 @@ export default function PaymentCheckout({ securityDeposit, bookingId, artist, ev
                     <div className="flex justify-between gap-3"><dt>Remaining after this payment</dt><dd>{money(Math.max(0, quoteCents + overtimeCents - paidCents - totalCents))}</dd></div>
                   </dl>
                 </div>
+                {stockPanel}
+                {stockIssue && <p role="alert" className="sl-stock-warning">{stockIssue}</p>}
                 <DepositSummary snapshot={securityDeposit} />
                 <p className="mb-4 text-xs leading-relaxed text-slate-400">{paymentKind === 'advance' ? (advancePercent === 50 ? "Your advance stays held in demo escrow until verified completion and full payment." : "Your advance goes to StageLink. An admin can transfer it to the provider before the gig.") : 'Your final payment goes to StageLink. An admin transfers it after performance verification.'} The {money(feeCents)} StageLink fee is deducted once from the provider’s payout; it is not added to your payment.</p>
-                <motion.button whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }} type="submit" className="flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-4 text-sm font-semibold text-white shadow-[0_8px_22px_-8px_rgba(124,58,237,0.55)] transition-colors hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"><CreditCard size={17} /><span>PAY {money(totalCents)}</span><ArrowRight size={17} /></motion.button>
+                <motion.button whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }} disabled={!!stockIssue} type="submit" className="disabled:opacity-40 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-4 text-sm font-semibold text-white shadow-[0_8px_22px_-8px_rgba(124,58,237,0.55)] transition-colors hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"><CreditCard size={17} /><span>PAY {money(totalCents)}</span><ArrowRight size={17} /></motion.button>
                 <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-slate-400"><LockKeyhole size={10} /> Demo checkout · Card details are never saved</p>
                 <details className="sl-checkout-scenarios"><summary>Demo payment scenarios</summary><label htmlFor="demo-payment-response">Sample response</label><select id="demo-payment-response" value={scenario} onChange={event => setScenario(event.target.value as DemoPaymentOutcome)}><option value="success">Approved payment</option><option value="declined">Declined payment</option><option value="pending">Delayed confirmation</option><option value="stale">Outdated quote response</option></select><p>Local simulation only. No PayHere, Stripe or banking connection.</p></details>
               </motion.form>

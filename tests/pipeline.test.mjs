@@ -108,6 +108,8 @@ test("artist conflicts use time ranges; equipment reserves the full day", () => 
         end: "09:00",
       },
       equipment.bookings,
+      undefined,
+      new Date(now),
     ).length,
     1,
   )

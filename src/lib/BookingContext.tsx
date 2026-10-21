@@ -26,6 +26,7 @@ const BookingContext = createContext<{
   act: (action: BookingAction) => boolean
   state: PipelineState
   options: BookingOptions
+  now: Date
   dispatch: (action: PipelineAction) => boolean
   getBooking: (id: string) => import('./pipeline').RecordBooking | undefined
 } | null>(null)
@@ -38,11 +39,14 @@ export function BookingProvider({
   children: ReactNode
 }) {
   const { state: dashboard } = useDashboard()
-  const options: BookingOptions = { availability: dashboard.availability, catalog: catalogFor(dashboard), organizer: dashboard.profiles.customer.name }
+  const baseOptions: BookingOptions = { availability: dashboard.availability, catalog: catalogFor(dashboard), organizer: dashboard.profiles.customer.name }
   // Each page load starts a fresh demo. This provider stays mounted through
   // navigation and role switches; old browser-stored events are never restored.
   const [state, setState] = useState<PipelineState>(initialPipeline)
   useEffect(() => () => clearAttachments(), [])
+  const [clock, setClock] = useState(() => new Date())
+  useEffect(() => { const timer = setInterval(() => setClock(new Date()), 10000); return () => clearInterval(timer) }, [])
+  const options: BookingOptions = { ...baseOptions, stock: state.stock }
   const current = useRef(state)
   const dispatch = useCallback(
     (action: PipelineAction) => {
@@ -50,10 +54,11 @@ export function BookingProvider({
       const record = current.current.bookings.find(record => record.id === (action.type === 'legacy' ? 'BK-2901' : action.id))
       if (!record || dashboard.payoutAccounts[bookingService(record).role].status !== 'verified') return false
     }
-    const next = reducePipeline(current.current, action, actor, new Date().toISOString(), false, options)
+    const next = reducePipeline(current.current, action, actor, new Date().toISOString(), false, { ...baseOptions, stock: current.current.stock })
       if (next === current.current) return false
       current.current = next
       setState(next)
+      setClock(new Date())
       return true
     },
     [actor, dashboard],
@@ -70,6 +75,7 @@ export function BookingProvider({
         act,
         state,
         options,
+        now: clock,
         dispatch,
         getBooking: (id: string) => current.current.bookings.find(record => record.id === id),
       }}

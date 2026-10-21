@@ -1,3 +1,4 @@
+import StockAvailability from './StockAvailability'
 import AttachmentPreview from './AttachmentPreview'
 import QuotationCard, { QuoteComposer } from './QuotationCard'
 import ChatDemoControls from './ChatDemoControls'
@@ -508,6 +509,7 @@ export default function PipelineChat({
               </div>
               {notice && <p role="status">{notice}</p>}
             </form>
+            <StockAvailability serviceId={record.serviceId} date={record.date} record={record} compact />
             {quoting && <QuoteComposer key={`quote:${record.id}`} record={record} onClose={() => setQuoting(false)} />}
           </section>
         ) : (

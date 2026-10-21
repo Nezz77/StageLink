@@ -27,7 +27,7 @@ test('published provider data feeds booking selection and fixes its agreed servi
 test('paused listings cannot create requests and artist conflicts cover different gigs',()=>{
  let dashboard=catalogState();const pipeline=booking(initialPipeline(),{type:'submit',form:form()},'customer',dashboard);
  const overlap=form({id:'BK-SECOND',serviceId:'aria',start:'20:00',end:'22:00'});
- assert.equal(conflicts(overlap,pipeline.bookings,catalogFor(dashboard)).length,1);
+ assert.equal(conflicts(overlap,pipeline.bookings,catalogFor(dashboard),new Date(at)).length,1);
  assert.equal(booking(pipeline,{type:'submit',form:overlap},'customer',dashboard),pipeline);
  dashboard=manage(dashboard,{type:'listing_status',id:'GIG-CUSTOM',status:'paused'});
  assert.equal(booking(initialPipeline(),{type:'submit',form:form()},'customer',dashboard).bookings.length,initialPipeline().bookings.length);
@@ -38,8 +38,8 @@ test('rental capacity sums units across the entire day and acceptance checks red
  const first=form({serviceId:'pa',quantity:'2'});let pipeline=booking(initialPipeline(),{type:'submit',form:first},'customer',dashboard);
  assert.equal(pipeline.bookings[0].ledger.quoteCents,Number(equipment.price)*100*2);
  const second=form({id:'BK-SECOND',serviceId:'pa',quantity:'2',start:'08:00',end:'09:00'});
- assert.equal(conflicts(second,pipeline.bookings,catalogFor(dashboard)).length,1);
- assert.equal(conflicts({...second,quantity:'1'},pipeline.bookings,catalogFor(dashboard)).length,0);
+ assert.equal(conflicts(second,pipeline.bookings,catalogFor(dashboard),new Date(at)).length,1);
+ assert.equal(conflicts({...second,quantity:'1'},pipeline.bookings,catalogFor(dashboard),new Date(at)).length,0);
  dashboard=manage(dashboard,{type:'listing',listing:{...equipment,quantity:'1'}},'renter');
  assert.equal(booking(pipeline,{type:'respond',id:first.id,accept:true},'renter',dashboard),pipeline);
 });
