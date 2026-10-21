@@ -385,6 +385,7 @@ export default function QuotationCard({
         <div className="pw-actions">
           <button
             className="btn-primary"
+            data-checkout-trigger={record.id}
             onClick={accept}
           >
             {actor === "customer" ? "Accept & Pay Escrow" : "Accept counter-offer"}
@@ -420,8 +421,8 @@ export default function QuotationCard({
       {quote.status === "accepted" && (
         <div className="pw-actions">
           <span className="mg-notice">{paid ? "Advance paid · held in demo escrow" : "Quote accepted · payment pending"}</span>
-          {actor === "customer" && due?.kind === "advance" && <button className="btn-primary" onClick={onCheckout}>Pay {percent}% Escrow <ArrowUpRight size={16} /></button>}
-          <button className="btn-ghost" onClick={onBooking}>
+          {actor === "customer" && due?.kind === "advance" && <button className="btn-primary" data-checkout-trigger={record.id} onClick={onCheckout}>Pay {percent}% Escrow <ArrowUpRight size={16} /></button>}
+          <button className="btn-ghost" data-checkout-return={record.id} onClick={onBooking}>
             View booking & payment
           </button>
         </div>

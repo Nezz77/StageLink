@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, ChevronRight, CreditCard, Landmark, LoaderCircle, LockKeyhole, ShieldCheck, Wifi } from 'lucide-react';
+import { ArrowRight, Check, CircleAlert, Clock3, CreditCard, Landmark, LoaderCircle, LockKeyhole, ShieldCheck, Wifi, X } from 'lucide-react';
 import { money, validateDemoCard } from '../lib/booking';
 import PaymentGlass from './PaymentGlass';
+import '../checkout.css';
+import { createDemoPaymentAttempt, type DemoPaymentOutcome, type DemoPaymentPhase } from '../lib/demoCheckout';
 
-type PaymentState = 'form' | 'processing' | 'success';
+type PaymentState = 'form' | DemoPaymentPhase;
 type CardFields = { name: string; number: string; expiry: string; cvv: string };
 interface PaymentCheckoutProps {
   bookingId: string;
@@ -33,7 +35,10 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
   const [fields, setFields] = useState<CardFields>(emptyCard);
   const [errors, setErrors] = useState<Partial<Record<keyof CardFields, string>>>({});
   const [flipped, setFlipped] = useState(false);
-  const [failure, setFailure] = useState('');
+  const [scenario, setScenario] = useState<DemoPaymentOutcome>('success');
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const attemptRef = useRef<ReturnType<typeof createDemoPaymentAttempt> | null>(null);
+  const dialogTitle = useId();
   const [formGone, setFormGone] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const busy = useRef(false);
@@ -44,24 +49,62 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
   const layoutTransition = { duration: reduceMotion ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] as const };
 
   useEffect(() => {
+    const dialog = dialogRef.current!;
+    const trigger = document.activeElement as HTMLElement | null;
+    const oldOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = 'hidden';
     titleRef.current?.focus({ preventScroll: true });
-    return () => { if (timer.current) clearTimeout(timer.current); };
-  }, []);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      attemptRef.current?.cancel();
+      dialog.close();
+      document.body.style.overflow = oldOverflow;
+      queueMicrotask(() => {
+        const target = trigger?.isConnected ? trigger : document.querySelector<HTMLElement>(`[data-checkout-trigger="${bookingId}"], [data-checkout-return="${bookingId}"]`);
+        target?.focus({ preventScroll: true });
+      });
+    };
+  }, [bookingId]);
 
   useEffect(() => {
-    if (phase === 'success') successRef.current?.focus({ preventScroll: true });
-  }, [phase]);
+    if (phase !== 'form' && formGone) {
+      if (dialogRef.current) dialogRef.current.scrollTop = 0;
+      successRef.current?.focus({ preventScroll: true });
+    }
+  }, [phase, formGone]);
+
+  const closeCheckout = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    attemptRef.current?.cancel();
+    setFields(emptyCard);
+    onBack();
+  };
+  const resolveAttempt = (outcome: DemoPaymentOutcome) => {
+    const next = attemptRef.current?.resolve(outcome);
+    if (!next || next === 'cancelled') return;
+    setFields(emptyCard);
+    setPhase(next);
+  };
+  const retry = () => {
+    busy.current = false;
+    attemptRef.current = null;
+    setFields(emptyCard);
+    setErrors({});
+    setFormGone(false);
+    setPhase('form');
+    requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
+  };
 
   const update = (key: keyof CardFields, value: string) => {
     setFields(previous => ({ ...previous, [key]: value }));
     setErrors(previous => ({ ...previous, [key]: undefined }));
-    setFailure('');
   };
 
   const fillDemo = () => {
     setFields({ name: 'CODEXR', number: '4242 4242 4242 4242', expiry: `12/${String(new Date().getFullYear() + 3).slice(-2)}`, cvv: '123' });
     setErrors({});
-    setFailure('');
   };
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -77,40 +120,26 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
     busy.current = true;
     setFlipped(false);
     setPhase('processing');
+    const outcome = method === 'card' && fields.number.replace(/\s/g, '') === '4000000000000002' ? 'declined' : scenario;
+    attemptRef.current = createDemoPaymentAttempt(() => onPaid(method), onFailed);
     timer.current = setTimeout(() => {
       timer.current = null;
-      if (method === 'card' && fields.number.replace(/\s/g, '') === '4000000000000002') {
-        onFailed?.();
-        busy.current = false; setFormGone(false); setPhase('form'); setFailure('Demo payment declined. No funds were taken. Use the demo card button to retry.');
-      } else if (onPaid(method)) {
-        setFields(emptyCard);
-        setPhase('success');
-      } else {
-        busy.current = false;
-        setFormGone(false);
-        setPhase('form');
-        setFailure('This quote has changed or has already been paid. Return to booking to review its status.');
-      }
-    }, 2500);
+      resolveAttempt(outcome);
+    }, 1800);
   };
 
   return (
-    <section aria-label="Payment checkout" className="relative isolate mx-auto w-full max-w-6xl rounded-[32px] bg-[#07090f] p-2 text-white sm:p-5 lg:p-7">
+    <dialog ref={dialogRef} aria-labelledby={dialogTitle} data-phase={phase} className="sl-checkout-dialog" onCancel={event => { event.preventDefault(); closeCheckout(); }} onClick={event => { if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeCheckout(); } }}>
+    <section aria-label="Payment checkout" className="checkout-surface relative isolate mx-auto w-full rounded-[28px] bg-[#07090f] text-white">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[inherit]">
         <motion.div animate={reduceMotion ? {} : { x: [0, 35, 0], y: [0, 25, 0] }} transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }} className="absolute -left-16 top-4 h-80 w-80 rounded-full bg-violet-600/30 blur-[75px]" />
         <motion.div animate={reduceMotion ? {} : { x: [0, -25, 0], y: [0, -20, 0] }} transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }} className="absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-amber-500/15 blur-[70px]" />
         <div className="absolute right-[20%] top-[15%] h-52 w-52 rounded-full bg-fuchsia-500/10 blur-[65px]" />
       </div>
       <PaymentGlass className="rounded-[26px]">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] px-5 py-5 sm:px-8">
-          <nav aria-label="Checkout progress" className="flex flex-wrap items-center gap-2 text-[11px] font-medium sm:gap-3 sm:text-sm">
-            <button type="button" disabled={phase !== 'form'} onClick={onBack} className="flex items-center gap-1 text-slate-400 transition hover:text-violet-200 disabled:cursor-default"><ArrowLeft size={13} /> Main page</button>
-            <ChevronRight size={13} className="text-slate-300" />
-            <span className="text-slate-400">Booking details</span>
-            <ChevronRight size={13} className="text-slate-500" />
-            <span aria-current="step" className="text-violet-300">Payment method</span>
-          </nav>
-          <span className="flex items-center gap-1.5 rounded-full bg-violet-500/15 px-3 py-1.5 text-[10px] font-bold tracking-wider text-violet-200"><ShieldCheck size={13} /> STAGELINK / SECURE CHECKOUT</span>
+        <header className="sl-checkout-header">
+          <div><span className="sl-checkout-eyebrow"><ShieldCheck size={14} /> STAGELINK / DEMO ESCROW</span><h2 id={dialogTitle}>Complete your booking</h2><p>{bookingId} · {artist}</p></div>
+          <button type="button" className="sl-checkout-close" aria-label="Close checkout" onClick={closeCheckout}><X size={20} /></button>
         </header>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] bg-violet-400/[0.035] px-5 py-3 text-xs text-slate-300 sm:px-8">
@@ -119,7 +148,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
         </div>
 
         <motion.div layout transition={layoutTransition} className={`relative flex min-h-[590px] flex-col items-center justify-center gap-8 px-5 py-9 sm:px-10 lg:gap-12 lg:py-12 ${!formGone ? 'lg:flex-row' : ''}`}>
-          <motion.div layout="position" transition={layoutTransition} className="relative w-full max-w-[390px] shrink-0 self-center">
+          <motion.div layout="position" transition={layoutTransition} className="checkout-card-column relative w-full max-w-[390px] shrink-0 self-center">
             <motion.div layout="position" className="mb-5 flex items-center justify-between text-[10px] font-semibold tracking-[0.2em] text-slate-400">
               <span>YOUR BACKSTAGE PASS</span><span>01 / PAYMENT</span>
             </motion.div>
@@ -167,18 +196,25 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                   <div><p className="text-sm font-semibold">{paymentKind === 'advance' ? (advancePercent === 50 ? "Your 50% advance, held in escrow." : "An advance, held until admin release.") : 'The encore, settled through StageLink.'}</p><p className="mt-1 text-xs leading-relaxed text-slate-400">{paymentKind === 'advance' ? (advancePercent === 50 ? "Demo escrow holds your 50% advance until completion is verified and the balance is paid. No real money moves." : "StageLink holds your advance. An admin can release it to the provider before the performance, after deducting the one-time booking fee.") : 'StageLink holds your final payment until an admin verifies the completed performance and approves the provider’s payout.'}</p></div>
                 </motion.div>
               ) : formGone ? (
-                <motion.div key={phase} initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.25 }} onAnimationComplete={() => { if (phase === 'success') successRef.current?.focus({ preventScroll: true }); }} className="mt-9 text-center" role="status" aria-live="polite">
-                  {phase === 'processing' ? <>
-                    <LoaderCircle size={28} className="mx-auto mb-4 animate-spin text-violet-300 motion-reduce:animate-none" />
-                    <h2 className="text-lg font-semibold tracking-tight">Processing Secure Transaction...</h2>
-                    <p className="mt-2 text-xs text-slate-400">Simulating your payment to StageLink.</p>
-                  </> : <>
+                <motion.div key={phase} initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.25 }} onAnimationComplete={() => successRef.current?.focus({ preventScroll: true })} className="mt-9 text-center" role="status" aria-live="polite">
+                  {(phase === 'processing' || phase === 'pending') ? <>
+                    {phase === 'processing' ? <LoaderCircle size={28} className="mx-auto mb-4 animate-spin text-violet-300 motion-reduce:animate-none" /> : <Clock3 size={30} className="mx-auto mb-4 text-amber-300" />}
+                    <h2 ref={successRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">{phase === 'processing' ? 'Processing demo payment…' : 'Awaiting demo confirmation'}</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-400">{phase === 'processing' ? 'No payment is recorded until the demo response succeeds.' : 'The response is delayed. No demo funds have been recorded. Confirm the sample response below, or close to cancel this attempt.'}</p>
+                    {phase === 'pending' && <div className="sl-checkout-response-actions"><button type="button" className="btn-primary" onClick={() => resolveAttempt('success')}>Simulate confirmation</button><button type="button" className="btn-ghost" onClick={() => resolveAttempt('declined')}>Simulate failure</button></div>}
+                    <button type="button" className="pw-text-button mt-5" onClick={closeCheckout}>Cancel this attempt</button>
+                  </> : phase === 'declined' || phase === 'stale' ? <>
+                    <CircleAlert size={32} className="mx-auto mb-4 text-rose-300" />
+                    <h2 ref={successRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">{phase === 'declined' ? 'Demo payment declined' : 'Review the latest quotation'}</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-400">{phase === 'declined' ? 'No funds were taken. Your accepted quotation is still unpaid. Try another demo attempt.' : 'The payment could not be applied to this quote snapshot. No funds were taken. Close checkout and review the current booking before trying again.'}</p>
+                    <div className="sl-checkout-response-actions">{phase === 'declined' && <button type="button" className="btn-primary" onClick={retry}>Try again</button>}<button type="button" className="btn-ghost" onClick={closeCheckout}>Return to booking</button></div>
+                  </> : phase === 'success' ? <>
                     <motion.div initial={{ scale: reduceMotion ? 1 : 0.3 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 320, damping: 18 }} className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300"><Check size={25} strokeWidth={3} /></motion.div>
-                    <h2 ref={successRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">{advancePercent === 50 && paymentKind === "advance" ? "50% Advance Held in Escrow Vault" : "Payment Successful!"}</h2>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-400">Your demo transaction of <strong className="font-semibold text-slate-100">{money(totalCents)}</strong> has been processed successfully.</p>
-                    <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-violet-200"><LockKeyhole size={13} /> Funds held by StageLink · Not yet paid to provider</p>
+                    <h2 ref={successRef} tabIndex={-1} className="text-xl font-semibold tracking-tight outline-none">{advancePercent === 50 && paymentKind === 'advance' ? '50% Advance Held in Escrow Vault' : 'Demo payment successful'}</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-400">Your demo payment of <strong className="font-semibold text-slate-100">{money(totalCents)}</strong> is recorded. {paymentKind === 'advance' && `Remaining balance: ${money(Math.max(0, quoteCents + overtimeCents - paidCents - totalCents))}.`}</p>
+                    <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-violet-200"><LockKeyhole size={13} /> Held in demo escrow · not paid to provider</p>
                     <button onClick={onViewBooking} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400">View booking <ArrowRight size={15} /></button>
-                  </>}
+                  </> : null}
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -189,7 +225,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
               <motion.form key="payment-form" noValidate onSubmit={submit} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: reduceMotion ? 0 : 20 }} transition={{ duration: reduceMotion ? 0 : 0.25 }} className="w-full max-w-[390px] min-w-0">
                 <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">Payment details</h1>
                 <p className="mt-2 text-sm text-slate-400">One step closer to an unforgettable performance.</p>
-                <fieldset className="mt-5 flex gap-3 border-0 p-0"><legend className="mb-2 text-xs text-slate-300">Payment method</legend>{(['card', 'wallet'] as const).map(value => <label key={value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-xs ${method === value ? 'border-violet-400 bg-violet-500/15 text-violet-100' : 'border-white/15 text-slate-400'}`}><input type="radio" name="payment-method" value={value} checked={method === value} onChange={() => { setMethod(value); setErrors({}); setFailure(''); }} />{value === 'card' ? 'Demo card' : 'Demo wallet'}</label>)}</fieldset>
+                <fieldset className="mt-5 flex gap-3 border-0 p-0"><legend className="mb-2 text-xs text-slate-300">Payment method</legend>{(['card', 'wallet'] as const).map(value => <label key={value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-xl border p-3 text-xs ${method === value ? 'border-violet-400 bg-violet-500/15 text-violet-100' : 'border-white/15 text-slate-400'}`}><input type="radio" name="payment-method" value={value} checked={method === value} onChange={() => { setMethod(value); setErrors({}); }} />{value === 'card' ? 'Demo card' : 'Demo wallet'}</label>)}</fieldset>
                 {method === 'card' ? <><div className="mb-6 mt-4 flex items-center justify-between gap-2 text-xs">
                   <span className="text-slate-400">Test Visa ending in 4242</span>
                   <button type="button" onClick={fillDemo} className="rounded-md px-2 py-1.5 font-semibold text-violet-300 transition hover:bg-violet-500/15 focus-visible:outline-2 focus-visible:outline-violet-400">Use demo card</button>
@@ -222,15 +258,16 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                 <div className="mb-5 mt-6 border-t border-white/[0.07] pt-4">
                   <p className="text-xs font-semibold text-slate-100">{artist} <span className="font-normal text-slate-400">/ {event}</span></p>
                   <dl className="mt-3 space-y-2 text-xs text-slate-400">
-                    <div className="flex justify-between gap-3"><dt>Agreed performance fee</dt><dd>{money(quoteCents)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Agreed booking total</dt><dd>{money(quoteCents)}</dd></div>
                     <div className="flex justify-between gap-3"><dt>Approved overtime</dt><dd>{money(overtimeCents)}</dd></div>
                     <div className="flex justify-between gap-3"><dt>Already paid to StageLink</dt><dd>{money(paidCents)}</dd></div><div className="flex items-center justify-between gap-3 pt-2 text-white"><dt className="font-medium">{paymentKind === 'advance' ? (advancePercent === 50 ? "Required 50% escrow advance" : "Optional 10% advance") : 'Final balance due'}</dt><dd className="text-xl font-semibold tracking-tight">{money(totalCents)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Remaining after this payment</dt><dd>{money(Math.max(0, quoteCents + overtimeCents - paidCents - totalCents))}</dd></div>
                   </dl>
                 </div>
                 <p className="mb-4 text-xs leading-relaxed text-slate-400">{paymentKind === 'advance' ? (advancePercent === 50 ? "Your advance stays held in demo escrow until verified completion and full payment." : "Your advance goes to StageLink. An admin can transfer it to the provider before the gig.") : 'Your final payment goes to StageLink. An admin transfers it after performance verification.'} The {money(feeCents)} StageLink fee is deducted once from the provider’s payout; it is not added to your payment.</p>
-                {failure && <p role="alert" className="mb-3 text-sm text-rose-300">{failure}</p>}
                 <motion.button whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.985 }} type="submit" className="flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-4 text-sm font-semibold text-white shadow-[0_8px_22px_-8px_rgba(124,58,237,0.55)] transition-colors hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400"><CreditCard size={17} /><span>PAY {money(totalCents)}</span><ArrowRight size={17} /></motion.button>
                 <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-slate-400"><LockKeyhole size={10} /> Demo checkout · Card details are never saved</p>
+                <details className="sl-checkout-scenarios"><summary>Demo payment scenarios</summary><label htmlFor="demo-payment-response">Sample response</label><select id="demo-payment-response" value={scenario} onChange={event => setScenario(event.target.value as DemoPaymentOutcome)}><option value="success">Approved payment</option><option value="declined">Declined payment</option><option value="pending">Delayed confirmation</option><option value="stale">Outdated quote response</option></select><p>Local simulation only. No PayHere, Stripe or banking connection.</p></details>
               </motion.form>
             )}
           </AnimatePresence>
@@ -240,5 +277,6 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
         </footer>
       </PaymentGlass>
     </section>
+    </dialog>
   );
 }
