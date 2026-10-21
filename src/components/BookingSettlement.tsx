@@ -1,3 +1,4 @@
+import { DepositSummary } from './SecurityDeposit';
 import { bookingService } from '../lib/pipeline';
 import { useState } from 'react';
 import { ArrowRight, Check, Clock3, Landmark, Plus, ShieldCheck } from 'lucide-react';
@@ -18,6 +19,7 @@ export function SettlementSummary({ record }: { record: RecordBooking }) {
       <div><dt>Customer paid to StageLink</dt><dd>{money(totals.receivedCents)}</dd></div>
       <div className="sl-settlement-total"><dt>{refunded ? 'Refunded to customer' : 'Still due after performance'}</dt><dd>{money(refunded ? totals.refundedCents : totals.remainingCents)}</dd></div>
     </dl>
+    {bookingService(record).role === 'renter' && <DepositSummary snapshot={record.securityDeposit} legacy={!record.securityDeposit} />}
     <div className="sl-money-grid">
       <div><Landmark size={17} /><span>Held by StageLink</span><strong>{money(refunded ? 0 : totals.heldCents)}</strong></div>
       <div><Check size={17} /><span>Transferred to provider</span><strong>{money(totals.paidOutCents)}</strong></div>

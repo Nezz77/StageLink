@@ -1,3 +1,5 @@
+import { DepositSummary } from './SecurityDeposit'
+import { repriceDeposit } from '../lib/securityDeposit'
 import { useState } from "react"
 import { FileCheck, Plus, Trash2, ShieldCheck, ArrowUpRight } from "lucide-react"
 import { useBooking } from "../lib/BookingContext"
@@ -360,6 +362,7 @@ export default function QuotationCard({
         <p>{paid ? `${money(settlement(record.ledger).heldCents)} held in demo escrow.` : "Accepting agrees this quote. Payment is recorded only after demo checkout succeeds."}</p>
         <small>Demo only · no real funds or gateway connection</small>
       </div>
+      <DepositSummary snapshot={repriceDeposit(record.securityDeposit, quote.totalCents)} />
       {quote.included && (
         <p>
           <strong>Includes</strong>

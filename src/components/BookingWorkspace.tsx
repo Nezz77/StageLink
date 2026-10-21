@@ -1,3 +1,5 @@
+import { DepositSummary } from './SecurityDeposit'
+import { snapshotDeposit } from '../lib/securityDeposit'
 import BookingDrawer from './BookingDrawer'
 import BookingDocuments, { BookingDocumentPreview } from './BookingDocuments'
 import { bookingDocument } from '../lib/bookingDocuments'
@@ -155,6 +157,7 @@ function Summary({ form }: { form: BookingForm }) {
           <dd>{money(totalCents)}</dd>
         </div>
       </dl>
+      {service.role === 'renter' && <DepositSummary preview snapshot={snapshotDeposit({ depositMode: service.depositPolicy?.mode, depositValue: service.depositPolicy?.value, depositTerms: service.depositPolicy?.terms, depositCurrency: service.depositPolicy?.currency }, quote)} />}
       <p className="pw-caption">
         Demo USD pricing. The provider confirms availability before checkout.
       </p>
@@ -1487,6 +1490,7 @@ export default function BookingWorkspace({
             bookingId={checkoutRecord.id}
             artist={bookingService(checkoutRecord).name}
             event={checkoutRecord.event}
+            securityDeposit={checkoutRecord.securityDeposit}
             quoteCents={checkout.offer.quoteCents}
             feeCents={checkout.offer.feeCents}
             paymentKind={checkout.offer.kind}

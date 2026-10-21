@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, CreditCard, Cpu, MessageCircle, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { BarChart3, CreditCard, Cpu, BrainCircuit, MessageCircle, ShieldCheck, TriangleAlert } from 'lucide-react';
 import DashboardShell from './DashboardShell';
 import AdminPayments from './AdminPayments';
+import AdminAIEngine from './AdminAIEngine';
 import AdminAnalytics from './AdminAnalytics';
 import AdminReviewDesk from './AdminReviewDesk';
 import SystemControls from './SystemControls';
@@ -21,12 +22,13 @@ export default function AdminDashboard({ onGoToLanding, roleControl, paymentTarg
     { id: 'payments', icon: CreditCard, label: 'Payments' }, { id: 'analytics', icon: BarChart3, label: 'Analytics' },
     { id: 'verification', icon: ShieldCheck, label: 'Verification', count: pending('verification') },
     { id: 'disputes', icon: TriangleAlert, label: 'Disputes', count: pending('disputes') },
-    { id: 'system', icon: Cpu, label: 'System' }, { id: 'support', icon: MessageCircle, label: 'Support', count: pending('support') },
+    { id: 'ai-engine', icon: BrainCircuit, label: 'AI Engine' }, { id: 'system', icon: Cpu, label: 'System' }, { id: 'support', icon: MessageCircle, label: 'Support', count: pending('support') },
   ];
   return <DashboardShell controls={roleControl} role="admin" navItems={nav} activeTab={activeTab} onNavigate={navigate} onGoToLanding={() => requestDashboardNavigation(() => onGoToLanding?.())}>
     {activeTab === 'payments' && <AdminPayments key={`${paymentTarget?.key}:${paymentId}`} initialBookingId={paymentId} />}
     {activeTab === 'analytics' && <AdminAnalytics onNavigate={navigate} onPayment={openPayment} />}
     {(activeTab === 'verification' || activeTab === 'disputes' || activeTab === 'support') && <AdminReviewDesk key={activeTab} kind={activeTab} onPayment={openPayment} />}
+    {activeTab === 'ai-engine' && <AdminAIEngine />}
     {activeTab === 'system' && <SystemControls />}
   </DashboardShell>;
 }

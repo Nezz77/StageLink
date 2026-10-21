@@ -1,0 +1,12 @@
+:root { --deposit-editor-pad: 22px; --deposit-summary-pad: 20px; --deposit-field-pad: 14px; --deposit-mode-gap: var(--deposit-mode-gap); --deposit-gap: 12px; --deposit-section-gap: 24px; --deposit-field-radius: 10px; }
+.sl-deposit-editor { min-width: 0; border: 1px solid var(--color-border, rgba(167,139,250,.22)); border-radius: 16px; padding: var(--deposit-editor-pad); margin: 24px 0; }
+.sl-deposit-editor legend { padding: 0 8px; font-family: 'Fraunces', serif; font-size: 23px; }
+.sl-deposit-modes { display: flex; flex-wrap: wrap; gap: var(--deposit-mode-gap); margin: 16px 0; }
+.sl-deposit-modes label { display: flex; align-items: center; gap: 8px; border: 1px solid rgba(167,139,250,.25); padding: var(--deposit-gap) var(--deposit-field-pad); border-radius: 12px; cursor: pointer; font-size: 13px; }
+.sl-deposit-modes label:has(input:checked) { background: rgba(var(--sl-accent-rgb, 167,139,250),.12); border-color: var(--sl-accent, #a78bfa); }
+.sl-deposit-modes input { accent-color: var(--sl-accent, #8b5cf6); }
+.sl-deposit-summary { min-width: 0; padding: var(--deposit-summary-pad); margin: 18px 0; border-radius: 16px; background: rgba(139,92,246,.07); border: 1px solid rgba(167,139,250,.22); overflow-wrap: anywhere; }
+.sl-deposit-summary.sl-deposit-summary h3 { font-family: 'Fraunces', serif; font-size: 23px; margin: 8px 0 10px; }
+.sl-deposit-summary p { font-size: 12px; line-height: 1.7; margin: 8px 0; }
+.sl-deposit-editor small { line-height: 1.6; }
+@media (max-width: 600px) { .sl-deposit-editor, .sl-deposit-summary { padding: 16px; } .sl-deposit-modes { flex-direction: column; } }

@@ -1,3 +1,4 @@
+import { snapshotDeposit, repriceDeposit, type DepositSnapshot } from './securityDeposit.ts'
 import { quoteError, quoteTotal, type Quotation, type QuoteInput } from './quotations.ts'
 import { type Service, type Availability } from './catalog.ts'
 import {
@@ -56,6 +57,7 @@ export type BookingForm = {
   quantity?: string
 }
 export type RecordBooking = BookingForm & {
+  securityDeposit?: DepositSnapshot
   quotations: Quotation[]
   service?: Service
   organizer?: string
@@ -455,10 +457,16 @@ export function reducePipeline(
       }
     if (Object.keys(validateForm(form, state.bookings, new Date(at), options)).length)
       return state
+    const service = serviceFor(form.serviceId, options.catalog)
+    const policy = service.depositPolicy
     const record: RecordBooking = {
       ...form,
       quotations: [],
-      service: { ...serviceFor(form.serviceId, options.catalog) },
+      service: { ...service, depositPolicy: policy ? { ...policy } : undefined },
+      securityDeposit: service.role === 'renter' ? snapshotDeposit({
+        depositMode: policy?.mode, depositValue: policy?.value,
+        depositTerms: policy?.terms, depositCurrency: policy?.currency,
+      }, quoteFor(form, options.catalog)) : undefined,
       organizer: options.organizer ?? "Jordan Rivera",
       event: form.event.trim(),
       venue: form.venue.trim(),
@@ -551,7 +559,7 @@ export function reducePipeline(
       const version = record.ledger.quoteVersion + 1
       const quote: Quotation = { ...initialQuotation(record), ...action.input, lines: action.input.lines.map(line => ({ ...line })),
         id: `${id}-Q${version}`, version, totalCents: quoteTotal(action.input.lines), offeredBy: actor, at, status: 'pending' }
-      patch = { status: 'accepted', quotations: [...record.quotations.map(item => item.status === 'pending' ? { ...item, status: 'superseded' as const, decidedAt: at, decidedBy: actor } : item), quote],
+      patch = { securityDeposit: repriceDeposit(record.securityDeposit, quote.totalCents), status: 'accepted', quotations: [...record.quotations.map(item => item.status === 'pending' ? { ...item, status: 'superseded' as const, decidedAt: at, decidedBy: actor } : item), quote],
         ledger: { ...record.ledger, quoteVersion: version, quoteCents: quote.totalCents, quoteStatus: actor === 'customer' ? 'awaiting_artist' : 'awaiting_customer' } }
       label = `${actor === 'customer' ? 'Customer counteroffer' : 'Provider quotation'} v${version} · ${quote.totalCents / 100} USD`
       break

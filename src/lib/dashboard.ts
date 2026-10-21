@@ -1,9 +1,11 @@
+import { depositErrors, type DepositFields } from './securityDeposit.ts';
+import { initialAIEngine, reduceAIEngine, type AIEngineState, type AIAction } from './aiEngine.ts';
 import { initialCommunity, reduceCommunity, type CommunityState, type CommunityAction } from './community.ts';
 import type { BookingRole } from './booking.ts';
 
 export type MemberRole = 'customer' | 'artist' | 'renter';
 export type Profile = { name: string; email: string; city: string; phone: string; specialty: string; bio: string };
-export type Listing = {
+export type Listing = DepositFields & {
   id: string; owner: 'artist' | 'renter'; title: string; category: string; description: string;
   price: string; unit: 'hour' | 'event' | 'day'; quantity: string;
   status: 'live' | 'paused' | 'maintenance'; condition: string;
@@ -17,11 +19,13 @@ export type ReviewCase = {
   notes: { text: string; at: string; kind: 'reply' | 'internal' | 'decision'; author?: MemberRole | 'admin' }[];
 };
 export type DashboardState = CommunityState & {
+  aiEngine: AIEngineState;
   profiles: Record<MemberRole, Profile>; savedArtists: number[]; listings: Listing[]; media: MediaItem[];
   drafts: Record<string, Record<string, string>>; cases: ReviewCase[];
   maintenance: boolean; announcement: string; audit: { label: string; at: string }[];
 };
 export type DashboardAction = CommunityAction
+  | { type: 'ai'; action: AIAction }
   | { type: 'profile'; profile: Profile }
   | { type: 'favorite'; id: number }
   | { type: 'draft'; key: string; values: Record<string, string> }
@@ -64,6 +68,7 @@ export function listingErrors(item: Listing) {
   if (!['hour', 'event', 'day'].includes(item.unit)) errors.unit = 'Choose a pricing unit.';
   if (!['live', 'paused', 'maintenance'].includes(item.status) || (item.owner === 'artist' && item.status === 'maintenance')) errors.status = 'Choose an available listing status.';
   if (!validText(item.condition, 0, 100)) errors.condition = 'Keep the condition under 100 characters.';
+  if (item.owner === 'renter') Object.assign(errors, depositErrors(item));
   return errors;
 }
 export function initialDashboard(): DashboardState {
@@ -71,6 +76,7 @@ export function initialDashboard(): DashboardState {
   const submitted = '2026-10-12T09:00:00Z';
   return {
     ...initialCommunity(),
+    aiEngine: initialAIEngine(),
     profiles: {
       customer: { ...base, name: 'Jordan Rivera', email: 'jordan.rivera@example.com', specialty: 'Event organizer' },
       artist: { ...base, name: 'Aria Nova', email: 'aria.nova@example.com', specialty: 'Soul / Jazz', bio: 'Live jazz and soul for intimate evenings, celebrations and corporate events.' },
@@ -151,6 +157,7 @@ export function reduceDashboard(state: DashboardState, action: DashboardAction, 
     }
   }
   if (actor !== 'admin') return state;
+  if (action.type === 'ai') { const aiEngine = reduceAIEngine(state.aiEngine, action.action, at); return aiEngine === state.aiEngine ? state : { ...state, aiEngine }; }
   const audit = (label: string) => [{ label, at }, ...state.audit];
   if (action.type === 'maintenance') return typeof action.enabled === 'boolean' ? { ...state, maintenance: action.enabled, audit: audit(`Demo maintenance banner ${action.enabled ? 'enabled' : 'disabled'}`) } : state;
   if (action.type === 'announcement') return validText(action.text, 0, 500) ? { ...state, announcement: action.text.trim(), drafts: withoutDraft('announcement'), audit: audit(action.text.trim() ? 'Workspace announcement updated (demo)' : 'Workspace announcement removed') } : state;
