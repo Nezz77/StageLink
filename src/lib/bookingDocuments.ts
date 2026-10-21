@@ -1,13 +1,28 @@
-import { money, settlement, type Installment } from "./booking.ts"
+import {
+  money,
+  settlement,
+  advancePercent,
+  requiresEscrow,
+  type Installment,
+} from "./booking.ts"
 import { bookingService, paymentLabel, type RecordBooking } from "./pipeline.ts"
 export type DocumentKind = "invoice" | "receipt" | "settlement"
 export type BookingDocument = {
+  kind: DocumentKind
+  summary: {
+    label: string
+    amount: string
+    status: string
+  }
   number: string
   title: string
   filename: string
   generatedAt: string
   bookingId: string
-  sections: { title: string; rows: [string, string][] }[]
+  sections: {
+    title: string
+    rows: [string, string][]
+  }[]
 }
 export function bookingDocument(
   record: RecordBooking,
@@ -85,7 +100,14 @@ export function bookingDocument(
     {
       title: "Customer account",
       rows: [
-        ["Advance choice", record.ledger.advance],
+        [
+          "Advance policy",
+          requiresEscrow(record.ledger)
+            ? "Required 50% escrow advance"
+            : "Historical optional 10% advance",
+        ],
+        ["Advance amount", money(totals.advanceCents)],
+        ["Advance status", record.ledger.advance],
         ["Payments recorded", money(totals.receivedCents)],
         ["Refunded", money(totals.refundedCents)],
         [
@@ -109,9 +131,17 @@ export function bookingDocument(
       rows: [
         ["Transaction", `TX-${record.id}-${payment.kind.toUpperCase()}`],
         ["Payment date", payment.paidAt],
-        ["Payment kind", payment.kind],
+        [
+          "Payment kind",
+          payment.kind === "advance"
+            ? `${advancePercent(record.ledger)}% advance`
+            : payment.kind === "final"
+              ? "Final balance"
+              : "Historical payment",
+        ],
         ["Method", `Demo ${payment.method}`],
         ["Amount received", money(payment.grossCents)],
+        ["Booking total (not this transaction)", money(totals.totalCents)],
         [
           "Status",
           payment.refundedAt
@@ -193,11 +223,46 @@ export function bookingDocument(
     ],
   })
   return {
+    kind,
+    summary: {
+      label:
+        kind === "receipt"
+          ? "Amount received"
+          : kind === "settlement"
+            ? "Transferred to provider"
+            : "Total agreed",
+      amount: money(
+        kind === "receipt"
+          ? payment!.grossCents
+          : kind === "settlement"
+            ? totals.paidOutCents
+            : totals.totalCents,
+      ),
+      status:
+        kind === "receipt"
+          ? payment!.refundedAt
+            ? "Refunded to customer"
+            : payment!.releasedAt
+              ? "Transferred to provider by admin"
+              : "Held by StageLink - not paid to provider"
+          : kind === "invoice"
+            ? `${
+                requiresEscrow(record.ledger)
+                  ? "Required"
+                  : "Historical optional"
+              } ${advancePercent(record.ledger)}% advance: ${money(totals.advanceCents)} | Outstanding: ${money(totals.remainingCents)}`
+            : record.ledger.payoutBlocked
+              ? "Payout on hold"
+              : paymentLabel(record),
+    },
     number,
     title,
     filename: `StageLink-${number}-DEMO.pdf`,
     generatedAt: at,
     bookingId: record.id,
-    sections,
+    sections:
+      kind === "receipt"
+        ? sections.filter((section) => section.title !== "Agreed services")
+        : sections,
   }
 }

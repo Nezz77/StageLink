@@ -1,8 +1,9 @@
 import BookingDrawer from './BookingDrawer'
-import BookingDocuments from './BookingDocuments'
+import BookingDocuments, { BookingDocumentPreview } from './BookingDocuments'
+import { bookingDocument } from '../lib/bookingDocuments'
 import BookingMilestones from './BookingMilestones'
 import CompletedBookingReview from './BookingReview'
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -977,6 +978,11 @@ export default function BookingWorkspace({
   const [screen, setScreen] = useState<Screen>(() => initialServiceId ? { kind: "form", form: { ...blankForm(), serviceId: initialServiceId, quantity: "1" } } : initialBookingId && initialSection !== "chat"
     ? { kind: initialSection === "payments" ? "payment" : "details", id: initialBookingId } : { kind: "list" })
   const [checkout, setCheckout] = useState<CheckoutSession | null>(null)
+  const [receipt, setReceipt] = useState<{ id: string; kind: PaymentKind } | null>(null)
+  const receiptDoc = useMemo(() => {
+    const record = state.bookings.find(item => item.id === receipt?.id)
+    return record && receipt ? bookingDocument(record, 'receipt', receipt.kind) : null
+  }, [receipt, state.bookings])
   const [drawerId, setDrawerId] = useState<string | null>(null)
   const [chatId, setChatId] = useState(initialBookingId)
   const [search, setSearch] = useState("")
@@ -1469,6 +1475,7 @@ export default function BookingWorkspace({
             </div>
           </>
         )}
+        {receiptDoc && <BookingDocumentPreview document={receiptDoc} onClose={() => setReceipt(null)} />}
         {drawerRecord && <BookingDrawer key={drawerRecord.id} record={drawerRecord} onClose={() => setDrawerId(null)} onDetails={() => {
         setDrawerId(null)
         if (section === "chat") setSection("bookings")
@@ -1491,6 +1498,10 @@ export default function BookingWorkspace({
             onPaid={(method) => dispatch({ type: "settle", id: checkoutRecord.id, action: { type: "collect", kind: checkout.offer.kind, method, quoteVersion: checkout.offer.version, totalCents: checkout.offer.amountCents } })}
             onBack={() => setCheckout(null)}
             onViewBooking={() => { setCheckout(null); open(checkoutRecord.id) }}
+            onViewReceipt={() => {
+              setReceipt({ id: checkoutRecord.id, kind: checkout.offer.kind })
+              setCheckout(null)
+            }}
           />
         )}
         {deleteId && (

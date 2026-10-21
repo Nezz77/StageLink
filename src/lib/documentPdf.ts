@@ -1,7 +1,10 @@
 import { jsPDF } from "jspdf"
 import type { BookingDocument } from "./bookingDocuments"
 
-export type PdfFonts = { regular: string; bold: string }
+export type PdfFonts = {
+  regular: string
+  bold: string
+}
 const base64 = (buffer: ArrayBuffer) => {
   const bytes = new Uint8Array(buffer)
   let text = ""
@@ -10,7 +13,7 @@ const base64 = (buffer: ArrayBuffer) => {
   return btoa(text)
 }
 let fontsPromise: Promise<PdfFonts> | undefined
-async function loadFonts() {
+export async function loadPdfFonts() {
   if (!fontsPromise)
     fontsPromise = Promise.all(
       ["Regular", "Bold"].map(async (weight) => {
@@ -64,13 +67,14 @@ export function renderBookingPdf(document: BookingDocument, fonts: PdfFonts) {
   const ensure = (height: number) => {
     if (y + height > 275) nextPage()
   }
+  const clean = (value: string) =>
+    value
+      .replace(/[\u0000-\u0008\u000b-\u001f]/g, "")
+      .replace(/[\u2010-\u2015]/g, "-")
   const text = (value: string, size = 10, bold = false) => {
     pdf.setFont("StageLink", bold ? "bold" : "normal")
     pdf.setFontSize(size)
-    const lines = pdf.splitTextToSize(
-      value.replace(/[\u0000-\u0008\u000b-\u001f]/g, ""),
-      176,
-    ) as string[]
+    const lines = pdf.splitTextToSize(clean(value), 176) as string[]
     for (const line of lines) {
       ensure(size * 0.48 + 2)
       pdf.text(line, 17, y)
@@ -82,17 +86,45 @@ export function renderBookingPdf(document: BookingDocument, fonts: PdfFonts) {
   text(document.number, 10)
   text(`Generated: ${document.generatedAt}`, 8)
   y += 5
+  pdf.setFillColor(239, 234, 249)
+  const summaryTop = y
+  pdf.roundedRect(15, y - 3, 180, 32, 2, 2, "F")
+  y += 2
+  text(document.summary.label, 9, true)
+  y += 2
+  text(document.summary.amount, 18, true)
+  y += 2
+  text(document.summary.status, 8)
+  y = Math.max(y + 12, summaryTop + 40)
   for (const section of document.sections) {
-    ensure(24)
+    ensure(25)
     pdf.setFillColor(239, 234, 249)
-    pdf.roundedRect(15, y - 5, 180, 10, 2, 2, "F")
+    pdf.roundedRect(15, y - 5, 180, 9, 2, 2, "F")
     text(section.title, 11, true)
-    y += 5
+    y += 4
     for (const [label, value] of section.rows) {
-      ensure(17)
-      text(label, 9, true)
-      text(value || "Not specified", 10)
-      y += 3
+      pdf.setFont("StageLink", "bold")
+      pdf.setFontSize(9)
+      const labels = pdf.splitTextToSize(clean(label), 51) as string[]
+      pdf.setFont("StageLink", "normal")
+      pdf.setFontSize(10)
+      const values = pdf.splitTextToSize(
+        clean(value || "Not specified"),
+        118,
+      ) as string[]
+      const count = Math.max(labels.length, values.length)
+      if (count * 5 + 5 < 225) ensure(count * 5 + 5)
+      for (let i = 0; i < count; i++) {
+        ensure(7)
+        pdf.setFont("StageLink", "bold")
+        pdf.setFontSize(9)
+        if (labels[i]) pdf.text(labels[i], 17, y)
+        pdf.setFont("StageLink", "normal")
+        pdf.setFontSize(10)
+        if (values[i]) pdf.text(values[i], 73, y)
+        y += 5
+      }
+      y += 4
     }
     y += 5
   }
@@ -109,7 +141,10 @@ export function renderBookingPdf(document: BookingDocument, fonts: PdfFonts) {
   }
   return pdf
 }
+export async function createBookingPdf(document: BookingDocument) {
+  return renderBookingPdf(document, await loadPdfFonts())
+}
 export async function downloadBookingPdf(document: BookingDocument) {
-  const pdf = renderBookingPdf(document, await loadFonts())
+  const pdf = await createBookingPdf(document)
   pdf.save(document.filename)
 }

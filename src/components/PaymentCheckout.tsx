@@ -23,13 +23,14 @@ interface PaymentCheckoutProps {
   onPaid: (method: 'card' | 'wallet') => boolean;
   onBack: () => void;
   onViewBooking: () => void;
+  onViewReceipt?: () => void;
 }
 
 const emptyCard: CardFields = { name: '', number: '', expiry: '', cvv: '' };
 const inputClass = 'mt-2 w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-400/15 aria-invalid:border-rose-500';
 
 /** Frontend simulation: card fields never leave this component or enter storage. */
-export default function PaymentCheckout({ bookingId, artist, event, quoteCents, feeCents, paymentKind, advancePercent = 10, paymentCents, paidCents, overtimeCents, onPaid, onFailed, onBack, onViewBooking }: PaymentCheckoutProps) {
+export default function PaymentCheckout({ bookingId, artist, event, quoteCents, feeCents, paymentKind, advancePercent = 10, paymentCents, paidCents, overtimeCents, onPaid, onFailed, onBack, onViewBooking, onViewReceipt }: PaymentCheckoutProps) {
   const [method, setMethod] = useState<'card' | 'wallet'>('card');
   const [phase, setPhase] = useState<PaymentState>('form');
   const [fields, setFields] = useState<CardFields>(emptyCard);
@@ -214,6 +215,7 @@ export default function PaymentCheckout({ bookingId, artist, event, quoteCents, 
                     <p className="mt-3 text-sm leading-relaxed text-slate-400">Your demo payment of <strong className="font-semibold text-slate-100">{money(totalCents)}</strong> is recorded. {paymentKind === 'advance' && `Remaining balance: ${money(Math.max(0, quoteCents + overtimeCents - paidCents - totalCents))}.`}</p>
                     <p className="mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-violet-200"><LockKeyhole size={13} /> Held in demo escrow · not paid to provider</p>
                     <button onClick={onViewBooking} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-400">View booking <ArrowRight size={15} /></button>
+                    {onViewReceipt && <button onClick={onViewReceipt} className="mt-3 inline-flex items-center justify-center rounded-xl border border-violet-300/30 px-5 py-3 text-sm font-semibold text-violet-200">View payment receipt</button>}
                   </> : null}
                 </motion.div>
               ) : null}
