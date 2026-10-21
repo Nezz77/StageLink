@@ -5,6 +5,7 @@ import {
   initialBooking,
   checkoutFor,
   settlement,
+  requiresEscrow,
   transitionBooking,
   type BookingAction,
   type BookingRole,
@@ -96,7 +97,7 @@ export type PipelineState = {
 }
 export type PipelineAction =
   | { type: "quotation"; id: string; expectedVersion: number; input: QuoteInput }
-  | { type: "quote_response"; id: string; quotationId: string; accept: boolean }
+  | { type: "quote_response"; id: string; quotationId: string; accept: boolean; advancePolicy?: 'escrow-50' }
   | { type: "message_draft"; id: string; text: string }
   | { type: "demo_reply"; id: string; text: string }
   | { type: "demo_seen"; id: string } | { type: "demo_unread"; id: string }
@@ -344,7 +345,7 @@ function initialQuotation(record: RecordBooking): Quotation {
   const service = bookingService(record)
   return { id: `${record.id}-Q1`, bookingId: record.id, providerId: service.id, providerName: service.provider,
     customerName: record.organizer ?? 'Jordan Rivera', eventDate: record.date, start: record.start, end: record.end,
-    description: service.detail, lines: [{ description: service.name, quantity: 1, unitCents: record.ledger.quoteCents }],
+    description: service.detail, lines: record.id === 'BK-2901' ? [{ description: 'Base performance rate', quantity: 1, unitCents: Math.round(record.ledger.quoteCents * .8) }, { description: 'Sound gear add-on', quantity: 1, unitCents: record.ledger.quoteCents - Math.round(record.ledger.quoteCents * .8) }] : [{ description: service.role === 'artist' ? 'Base performance rate' : service.name, quantity: 1, unitCents: record.ledger.quoteCents }],
     notes: record.requirements, included: 'Service and event arrangements as described in this booking.',
     version: record.ledger.quoteVersion, totalCents: record.ledger.quoteCents,
     offeredBy: record.ledger.quoteStatus === 'awaiting_artist' ? 'customer' : service.role, at: record.createdAt,
@@ -559,7 +560,7 @@ export function reducePipeline(
       if (action.accept && (conflicts(record, state.bookings, options.catalog).length || availabilityError(record, options))) return state
       const ledger = transitionBooking(record.ledger, { type: action.accept ? 'accept' : 'decline' }, actor === 'renter' ? 'artist' : actor, at)
       if (ledger === record.ledger) return state
-      patch = { status: 'accepted', ledger, quotations: record.quotations.map(item => item.id === quote.id ? { ...item, status: action.accept ? 'accepted' : 'declined', decidedBy: actor, decidedAt: at } : item) }
+      patch = { status: 'accepted', ledger: action.accept && action.advancePolicy === 'escrow-50' ? { ...ledger, advancePolicy: 'escrow-50' } : ledger, quotations: record.quotations.map(item => item.id === quote.id ? { ...item, status: action.accept ? 'accepted' : 'declined', decidedBy: actor, decidedAt: at } : item) }
       label = `${actor === 'customer' ? 'Customer' : 'Provider'} ${action.accept ? 'accepted' : 'declined'} quotation v${quote.version}`
       break
     }
@@ -671,7 +672,7 @@ export function reducePipeline(
     case "demo_start":
     case "demo_finish": {
       if (actor !== bookingService(record).role || !["active", "accepted"].includes(record.status) ||
-        record.ledger.quoteStatus !== "accepted" || record.ledger.performance !== "upcoming" || refundBlocks(record)) return state
+        record.ledger.quoteStatus !== "accepted" || record.ledger.performance !== "upcoming" || refundBlocks(record) || (requiresEscrow(record.ledger) && record.ledger.advance !== "paid")) return state
       if (action.type === "demo_start") {
         if (record.demoStartedAt) return state
         patch = { demoStartedAt: at, status: "active" }

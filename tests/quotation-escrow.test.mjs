@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initialPipeline,reducePipeline} from '../src/lib/pipeline.ts';
+import {checkoutFor,settlement,canRelease} from '../src/lib/booking.ts';
+const id='BK-2901',at='2026-10-21T10:00:00Z';
+const record=s=>s.bookings.find(r=>r.id===id);
+const respond=s=>reducePipeline(s,{type:'quote_response',id,quotationId:record(s).quotations.at(-1).id,accept:true,advancePolicy:'escrow-50'},'customer',at);
+const settle=(s,action,actor='customer')=>reducePipeline(s,{type:'settle',id,action},actor,at);
+test('formal demo quote itemizes base and sound, and accept-to-pay exposes one exact required 50% checkout',()=>{
+ const seed=initialPipeline(),quote=record(seed).quotations.at(-1);
+ assert.equal(quote.lines.length,2);assert.equal(quote.lines.reduce((n,l)=>n+l.quantity*l.unitCents,0),225000);
+ const s=respond(seed),r=record(s);assert.equal(r.ledger.advancePolicy,'escrow-50');assert.equal(r.quotations.at(-1).status,'accepted');
+ assert.deepEqual(checkoutFor(r.ledger),{kind:'advance',amountCents:112500});assert.equal(settlement(r.ledger).receivedCents,0);
+ assert.equal(settle(s,{type:'skip_advance'}),s);
+ assert.equal(reducePipeline(s,{type:'demo_start',id},'artist',at),s);
+ assert.equal(settle(s,{type:'collect',kind:'advance',totalCents:22500,quoteVersion:r.ledger.quoteVersion,method:'card'}),s);
+ const paid=settle(s,{type:'collect',kind:'advance',totalCents:112500,quoteVersion:r.ledger.quoteVersion,method:'card'});
+ assert.equal(settlement(record(paid).ledger).receivedCents,112500);assert.equal(settlement(record(paid).ledger).remainingCents,112500);
+ assert.equal(canRelease(record(paid).ledger,'advance'),false);
+ assert.equal(settle(paid,{type:'collect',kind:'advance',totalCents:112500,quoteVersion:r.ledger.quoteVersion,method:'card'}),paid);
+ assert.equal(respond(s),s);
+});
+test('cancel or decline leaves a recoverable accepted/unpaid quote and stale responses cannot open a new charge',()=>{
+ const s=respond(initialPipeline()),r=record(s);
+ const failed=reducePipeline(s,{type:'payment_failed',id,version:r.ledger.quoteVersion,amountCents:112500},'customer',at);
+ assert.equal(settlement(record(failed).ledger).heldCents,0);assert.equal(record(failed).quotations.at(-1).status,'accepted');
+ assert.deepEqual(checkoutFor(record(failed).ledger),{kind:'advance',amountCents:112500});
+ const old=initialPipeline(),declined=reducePipeline(old,{type:'quote_response',id,quotationId:record(old).quotations.at(-1).id,accept:false},'customer',at);
+ assert.equal(checkoutFor(record(declined).ledger),null);
+ const invalid=reducePipeline(old,{type:'quote_response',id,quotationId:'outdated-quote',accept:true,advancePolicy:'escrow-50'},'customer',at);assert.equal(invalid,old);
+});

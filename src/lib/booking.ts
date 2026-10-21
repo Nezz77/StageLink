@@ -24,6 +24,7 @@ export type BookingAction =
   | { type: 'toggle_hold' } | { type: 'release'; kind?: PaymentKind | 'legacy' };
 export interface BookingState {
   quoteCents: number; quoteVersion: number; quoteStatus: QuoteStatus;
+  advancePolicy?: 'escrow-50';
   payment: 'unpaid' | 'held' | 'partial' | 'released' | 'refunded';
   performance: 'upcoming' | 'reported' | 'confirmed'; payoutBlocked: boolean;
   advance: 'offered' | 'skipped' | 'paid'; installments: Installment[]; overtime: Overtime[];
@@ -45,6 +46,8 @@ export function money(cents: number) {
 export function amounts(quoteCents: number) {
   return { feeCents: Math.round(quoteCents * 0.05), totalCents: quoteCents };
 }
+export const advancePercent = (state: BookingState) => state.advancePolicy === 'escrow-50' ? 50 : 10;
+export const requiresEscrow = (state: BookingState) => state.advancePolicy === 'escrow-50';
 export function settlement(state: BookingState) {
   const overtimeCents = state.overtime.filter(item => item.status === 'accepted').reduce((sum, item) => sum + item.amountCents, 0);
   const receivedCents = state.installments.reduce((sum, item) => sum + item.grossCents, 0);
@@ -57,7 +60,7 @@ export function settlement(state: BookingState) {
   const feeCents = amounts(state.quoteCents).feeCents;
   return { totalCents, overtimeCents, receivedCents, refundedCents, heldCents, feeCents, feeChargedCents, paidOutCents,
     remainingCents: state.payment === 'refunded' ? 0 : Math.max(0, totalCents - receivedCents),
-    feeDueCents: Math.max(0, feeCents - feeChargedCents), advanceCents: Math.round(state.quoteCents * 0.1) };
+    feeDueCents: Math.max(0, feeCents - feeChargedCents), advanceCents: Math.round(state.quoteCents * advancePercent(state) / 100) };
 }
 export function checkoutFor(state: BookingState): { kind: PaymentKind; amountCents: number } | null {
   if (state.quoteStatus !== 'accepted' || state.payment === 'refunded') return null;
@@ -74,7 +77,7 @@ export function canRelease(state: BookingState, kind: Installment['kind']) {
   if (!item || item.releasedAt || item.refundedAt || state.payoutBlocked) return false;
   // Settle the advance first so the fee is captured exactly once there.
   if (kind !== 'advance' && state.installments.some(item => item.kind === 'advance' && !item.releasedAt)) return false;
-  return kind === 'advance' || state.performance === 'confirmed';
+  return requiresEscrow(state) ? state.performance === 'confirmed' && settlement(state).remainingCents === 0 : kind === 'advance' || state.performance === 'confirmed';
 }
 export function canRespond(state: BookingState, actor: BookingRole) {
   return state.installments.length === 0 && state.advance === 'offered' && state.performance === 'upcoming' && !state.overtime.length && (
@@ -110,13 +113,13 @@ export function transitionBooking(state: BookingState, action: BookingAction, ac
       if (!canRespond(state, actor)) return state;
       patch = { quoteStatus: 'declined' }; label = 'Quote declined'; break;
     case 'skip_advance':
-      if (actor !== 'customer' || checkoutFor(state)?.kind !== 'advance') return state;
+      if (actor !== 'customer' || requiresEscrow(state) || checkoutFor(state)?.kind !== 'advance') return state;
       patch = { advance: 'skipped' }; label = 'Advance skipped · full agreed price due after performance'; break;
     case 'collect': {
       const due = checkoutFor(state);
       if (actor !== 'customer' || !due || action.kind !== due.kind || action.totalCents !== due.amountCents || action.quoteVersion !== state.quoteVersion || !['card', 'wallet'].includes(action.method)) return state;
       patch = { installments: [...state.installments, { kind: action.kind, grossCents: action.totalCents, paidAt: at, method: action.method }], ...(action.kind === 'advance' ? { advance: 'paid' as const } : {}) };
-      label = `${action.kind === 'advance' ? '10% advance' : 'Final payment'} of ${money(action.totalCents)} received by StageLink (demo)`; break;
+      label = `${action.kind === 'advance' ? `${advancePercent(state)}% advance` : 'Final payment'} of ${money(action.totalCents)} received by StageLink (demo)`; break;
     }
     case 'pay': {
       const fee = amounts(state.quoteCents).feeCents;
@@ -135,7 +138,7 @@ export function transitionBooking(state: BookingState, action: BookingAction, ac
       label = `Overtime ${action.accept ? 'approved' : 'declined'} · ${item.minutes} minutes / ${money(item.amountCents)}`; break;
     }
     case 'report_performance':
-      if (actor !== 'artist' || state.quoteStatus !== 'accepted' || state.performance !== 'upcoming') return state;
+      if (actor !== 'artist' || state.quoteStatus !== 'accepted' || state.performance !== 'upcoming' || (requiresEscrow(state) && state.advance !== 'paid')) return state;
       patch = { performance: 'reported' }; label = 'Provider reported completion · final payment due immediately'; break;
     case 'confirm_performance':
       if (actor !== 'admin' || state.performance !== 'reported') return state;
