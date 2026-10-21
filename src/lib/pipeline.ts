@@ -64,6 +64,7 @@ export type RecordBooking = BookingForm & {
   ledger: BookingState
   paymentMethod?: "card" | "wallet"
   createdAt: string
+  venueCheckIn?: { at: string; actor: "artist" | "renter"; venue: string; mode: "manual" | "demo" }
   demoStartedAt?: string
   refund?: {
     reason: string; at: string; status: "requested" | "refunded" | "declined"
@@ -96,6 +97,7 @@ export type PipelineState = {
   read: Record<string, string>
 }
 export type PipelineAction =
+  | { type: "venue_check_in"; id: string; mode: "manual" | "demo" }
   | { type: "quotation"; id: string; expectedVersion: number; input: QuoteInput }
   | { type: "quote_response"; id: string; quotationId: string; accept: boolean; advancePolicy?: 'escrow-50' }
   | { type: "message_draft"; id: string; text: string }
@@ -630,6 +632,7 @@ export function reducePipeline(
         !["active", "accepted"].includes(record.status) ||
         record.ledger.quoteStatus !== "accepted" ||
         refundBlocks(record) ||
+        (requiresEscrow(record.ledger) && !record.venueCheckIn && !replayLegacy) ||
         performanceEndsAt(record) > new Date(at)
       )
         return state
@@ -669,12 +672,24 @@ export function reducePipeline(
       label = action.approve ? "Admin approved refund to original payment method · booking cancelled (demo)" : "Admin declined refund · booking continues"
       break
     }
+    case "venue_check_in": {
+      if (actor !== bookingService(record).role || !["artist", "renter"].includes(actor) ||
+        !["accepted", "active"].includes(record.status) || record.ledger.quoteStatus !== "accepted" ||
+        record.venueCheckIn || record.ledger.performance !== "upcoming" || refundBlocks(record) || record.ledger.payoutBlocked ||
+        (requiresEscrow(record.ledger) && record.ledger.advance !== "paid") ||
+        !["manual", "demo"].includes(action.mode) || !record.venue.trim()) return state
+      const startsAt = new Date(`${record.date}T${record.start}`)
+      if (action.mode === "manual" && (new Date(at) < startsAt || new Date(at) > performanceEndsAt(record))) return state
+      patch = { venueCheckIn: { at, actor: actor as "artist" | "renter", venue: record.venue, mode: action.mode } }
+      label = `${action.mode === "demo" ? "Demo" : "Manual"} venue check-in confirmed by provider · ${record.venue}`
+      break
+    }
     case "demo_start":
     case "demo_finish": {
       if (actor !== bookingService(record).role || !["active", "accepted"].includes(record.status) ||
         record.ledger.quoteStatus !== "accepted" || record.ledger.performance !== "upcoming" || refundBlocks(record) || (requiresEscrow(record.ledger) && record.ledger.advance !== "paid")) return state
       if (action.type === "demo_start") {
-        if (record.demoStartedAt) return state
+        if (record.demoStartedAt || (requiresEscrow(record.ledger) && !record.venueCheckIn)) return state
         patch = { demoStartedAt: at, status: "active" }
         label = bookingService(record).role === "artist" ? "Provider started the demo event · overtime is available" : "Provider started the demo rental event"
       } else {
@@ -693,7 +708,7 @@ export function reducePipeline(
       if (action.type === "settle" && (record.status === "pending" || !["collect", "skip_advance", "propose_overtime", "resolve_overtime", "confirm_performance", "toggle_hold", "release"].includes(inner.type))) return state
       if (inner.type === "pay" && !replayLegacy) return state
       if (["propose_overtime", "resolve_overtime"].includes(inner.type) && (bookingService(record).role !== "artist" || !performanceStarted(record, new Date(at)))) return state
-      if (inner.type === "report_performance" && !replayLegacy && (actor !== bookingService(record).role || performanceEndsAt(record) > new Date(at))) return state
+      if (inner.type === "report_performance" && !replayLegacy && (actor !== bookingService(record).role || (requiresEscrow(record.ledger) && !record.venueCheckIn) || performanceEndsAt(record) > new Date(at))) return state
       const ledger = transitionBooking(record.ledger, inner, actor, at, replayLegacy)
       if (ledger === record.ledger) return state
       patch = {

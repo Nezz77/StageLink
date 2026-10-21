@@ -20,3 +20,9 @@ logs/
 /.plugins/
 /.opencode-skills/
 .DS_Store
+
+# Agent skills (not part of the project source)
+.agents/
+
+# Brag video output (generated, not source)
+brag-output/

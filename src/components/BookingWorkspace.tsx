@@ -1,3 +1,4 @@
+import BookingDrawer from './BookingDrawer'
 import BookingDocuments from './BookingDocuments'
 import BookingMilestones from './BookingMilestones'
 import CompletedBookingReview from './BookingReview'
@@ -566,6 +567,7 @@ function BookingDetails({
                   className="btn-ghost"
                   disabled={
                     refundBlocks(record) ||
+                    (record.ledger.advancePolicy === "escrow-50" && !record.venueCheckIn) ||
                     performanceEndsAt(record) > new Date()
                   }
                   onClick={() => apply({ type: "complete", id: record.id })}
@@ -593,10 +595,10 @@ function BookingDetails({
               </p>
             )}
           </section>
+          <BookingMilestones record={record} />
           <DemoPerformance record={record} />
             <CompletedBookingReview record={record} />
           <OvertimePanel record={record} />
-          <BookingMilestones record={record} />
           <BookingDocuments record={record} />
         </div>
         <SettlementSummary record={record} />
@@ -975,6 +977,7 @@ export default function BookingWorkspace({
   const [screen, setScreen] = useState<Screen>(() => initialServiceId ? { kind: "form", form: { ...blankForm(), serviceId: initialServiceId, quantity: "1" } } : initialBookingId && initialSection !== "chat"
     ? { kind: initialSection === "payments" ? "payment" : "details", id: initialBookingId } : { kind: "list" })
   const [checkout, setCheckout] = useState<CheckoutSession | null>(null)
+  const [drawerId, setDrawerId] = useState<string | null>(null)
   const [chatId, setChatId] = useState(initialBookingId)
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
@@ -1032,10 +1035,8 @@ export default function BookingWorkspace({
     setFilter("all")
     setNotice("")
   }
-  const open = (id: string) => {
-    if (section === "chat") setSection("bookings")
-    setScreen({ kind: "details", id })
-  }
+  const open = (id: string) => setDrawerId(id)
+  const drawerRecord = bookings.find(record => record.id === drawerId)
   const openChat = (id: string) => navigate("chat", id)
   const selected =
     "id" in screen
@@ -1372,6 +1373,7 @@ export default function BookingWorkspace({
                 shown.map((record) => (
                   <button
                     className="pw-booking-row"
+                    data-booking-desk={record.id}
                     key={record.id}
                     onClick={() =>
                       section === "payments"
@@ -1467,7 +1469,12 @@ export default function BookingWorkspace({
             </div>
           </>
         )}
-        {checkout && checkoutRecord && (
+        {drawerRecord && <BookingDrawer key={drawerRecord.id} record={drawerRecord} onClose={() => setDrawerId(null)} onDetails={() => {
+        setDrawerId(null)
+        if (section === "chat") setSection("bookings")
+        setScreen({ kind: "details", id: drawerRecord.id })
+      }} onChat={() => { setDrawerId(null); openChat(drawerRecord.id) }} />}
+      {checkout && checkoutRecord && (
           <PaymentCheckout
             key={checkoutRecord.id}
             bookingId={checkoutRecord.id}
