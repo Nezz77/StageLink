@@ -52,3 +52,7 @@ html[data-theme="light"] .m4-listing-caption strong { text-shadow:none; }
     row-gap: 8px;
   }
 }
+
+/* Module 4: formal in-chat quotation and shared escrow breakdown. */
+.m4-escrow-summary{margin:18px 0;padding:16px;border:1px solid rgba(167,139,250,.28);border-radius:14px;background:rgba(139,92,246,.08)}
+.m4-escrow-summary>div{display:flex;justify-content:space-between;gap:16px;margin:0 0 10px}.m4-escrow-summary>div>span{display:flex;align-items:center;gap:7px}.m4-escrow-summary>div:first-child strong{color:var(--sl-violet-light,#c4b5fd);font-size:1.2em}.m4-escrow-summary p,.m4-escrow-summary small{font-size:12px;line-height:1.6;opacity:.8}.m4-quote .pw-actions{flex-wrap:wrap;gap:10px}.m4-quote .btn-primary{white-space:normal}.light-theme .m4-escrow-summary{background:rgba(124,58,237,.045);border-color:rgba(109,40,217,.22)}.light-theme .m4-escrow-summary>div:first-child strong{color:#6d28d9}@media(max-width:600px){.m4-escrow-summary>div{flex-wrap:wrap;gap:6px}.m4-quote .pw-actions>.btn-primary{width:100%;justify-content:center}}

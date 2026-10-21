@@ -27,6 +27,7 @@ const BookingContext = createContext<{
   state: PipelineState
   options: BookingOptions
   dispatch: (action: PipelineAction) => boolean
+  getBooking: (id: string) => import('./pipeline').RecordBooking | undefined
 } | null>(null)
 
 export function BookingProvider({
@@ -70,6 +71,7 @@ export function BookingProvider({
         state,
         options,
         dispatch,
+        getBooking: (id: string) => current.current.bookings.find(record => record.id === id),
       }}
     >
       {children}

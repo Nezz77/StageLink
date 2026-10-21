@@ -64,7 +64,7 @@ export type WorkspaceSection = "bookings" | "calendar" | "history" | "requests" 
 type Screen = { kind: "list" } | { kind: "form"; form: BookingForm } | {
   kind: "review"
   form: BookingForm
-} | { kind: "details" | "payment"; id: string } | { kind: "checkout"; id: string; offer: { kind: PaymentKind; amountCents: number; version: number; paidCents: number; overtimeCents: number } }
+} | { kind: "details" | "payment"; id: string } | { kind: "checkout"; id: string; fromChat?: boolean; offer: { kind: PaymentKind; amountCents: number; version: number; paidCents: number; overtimeCents: number } }
 const statusLabel: Record<Status, string> = {
   pending: "Pending",
   accepted: "Accepted",
@@ -969,7 +969,7 @@ export default function BookingWorkspace({
   onBack: () => void
   onGoToLanding: () => void
 }) {
-  const { actor, state, dispatch, options } = useBooking()
+  const { actor, state, dispatch, options, getBooking } = useBooking()
   const [section, setSection] = useState<WorkspaceSection>(initialSection)
   const [screen, setScreen] = useState<Screen>(() => initialServiceId ? { kind: "form", form: { ...blankForm(), serviceId: initialServiceId, quantity: "1" } } : initialBookingId && initialSection !== "chat"
     ? { kind: initialSection === "payments" ? "payment" : "details", id: initialBookingId } : { kind: "list" })
@@ -1039,12 +1039,12 @@ export default function BookingWorkspace({
     "id" in screen
       ? bookings.find((record) => record.id === screen.id)
       : undefined
-  const openCheckout = (record: RecordBooking) => {
+  const openCheckout = (record: RecordBooking, fromChat = false) => {
     const due = checkoutFor(record.ledger)
     if (!due) return
     const totals = settlement(record.ledger)
     setSection("payments")
-    setScreen({ kind: "checkout", id: record.id, offer: { ...due, version: record.ledger.quoteVersion, paidCents: totals.receivedCents, overtimeCents: totals.overtimeCents } })
+    setScreen({ kind: "checkout", id: record.id, fromChat, offer: { ...due, version: record.ledger.quoteVersion, paidCents: totals.receivedCents, overtimeCents: totals.overtimeCents } })
   }
   const transactions = bookings.filter(record => record.ledger.quoteStatus === "accepted")
   const shown = (section === "payments" ? transactions : bookings)
@@ -1150,12 +1150,13 @@ export default function BookingWorkspace({
             quoteCents={selected.ledger.quoteCents}
             feeCents={amounts(selected.ledger.quoteCents).feeCents}
             paymentKind={screen.offer.kind}
+            advancePercent={selected.ledger.advancePolicy === "escrow-50" ? 50 : 10}
             paymentCents={screen.offer.amountCents}
             paidCents={screen.offer.paidCents}
             overtimeCents={screen.offer.overtimeCents}
             onFailed={() => dispatch({type:"payment_failed",id:selected.id,version:screen.offer.version,amountCents:screen.offer.amountCents})}
             onPaid={(method) => dispatch({ type: "settle", id: selected.id, action: { type: "collect", kind: screen.offer.kind, method, quoteVersion: screen.offer.version, totalCents: screen.offer.amountCents } })}
-            onBack={() => open(selected.id)}
+            onBack={() => screen.fromChat ? openChat(selected.id) : open(selected.id)}
             onViewBooking={() => open(selected.id)}
           />
         ) : screen.kind === "payment" && selected ? (
@@ -1167,7 +1168,7 @@ export default function BookingWorkspace({
             onPay={() => openCheckout(selected)}
           />
         ) : section === "chat" ? (
-          <MessagesCenter initialBookingId={chatId} initialInquiryId={initialInquiryId} onOpenBooking={open} />
+          <MessagesCenter initialBookingId={chatId} initialInquiryId={initialInquiryId} onOpenBooking={open} onOpenCheckout={id => { const record = getBooking(id); if (record) openCheckout(record, true); }} />
         ) : section === "calendar" ? (
           <CalendarView
             bookings={bookings}

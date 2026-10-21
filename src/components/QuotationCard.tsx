@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { FileCheck, Plus, Trash2 } from "lucide-react"
+import { FileCheck, Plus, Trash2, ShieldCheck, ArrowUpRight } from "lucide-react"
 import { useBooking } from "../lib/BookingContext"
 import { useDashboard } from "../lib/DashboardContext"
 import {
@@ -7,7 +7,7 @@ import {
   negotiationOpen,
   type RecordBooking,
 } from "../lib/pipeline"
-import { money } from "../lib/booking"
+import { money, advancePercent, checkoutFor, settlement } from "../lib/booking"
 import {
   parseMoney,
   quoteError,
@@ -243,6 +243,7 @@ export function QuoteComposer({
             The 5% StageLink fee is deducted from the provider payout once. It
             is not added to the customer price.
           </p>
+          <p className="mg-muted">Required 50% demo escrow: {money(Math.round(quoteTotal(input.lines) / 2))}. Remaining after performance: {money(quoteTotal(input.lines) - Math.round(quoteTotal(input.lines) / 2))}.</p>
           <Notice error>{error}</Notice>
           <Notice>{notice}</Notice>
           <div className="pw-actions">
@@ -288,11 +289,13 @@ export default function QuotationCard({
   record,
   onCounter,
   onBooking,
+  onCheckout,
 }: {
   quote: Quotation
   record: RecordBooking
   onCounter: () => void
   onBooking: () => void
+  onCheckout: () => void
 }) {
   const { actor, dispatch } = useBooking()
   const [error, setError] = useState("")
@@ -303,10 +306,20 @@ export default function QuotationCard({
     negotiationOpen(record) &&
     actor !== quote.offeredBy &&
     ["customer", bookingService(record).role].includes(actor)
+  const percent = quote.status === "accepted" ? advancePercent(record.ledger) : 50
+  const deposit = Math.round(quote.totalCents * percent / 100)
+  const paid = record.ledger.installments.some(item => item.kind === "advance" && !item.refundedAt)
+  const due = quote.status === "accepted" ? checkoutFor(record.ledger) : null
+  const accept = () => {
+    const ok = dispatch({ type: "quote_response", id: record.id, quotationId: quote.id, accept: true, advancePolicy: "escrow-50" })
+    if (!ok) { setError("This offer is outdated or unavailable. Review the latest quotation."); return }
+    if (actor === "customer") onCheckout()
+  }
   return (
     <article
       className={`m4-quote m4-quote-${quote.status}`}
       aria-label={`Quotation version ${quote.version}`}
+      data-quote-attention={quote.version === record.ledger.quoteVersion && quote.status !== "superseded" ? "true" : undefined}
     >
       <header>
         <span className="sl-eyebrow">
@@ -341,6 +354,12 @@ export default function QuotationCard({
       <p className="m4-quote-total">
         Total <strong>{money(quote.totalCents)}</strong>
       </p>
+      <div className="m4-escrow-summary" aria-label="Quotation payment breakdown">
+        <div><span><ShieldCheck size={16} />{percent}% advance {percent === 50 ? "required" : "(legacy policy)"}</span><strong>{money(deposit)}</strong></div>
+        <div><span>Remaining after performance</span><strong>{money(quote.totalCents - deposit)}</strong></div>
+        <p>{paid ? `${money(settlement(record.ledger).heldCents)} held in demo escrow.` : "Accepting agrees this quote. Payment is recorded only after demo checkout succeeds."}</p>
+        <small>Demo only · no real funds or gateway connection</small>
+      </div>
       {quote.included && (
         <p>
           <strong>Includes</strong>
@@ -366,24 +385,12 @@ export default function QuotationCard({
         <div className="pw-actions">
           <button
             className="btn-primary"
-            onClick={() => {
-              if (
-                !dispatch({
-                  type: "quote_response",
-                  id: record.id,
-                  quotationId: quote.id,
-                  accept: true,
-                })
-              )
-                setError(
-                  "This offer is outdated or unavailable. Review the latest quotation.",
-                )
-            }}
+            onClick={accept}
           >
-            Accept offer
+            {actor === "customer" ? "Accept & Pay Escrow" : "Accept counter-offer"}
           </button>
           <button className="btn-ghost" onClick={onCounter}>
-            Counteroffer
+            Counter-Offer
           </button>
           <button
             className="pw-text-button"
@@ -412,7 +419,8 @@ export default function QuotationCard({
       )}
       {quote.status === "accepted" && (
         <div className="pw-actions">
-          <span className="mg-notice">Agreed · booking price updated</span>
+          <span className="mg-notice">{paid ? "Advance paid · held in demo escrow" : "Quote accepted · payment pending"}</span>
+          {actor === "customer" && due?.kind === "advance" && <button className="btn-primary" onClick={onCheckout}>Pay {percent}% Escrow <ArrowUpRight size={16} /></button>}
           <button className="btn-ghost" onClick={onBooking}>
             View booking & payment
           </button>

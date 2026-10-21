@@ -30,9 +30,11 @@ import { dayLabel, EmptyState, StatusPill } from "./BookingWorkspace"
 export default function PipelineChat({
   initialBookingId,
   onOpenBooking,
+  onOpenCheckout,
 }: {
   initialBookingId?: string
   onOpenBooking: (id: string) => void
+  onOpenCheckout: (id: string) => void
 }) {
   const { state, actor, dispatch } = useBooking()
   const records = state.bookings.filter((record) => visibleTo(record, actor))
@@ -53,6 +55,7 @@ export default function PipelineChat({
   const [busy, setBusy] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const openedConversation = useRef<string | undefined>(undefined)
   const sending = useRef(false)
   const mounted = useRef(true)
   useEffect(() => {
@@ -88,7 +91,14 @@ export default function PipelineChat({
     }
   }, [record?.id, unread, unreadChatUpdates, mobileThread, dispatch, pauseRead])
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" })
+    const justOpened = openedConversation.current !== selectedId
+    openedConversation.current = selectedId
+    const container = endRef.current?.parentElement
+    if (!container) return
+    const quotation = justOpened ? container.querySelector<HTMLElement>('[data-quote-attention="true"]') : null
+    container.scrollTop = quotation
+      ? container.scrollTop + quotation.getBoundingClientRect().top - container.getBoundingClientRect().top
+      : container.scrollHeight
   }, [selectedId, messages.length])
   const threadName = (record: typeof records[number]) =>
     actor === "customer" ? bookingService(record).name : record.organizer ?? "Jordan Rivera"
@@ -350,7 +360,7 @@ export default function PipelineChat({
                         </time>
                       </div>
                       {message.simulated && <small className="m4-simulated">Simulated incoming reply</small>}
-                      {message.quotationId && (() => { const quote = record.quotations.find(item => item.id === message.quotationId); return quote ? <QuotationCard quote={quote} record={record} onCounter={() => setQuoting(true)} onBooking={() => onOpenBooking(record.id)} /> : <p>Quotation is no longer available.</p> })()}
+                      {message.quotationId && (() => { const quote = record.quotations.find(item => item.id === message.quotationId); return quote ? <QuotationCard quote={quote} record={record} onCounter={() => setQuoting(true)} onBooking={() => onOpenBooking(record.id)} onCheckout={() => onOpenCheckout(record.id)} /> : <p>Quotation is no longer available.</p> })()}
                       {message.text && (
                         <p className="pw-bubble">{message.text}</p>
                       )}

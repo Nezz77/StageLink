@@ -1,5 +1,5 @@
 import { Check } from "lucide-react"
-import { settlement, money } from "../lib/booking"
+import { settlement, money, advancePercent } from "../lib/booking"
 import { type RecordBooking } from "../lib/pipeline"
 export default function BookingMilestones({
   record,
@@ -55,7 +55,7 @@ export default function BookingMilestones({
     [
       "Advance",
       ledger.advance === "paid"
-        ? "10% advance recorded"
+        ? `${advancePercent(ledger)}% advance recorded`
         : ledger.advance === "skipped"
           ? "Advance skipped"
           : ended

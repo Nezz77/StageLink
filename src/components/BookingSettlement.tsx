@@ -2,7 +2,7 @@ import { bookingService } from '../lib/pipeline';
 import { useState } from 'react';
 import { ArrowRight, Check, Clock3, Landmark, Plus, ShieldCheck } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
-import { checkoutFor, money, settlement, type BookingAction } from '../lib/booking';
+import { checkoutFor, requiresEscrow, advancePercent, money, settlement, type BookingAction } from '../lib/booking';
 import { paymentLabel, refundBlocks, performanceStarted, type RecordBooking } from '../lib/pipeline';
 
 export function SettlementSummary({ record }: { record: RecordBooking }) {
@@ -35,11 +35,11 @@ export function PaymentChoice({ record, onPay }: { record: RecordBooking; onPay:
   const totals = settlement(record.ledger);
   return <div className="pw-callout sl-payment-choice">
     <span className="sl-eyebrow">{record.ledger.performance === 'upcoming' ? 'BEFORE THE SHOW' : 'AFTER THE ENCORE'}</span>
-    <h3>{due?.kind === 'advance' ? 'An advance is your choice.' : due?.kind === 'final' ? 'Your final payment is due.' : totals.remainingCents ? 'Your booking is confirmed.' : 'The agreed amount is fully paid.'}</h3>
-    <p>{due?.kind === 'advance' ? `Pay ${money(due.amountCents)} now (10%), or pay the full price after the performance. StageLink holds the advance until an admin releases it.` : due?.kind === 'final' ? `${money(due.amountCents)} is due immediately after the performance, including approved overtime and less any advance already paid.` : record.ledger.overtime.some(item => item.status === 'pending') && record.ledger.performance !== 'upcoming' ? 'Approve or decline the pending overtime request before making the final payment.' : totals.remainingCents ? `${money(totals.remainingCents)} is due after the performance. Any approved overtime will be added to this amount.` : 'StageLink holds each payment until an admin transfers it to the provider.'}</p>
+    <h3>{due?.kind === 'advance' ? requiresEscrow(record.ledger) ? 'Your 50% escrow advance is required.' : 'An advance is your choice.' : due?.kind === 'final' ? 'Your final payment is due.' : totals.remainingCents ? 'Your booking is confirmed.' : 'The agreed amount is fully paid.'}</h3>
+    <p>{due?.kind === 'advance' ? requiresEscrow(record.ledger) ? `Pay ${money(due.amountCents)} now (50%). Demo escrow holds this advance until verified completion and full payment.` : `Pay ${money(due.amountCents)} now (10%), or pay the full price after the performance. StageLink holds the advance until an admin releases it.` : due?.kind === 'final' ? `${money(due.amountCents)} is due immediately after the performance, including approved overtime and less any advance already paid.` : record.ledger.overtime.some(item => item.status === 'pending') && record.ledger.performance !== 'upcoming' ? 'Approve or decline the pending overtime request before making the final payment.' : totals.remainingCents ? `${money(totals.remainingCents)} is due after the performance. Any approved overtime will be added to this amount.` : 'StageLink holds each payment until an admin transfers it to the provider.'}</p>
     {due && <div className="pw-actions">
-      {due.kind === 'advance' && <button className="btn-ghost" onClick={() => { if (!dispatch({ type: 'settle', id: record.id, action: { type: 'skip_advance' } })) setError('This booking changed. Review the payment status.'); }}>Skip advance · pay after gig</button>}
-      <button className="btn-primary sl-action" onClick={onPay}>{due.kind === 'advance' ? `Pay 10% advance · ${money(due.amountCents)}` : `Pay final balance · ${money(due.amountCents)}`}<ArrowRight size={15} /></button>
+      {due.kind === 'advance' && !requiresEscrow(record.ledger) && <button className="btn-ghost" onClick={() => { if (!dispatch({ type: 'settle', id: record.id, action: { type: 'skip_advance' } })) setError('This booking changed. Review the payment status.'); }}>Skip advance · pay after gig</button>}
+      <button className="btn-primary sl-action" onClick={onPay}>{due.kind === 'advance' ? `Pay ${advancePercent(record.ledger)}% ${requiresEscrow(record.ledger) ? "escrow" : "advance"} · ${money(due.amountCents)}` : `Pay final balance · ${money(due.amountCents)}`}<ArrowRight size={15} /></button>
     </div>}
     {error && <p className="pw-error" role="alert">{error}</p>}
   </div>;
@@ -48,9 +48,9 @@ export function PaymentChoice({ record, onPay }: { record: RecordBooking; onPay:
 export function InstallmentHistory({ record }: { record: RecordBooking }) {
   return <section className="pw-panel pw-review" aria-label="Payment installments">
     <span className="sl-eyebrow">STAGELINK / TRANSACTION TRAIL</span><h2>From payment to payout.</h2>
-    {!record.ledger.installments.length && <p>No payment received yet. The advance is optional.</p>}
+    {!record.ledger.installments.length && <p>{requiresEscrow(record.ledger) ? "No payment received yet. The 50% escrow advance is required." : "No payment received yet. The advance is optional."}</p>}
     {record.ledger.installments.map(item => <article className="sl-installment" key={item.kind}>
-      <div className="pw-panel-heading"><h3>{item.kind === 'advance' ? '10% advance' : item.kind === 'final' ? 'Final payment' : 'Previous demo payment'}</h3><strong>{money(item.grossCents)}</strong></div>
+      <div className="pw-panel-heading"><h3>{item.kind === 'advance' ? `${advancePercent(record.ledger)}% advance` : item.kind === 'final' ? 'Final payment' : 'Previous demo payment'}</h3><strong>{money(item.grossCents)}</strong></div>
       <p className="pw-caption">TX-{record.id}-{item.kind.toUpperCase()} · {new Date(item.paidAt).toLocaleString()} · Demo {item.method}</p>
       <p className="sl-transfer-status">{item.releasedAt ? <Check size={16} /> : <Clock3 size={16} />}{item.refundedAt ? 'Refunded to original payment method (demo)' : item.releasedAt ? 'Admin transferred to provider bank account' : 'Held in StageLink account · awaiting admin transfer'}</p>
       {item.refundedAt && <p className="pw-caption">Refunded {new Date(item.refundedAt).toLocaleString()} · {money(item.grossCents)}</p>}

@@ -2,7 +2,7 @@ import BookingDocuments from './BookingDocuments';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Check, Landmark, ShieldCheck, X } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
-import { canRelease, money, settlement, type BookingAction, type Installment } from '../lib/booking';
+import { canRelease, requiresEscrow, money, settlement, type BookingAction, type Installment } from '../lib/booking';
 import { refundBlocks, bookingService } from '../lib/pipeline';
 import { InstallmentHistory, SettlementSummary } from './BookingSettlement';
 import { useDashboard } from '../lib/DashboardContext';
@@ -56,10 +56,10 @@ export default function AdminPayments({ initialBookingId }: { initialBookingId?:
         <section className="pw-panel pw-review" aria-label="Release controls">
           <div className="pw-panel-heading"><span className="sl-eyebrow">ADMIN TRANSFER CONTROLS</span><ShieldCheck size={20} /></div><h2>{provider}</h2><p>Destination: {maskAccount(account)} (simulated).</p>{!bankReady && <p className="pw-alert">Transfers paused: the provider’s payout account needs admin verification.</p>}
           {record.refund?.status !== 'refunded' && <div className="pw-callout"><h3>Verify the performance</h3>
-            {record.ledger.performance === 'upcoming' ? <p>Waiting for the provider to report completion. An optional advance can be released before the gig.</p> : record.ledger.performance === 'reported' ? <><label className="pw-check"><input type="checkbox" checked={verified} onChange={event => setVerified(event.target.checked)} />I have verified that the performance was completed.</label><button className="btn-ghost" disabled={!verified || refundBlocks(record)} onClick={() => { if (apply({ type: 'confirm_performance' })) setVerified(false); }}>Confirm performance</button></> : <p className="sl-transfer-status"><Check size={17} />Performance verified by admin</p>}
+            {record.ledger.performance === 'upcoming' ? <p>{requiresEscrow(record.ledger) ? "Waiting for verified completion and full payment. The 50% advance remains held in demo escrow." : "Waiting for the provider to report completion. An optional advance can be released before the gig."}</p> : record.ledger.performance === 'reported' ? <><label className="pw-check"><input type="checkbox" checked={verified} onChange={event => setVerified(event.target.checked)} />I have verified that the performance was completed.</label><button className="btn-ghost" disabled={!verified || refundBlocks(record)} onClick={() => { if (apply({ type: 'confirm_performance' })) setVerified(false); }}>Confirm performance</button></> : <p className="sl-transfer-status"><Check size={17} />Performance verified by admin</p>}
           </div>}
           {refundBlocks(record) && <p className="pw-alert">{record.refund?.status === 'refunded' ? 'Refund completed. This booking is cancelled; no payout is available.' : 'Refund under review. Transfers are paused until a decision is made.'}</p>}
-          {!record.ledger.installments.length && <p className="pw-muted">No funds have been received. The customer may skip the advance and pay after the gig.</p>}
+          {!record.ledger.installments.length && <p className="pw-muted">{requiresEscrow(record.ledger) ? "No funds received. The required 50% demo escrow payment is pending." : "No funds have been received. The customer may skip the advance and pay after the gig."}</p>}
           {record.ledger.installments.filter(item => !item.releasedAt && !item.refundedAt).map(item => {
             const ready = bankReady && !refundBlocks(record) && canRelease(record.ledger, item.kind);
             const fee = item.kind !== 'advance' && record.ledger.installments.some(other => other.kind === 'advance' && !other.releasedAt) ? 0 : totals.feeDueCents;

@@ -1,6 +1,6 @@
 # StageLink Module 4 — Implementation & Evaluation
 
-Updated: 20 October 2026 (QA performed 19–20 October). Owner: Nesandu Hesitha. Target: `/Users/nezz/Desktop/Git/Antigravity/StageLink_UI`.
+Updated: 21 October 2026 (QA performed 19–20 October). Owner: Nesandu Hesitha. Target: `/Users/nezz/Desktop/Git/Antigravity/StageLink_UI`.
 
 This is a connected **frontend demonstration** built on the existing React 19, TypeScript, Vite and Tailwind application. It does not process money, authenticate real users or send remote messages.
 
@@ -16,7 +16,7 @@ This is a connected **frontend demonstration** built on the existing React 19, T
 
 ## Financial rules retained
 
-Money is calculated in integer cents. An accepted $2,000 booking may collect an optional $200 advance. All collections remain held until an administrator transfers them. The first payout deducts the $100 StageLink fee (5% of the original agreed price), including when that payout is the advance before the event. With $300 approved overtime, the final customer payment is $2,100 ($2,000 − $200 + $300); the final transfer deducts no further fee. Provider receipts total $2,200. Approved overtime does not increase the fee.
+Money is calculated in integer cents. Standard agreed bookings retain an optional 10% advance. Accepting a formal quotation requires a 50% demo escrow advance; it cannot be skipped, the event cannot start before it is paid, and it remains held until completion is verified and the full balance is collected. All collections remain held until an administrator transfers them. The first payout deducts the 5% StageLink fee from the original agreed price; later payouts deduct no further fee. For a $2,000 quoted booking with $300 approved overtime, the 50% advance is $1,000 and the final customer payment is $1,300 ($2,000 − $1,000 + $300). The provider receives $2,300 total, less the one-time $100 fee. Approved overtime does not increase the fee.
 
 Without an advance, the original price plus approved overtime is due after completion. Pending overtime blocks final checkout. Final release requires admin completion verification. Refund review, active holds, unverified bank destinations and duplicate actions block releases. An unreleased advance must settle before the final installment.
 
@@ -32,17 +32,17 @@ Use the role selector in the dashboard header. Navigation and switching roles re
 2. Choose **Create quotation**. Set **Charge 1 price** to `2200`, edit service/inclusions/notes if desired, and choose **Send quotation**. Use **Save for later** to demonstrate an unfinished quotation.
 3. Switch to **Customer**. Open **Notifications** and the **Provider quotation v2** update (or **Messages** → the gala). The new offer has **Accept offer**, **Counteroffer**, **Decline offer**; the superseded version has none.
 4. Choose **Counteroffer**, set **Charge 1 price** to `2000`, then **Send counteroffer**.
-5. Switch to **Artist** → **Messages** → gala → **Accept offer** on v3. An own offer cannot be accepted; accepted and superseded cards have no acceptance button.
-6. Choose **View booking & payment**. Switch to **Customer**, reopen the gala if necessary, then **Pay 10% advance · $200.00**.
-7. **Use demo card** fills safe test details. To test decline, change **Card number** to `4000 0000 0000 0002` and choose **PAY $200.00**. No funds are recorded. Choose **Use demo card** again, then **PAY $200.00** to succeed. **Demo wallet** is another simulated method. CVV focus flips the animated card.
+5. Switch to **Artist** → **Messages** → gala → **Accept offer** on v3. An own offer cannot be accepted; accepted and superseded cards have no acceptance button. Accepting the quotation requires a 50% demo escrow advance.
+6. Switch to **Customer**. Choose **Pay 50% Escrow** on the accepted quotation, or **View booking & payment**, then pay the required **$1,000.00** advance. It cannot be skipped.
+7. **Use demo card** fills safe test details. To test decline, change **Card number** to `4000 0000 0000 0002` and choose **PAY $1,000.00**. No funds are recorded. Choose **Use demo card** again, then **PAY $1,000.00** to succeed. **Demo wallet** is another simulated method. CVV focus flips the animated card. The advance remains held in demo escrow.
 8. Choose **View booking**. Under **Invoices & receipts**, use **Preview** or **PDF**. Downloads are labelled `StageLink-INV-BK-2901-V3-DEMO.pdf` and `StageLink-RCT-BK-2901-ADVANCE-DEMO.pdf`.
-9. Switch to **Administrator** → **Payments**. Select the gala in **Booking to settle**. **Place payout on hold** disables transfer; **Clear payout hold** restores eligibility. **Transfer advance · $100.00** → **Confirm demo transfer** releases the net advance and retains the one-time $100 fee.
+9. Switch to **Administrator** → **Payments**. Select the gala in **Booking to settle**. **Place payout on hold** disables transfer; **Clear payout hold** restores eligibility. The escrow advance cannot be transferred while completion or the final payment is outstanding.
 10. Switch to **Artist** → the gala booking → **Start demo event** → **Request overtime**. Enter `60` minutes and `300` in **Overtime amount (USD)** → **Send overtime request**. Completion/final checkout remain blocked while approval is pending.
 11. Switch to **Customer**. Open the overtime notification → **Approve overtime · $300.00**.
 12. Switch to **Artist** → gala → **Finish demo event**, then confirm **Finish demo event** in the dialog. Completion and payout are separate milestones.
-13. Switch to **Customer**, open the completion notification → **Pay final balance · $2,100.00**. Choose **Demo wallet** or **Use demo card**, then **PAY $2,100.00**.
-14. Switch to **Administrator** → **Payments** → gala. The final transfer is disabled until **I have verified that the performance was completed.** is checked and **Confirm performance** is selected.
-15. **Transfer final payment · $2,100.00** → **Confirm demo transfer**. Confirm $2,200 total provider payout, $100 total StageLink fee and $0 held. Download the separate **Provider settlement statement** PDF.
+13. Switch to **Customer**, open the completion notification → **Pay final balance · $1,300.00**. Choose **Demo wallet** or **Use demo card**, then **PAY $1,300.00**.
+14. Switch to **Administrator** → **Payments** → gala. The transfers remain disabled until **I have verified that the performance was completed.** is checked and **Confirm performance** is selected.
+15. Transfer the **$1,000.00 advance** and then the **$1,300.00 final payment**, confirming each demo transfer. Confirm $2,300 total provider payout, $100 total StageLink fee and $0 held. Download the separate **Provider settlement statement** PDF.
 
 ### B. Skip advance
 
