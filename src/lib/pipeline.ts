@@ -1,3 +1,5 @@
+import { applyArbitration, arbitrationLocked, type Arbitration, type ArbitrationCommand } from './arbitration.ts'
+import { applyInspection, type RentalInspection, type InspectionCommand } from './inspections.ts'
 import { initialStock, stockAvailability, stockPhase, stockRequestError, STOCK_HOLD_MS, type StockState } from './stock.ts'
 import { snapshotDeposit, repriceDeposit, type DepositSnapshot } from './securityDeposit.ts'
 import { quoteError, quoteTotal, type Quotation, type QuoteInput } from './quotations.ts'
@@ -58,6 +60,8 @@ export type BookingForm = {
   quantity?: string
 }
 export type RecordBooking = BookingForm & {
+  arbitration?: Arbitration
+  inspection?: RentalInspection
   stockHold?: { expiresAt: string }
   stockReturnedAt?: string
   securityDeposit?: DepositSnapshot
@@ -103,6 +107,8 @@ export type PipelineState = {
   read: Record<string, string>
 }
 export type PipelineAction =
+  | { type: "arbitration"; id: string; expectedVersion: number; command: ArbitrationCommand }
+  | { type: "inspection"; id: string; expectedVersion: number; command: InspectionCommand }
   | { type: "stock_sample"; scenario: "reserve" | "release" | "expire" | "stale" | "unavailable" | "refresh"; serviceId: string; date: string; units?: number; kind?: "confirmed" | "temporary" }
   | { type: "renew_stock" | "expire_stock"; id: string }
   | { type: "venue_check_in"; id: string; mode: "manual" | "demo" }
@@ -146,7 +152,7 @@ export const serviceFor = (id: ServiceId, catalog: Service[] = services): Servic
   catalog.find(service => service.id === id) ?? { id, name: 'Unavailable listing', provider: 'Provider', role: 'artist', detail: 'Choose an available listing.', rate: 0, unit: 'event', initials: 'SL', capacity: 0, available: false }
 export const bookingService = (record: RecordBooking): Service => record.service ?? serviceFor(record.serviceId)
 export const bookingStockService = (record: RecordBooking, catalog: Service[] = services): Service => catalog.find(service => service.id === record.serviceId) ?? { ...bookingService(record), available: false, capacity: 0, listingStatus: 'paused' }
-export type BookingOptions = { stock?: StockState; catalog?: Service[]; availability?: Partial<Record<'artist' | 'renter', Availability>>; organizer?: string }
+export type BookingOptions = { disputes?: {id:string; bookingId?:string; kind:string; status:string}[]; payoutDestinations?: Partial<Record<'artist' | 'renter', {id:string; label:string}>>; stock?: StockState; catalog?: Service[]; availability?: Partial<Record<'artist' | 'renter', Availability>>; organizer?: string }
 
 export const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
@@ -386,7 +392,7 @@ export const performanceEndsAt = (record: RecordBooking) => new Date(
 export const refundBlocks = (record: RecordBooking) =>
   record.refund?.status === "requested" || record.refund?.status === "refunded"
 export const performanceStarted = (record: RecordBooking, now = new Date()) =>
-  !!record.demoStartedAt || new Date(`${record.date}T${record.start}`) <= now
+  !!record.demoStartedAt || !!record.inspection?.dispatchAckAt || new Date(`${record.date}T${record.start}`) <= now
 export const canCancel = (record: RecordBooking, now = new Date()) =>
   ["pending", "accepted", "active"].includes(record.status) && record.ledger.payment === "unpaid" && !performanceStarted(record, now)
 export const messageSeen = (state: PipelineState, message: Message, record: RecordBooking) => {
@@ -396,7 +402,7 @@ export const messageSeen = (state: PipelineState, message: Message, record: Reco
 export const notificationsFor = (state: PipelineState, actor: BookingRole) =>
   state.notifications.filter(item => item.recipients.includes(actor))
 export const canRefund = (record: RecordBooking, now = new Date()) =>
-  record.ledger.payment === "held" &&
+  !record.ledger.adjudicatedAt && !arbitrationLocked(record) && record.ledger.payment === "held" &&
   !record.refund &&
   !["completed", "rejected"].includes(record.status) &&
   record.ledger.performance === "upcoming" &&
@@ -582,11 +588,23 @@ export function reducePipeline(
     const expiresAt = new Date(stockNow.getTime() + (action.type === 'renew_stock' ? STOCK_HOLD_MS : -1)).toISOString()
     return { ...state, bookings: state.bookings.map(item => item.id !== record.id ? item : { ...item, stockHold: { expiresAt }, activity: [...item.activity, { label: action.type === 'renew_stock' ? 'Temporary equipment stock hold renewed' : 'Sample equipment stock hold expired', at, actor }] }) }
   }
+  if (arbitrationLocked(record) && ['settle','legacy','refund','resolve_refund','pay','cancel','quotation','quote_response','agree'].includes(action.type)) return state
   const rentalGuard = stockRequestError(record, bookingStockService(record, options.catalog), state.bookings, options.stock, stockNow, !!record.stockHold && record.ledger.quoteStatus !== 'accepted')
-  if (rentalGuard && ((action.type === 'respond' && action.accept) || action.type === 'quotation' || (action.type === 'quote_response' && action.accept) || (action.type === 'agree') || (action.type === 'settle' && action.action.type === 'collect' && record.ledger.performance === 'upcoming'))) return state
+  if (rentalGuard && ((action.type === 'respond' && action.accept) || action.type === 'quotation' || (action.type === 'quote_response' && action.accept) || (action.type === 'agree') || (action.type === 'inspection' && (action.command.kind === 'open' || ((action.command.kind === 'submit' || action.command.kind === 'acknowledge') && action.command.phase === 'dispatch'))) || (action.type === 'settle' && action.action.type === 'collect' && record.ledger.performance === 'upcoming'))) return state
   let patch: Partial<RecordBooking> = {}
   let label = ""
   switch (action.type) {
+    case 'arbitration': {
+      const update = applyArbitration(record, action.command, action.expectedVersion, actor, at, options)
+      if (!update) return state
+      patch = update.patch; label = update.label; break
+    }
+    case 'inspection': {
+      const update = applyInspection(record, action.command, action.expectedVersion, actor, at, state.bookings, bookingStockService(record, options.catalog));
+      if (!update) return state;
+      patch = update.patch; label = update.label;
+      break;
+    }
     case 'quotation': {
       if (!negotiationOpen(record) || !['customer', bookingService(record).role].includes(actor) || action.expectedVersion !== record.ledger.quoteVersion || quoteError(action.input)) return state
       const previous = record.quotations.at(-1)

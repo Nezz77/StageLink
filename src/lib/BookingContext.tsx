@@ -1,5 +1,6 @@
 import { clearAttachments } from './chatAttachments'
 import { useDashboard } from './DashboardContext'
+import { maskAccount } from './community'
 import { catalogFor } from './catalog'
 import type { BookingOptions } from './pipeline'
 import {
@@ -38,8 +39,9 @@ export function BookingProvider({
   actor: BookingRole
   children: ReactNode
 }) {
-  const { state: dashboard } = useDashboard()
-  const baseOptions: BookingOptions = { availability: dashboard.availability, catalog: catalogFor(dashboard), organizer: dashboard.profiles.customer.name }
+  const { state: dashboard, dispatch: dashboardDispatch } = useDashboard()
+  const payoutDestinations: BookingOptions['payoutDestinations'] = {}; for (const role of ['artist','renter'] as const) { const account=dashboard.payoutAccounts[role]; if(account.status==='verified') payoutDestinations[role]={id:JSON.stringify(account),label:maskAccount(account)} }
+  const baseOptions: BookingOptions = { disputes: dashboard.cases, payoutDestinations, availability: dashboard.availability, catalog: catalogFor(dashboard), organizer: dashboard.profiles.customer.name }
   // Each page load starts a fresh demo. This provider stays mounted through
   // navigation and role switches; old browser-stored events are never restored.
   const [state, setState] = useState<PipelineState>(initialPipeline)
@@ -56,6 +58,10 @@ export function BookingProvider({
     }
     const next = reducePipeline(current.current, action, actor, new Date().toISOString(), false, { ...baseOptions, stock: current.current.stock })
       if (next === current.current) return false
+      if (action.type === 'arbitration' && next.bookings.find(r=>r.id===action.id)?.arbitration?.status==='settled') {
+        const award=next.bookings.find(r=>r.id===action.id)!.arbitration!
+        if (!dashboardDispatch({type:'decide_case',id:award.caseId,status:'resolved',reason:`Arbitration settled in demo: refund ${award.refundCents/100} USD; provider payout ${award.payoutCents/100} USD; StageLink fee ${award.feeCents/100} USD. ${award.reason}`})) return false
+      }
       current.current = next
       setState(next)
       setClock(new Date())

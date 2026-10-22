@@ -10,14 +10,14 @@ import { Badge, Empty, Panel, Stats, downloadCSV } from './DashboardUI';
 export default function AdminAnalytics({ onNavigate, onPayment }: { onNavigate: (tab: string) => void; onPayment: (id: string) => void }) {
   const { state } = useBooking(); const { state: dashboard } = useDashboard();
   const [period, setPeriod] = useState('all'), [metric, setMetric] = useState<'received' | 'payouts' | 'fees'>('received');
-  const months = [...new Set(state.bookings.flatMap(record => record.ledger.installments.flatMap(item => [item.paidAt.slice(0, 7), ...(item.releasedAt ? [item.releasedAt.slice(0, 7)] : []), ...(item.refundedAt ? [item.refundedAt.slice(0, 7)] : [])])))].sort();
+  const months = [...new Set(state.bookings.flatMap(record => record.ledger.installments.flatMap(item => [item.paidAt.slice(0, 7), ...(item.releasedAt ? [item.releasedAt.slice(0, 7)] : []), ...(item.refundedAt ? [item.refundedAt.slice(0, 7)] : []), ...(item.allocation ? [item.allocation.at.slice(0,7)] : [])])))].sort();
   const items = state.bookings.flatMap(record => record.ledger.installments.map(item => ({ record, item })));
   const inPeriod = (at?: string) => !!at && (period === 'all' || at.startsWith(period));
   const received = items.filter(({ item }) => inPeriod(item.paidAt)).reduce((sum, { item }) => sum + item.grossCents, 0);
-  const payouts = items.filter(({ item }) => inPeriod(item.releasedAt)).reduce((sum, { item }) => sum + (item.payoutCents ?? 0), 0);
-  const fees = items.filter(({ item }) => inPeriod(item.releasedAt)).reduce((sum, { item }) => sum + (item.feeCents ?? 0), 0);
-  const refunded = items.filter(({ item }) => inPeriod(item.refundedAt)).reduce((sum, { item }) => sum + item.grossCents, 0);
-  const chart = (period === 'all' ? months : [period]).map(month => ({ month, value: items.reduce((sum, { item }) => sum + (metric === 'received' ? item.paidAt.startsWith(month) ? item.grossCents : 0 : item.releasedAt?.startsWith(month) ? metric === 'fees' ? item.feeCents ?? 0 : item.payoutCents ?? 0 : 0), 0) }));
+  const payouts = items.reduce((sum,{item})=>sum+(inPeriod(item.releasedAt)?item.payoutCents??0:0)+(inPeriod(item.allocation?.at)?item.allocation?.payoutCents??0:0),0);
+  const fees = items.reduce((sum,{item})=>sum+(inPeriod(item.releasedAt)?item.feeCents??0:0)+(inPeriod(item.allocation?.at)?item.allocation?.feeCents??0:0),0);
+  const refunded = items.reduce((sum,{item})=>sum+(inPeriod(item.refundedAt)?item.grossCents:0)+(inPeriod(item.allocation?.at)?item.allocation?.refundCents??0:0),0);
+  const chart = (period === 'all' ? months : [period]).map(month => ({ month, value: items.reduce((sum, { item }) => sum + (metric === 'received' ? item.paidAt.startsWith(month) ? item.grossCents : 0 : (item.releasedAt?.startsWith(month) ? metric === 'fees' ? item.feeCents ?? 0 : item.payoutCents ?? 0 : 0) + (item.allocation?.at.startsWith(month) ? metric === 'fees' ? item.allocation.feeCents : item.allocation.payoutCents : 0)), 0) }));
   const max = Math.max(1, ...chart.map(item => item.value));
   const activity = state.bookings.flatMap(record => record.activity.map(item => ({ ...item, id: record.id, event: record.event }))).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 8);
   return <div className="mg-page"><DashboardIntro eyebrow="PLATFORM OPERATIONS / DEMO DATA" title="A pulse on" emphasis="every performance." description="A live summary of the bookings and transactions in this demo session." action={<button className="btn-ghost" onClick={() => downloadCSV('StageLink-platform-summary.csv', [['Period', 'Customer payments USD', 'Provider payouts USD', 'Fees USD', 'Refunds USD'], [period, received / 100, payouts / 100, fees / 100, refunded / 100]])}><Download size={15} />Export report</button>} />

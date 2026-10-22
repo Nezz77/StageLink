@@ -24,7 +24,8 @@ export function SettlementSummary({ record }: { record: RecordBooking }) {
       <div><Landmark size={17} /><span>Held by StageLink</span><strong>{money(refunded ? 0 : totals.heldCents)}</strong></div>
       <div><Check size={17} /><span>Transferred to provider</span><strong>{money(totals.paidOutCents)}</strong></div>
     </div>
-    {refunded ? <p className="pw-caption">The held payment was returned in full. No StageLink fee was collected. There is no remaining payment due for this cancelled booking.</p> : <p className="pw-caption">StageLink fee: {money(totals.feeCents)} (5% of the original booking). Deducted once from the provider’s payout. {totals.feeChargedCents ? 'Already deducted — no further fee.' : 'Deducted when the admin releases the first payment.'} Approved overtime is paid to the performer without an additional fee.</p>}
+    {record.ledger.adjudicatedAt ? <p className="pw-caption">Arbitration closed the remaining payment obligation. Customer refunded {money(totals.refundedCents)}; provider received {money(totals.paidOutCents)}; StageLink fee charged {money(totals.feeChargedCents)}. The original agreed price remains in the audit trail.</p> : refunded ? <p className="pw-caption">The held payment was returned in full. No StageLink fee was collected. There is no remaining payment due for this cancelled booking.</p> : <p className="pw-caption">StageLink fee: {money(totals.feeCents)} (5% of the original booking). Deducted once from the provider’s payout. {totals.feeChargedCents ? 'Already deducted — no further fee.' : 'Deducted when the admin releases the first payment.'} Approved overtime is paid to the performer without an additional fee.</p>}
+    {record.arbitration && <p className="pw-caption">{record.arbitration.caseId} · Arbitration {record.arbitration.status}. {record.arbitration.status==='settled' ? `Refunded ${money(record.arbitration.refundCents)} from the held balance; the remaining booking obligation was closed by this decision.` : 'No arbitration allocation is complete until the demo transfer succeeds.'}</p>}
     <p className="pw-caption">All payments go through StageLink. Only an admin can transfer held funds to the provider’s bank account.</p>
   </section>;
 }
@@ -32,7 +33,7 @@ export function SettlementSummary({ record }: { record: RecordBooking }) {
 export function PaymentChoice({ record, onPay }: { record: RecordBooking; onPay: () => void }) {
   const { actor, dispatch } = useBooking();
   const [error, setError] = useState('');
-  if (actor !== 'customer' || refundBlocks(record) || ['pending', 'rejected', 'cancelled'].includes(record.status) || record.ledger.quoteStatus !== 'accepted') return null;
+  if (record.ledger.adjudicatedAt || actor !== 'customer' || refundBlocks(record) || ['pending', 'rejected', 'cancelled'].includes(record.status) || record.ledger.quoteStatus !== 'accepted') return null;
   const due = checkoutFor(record.ledger);
   const totals = settlement(record.ledger);
   return <div className="pw-callout sl-payment-choice">
@@ -54,7 +55,8 @@ export function InstallmentHistory({ record }: { record: RecordBooking }) {
     {record.ledger.installments.map(item => <article className="sl-installment" key={item.kind}>
       <div className="pw-panel-heading"><h3>{item.kind === 'advance' ? `${advancePercent(record.ledger)}% advance` : item.kind === 'final' ? 'Final payment' : 'Previous demo payment'}</h3><strong>{money(item.grossCents)}</strong></div>
       <p className="pw-caption">TX-{record.id}-{item.kind.toUpperCase()} · {new Date(item.paidAt).toLocaleString()} · Demo {item.method}</p>
-      <p className="sl-transfer-status">{item.releasedAt ? <Check size={16} /> : <Clock3 size={16} />}{item.refundedAt ? 'Refunded to original payment method (demo)' : item.releasedAt ? 'Admin transferred to provider bank account' : 'Held in StageLink account · awaiting admin transfer'}</p>
+      {item.allocation && <div className="pw-callout"><h3>Arbitration allocation · {item.allocation.caseId}</h3><p>Customer refund {money(item.allocation.refundCents)} · provider payout {money(item.allocation.payoutCents)} · StageLink fee {money(item.allocation.feeCents)}</p><p className="pw-caption">Settled {new Date(item.allocation.at).toLocaleString()} (demo). Original payment retained for audit.</p></div>}
+      {!item.allocation && <p className="sl-transfer-status">{item.releasedAt ? <Check size={16} /> : <Clock3 size={16} />}{item.refundedAt ? 'Refunded to original payment method (demo)' : item.releasedAt ? 'Admin transferred to provider bank account' : 'Held in StageLink account · awaiting admin transfer'}</p>}
       {item.refundedAt && <p className="pw-caption">Refunded {new Date(item.refundedAt).toLocaleString()} · {money(item.grossCents)}</p>}
       {item.releasedAt && <dl className="sl-settlement-lines"><div><dt>StageLink fee deducted</dt><dd>{money(item.feeCents ?? 0)}</dd></div><div><dt>Provider received</dt><dd>{money(item.payoutCents ?? 0)}</dd></div><div><dt>Transferred</dt><dd>{new Date(item.releasedAt).toLocaleString()}</dd></div></dl>}
     </article>)}
@@ -70,7 +72,7 @@ export function OvertimePanel({ record }: { record: RecordBooking }) {
   const [error, setError] = useState('');
   if (bookingService(record).role !== 'artist' || record.ledger.quoteStatus !== 'accepted' || ['rejected','cancelled','pending'].includes(record.status)) return null;
   const pending = record.ledger.overtime.some(item => item.status === 'pending');
-  const closed = record.ledger.installments.some(item => item.kind !== 'advance') || refundBlocks(record);
+  const closed = !!record.ledger.adjudicatedAt || record.ledger.installments.some(item => item.kind !== 'advance') || refundBlocks(record);
   const started = performanceStarted(record);
   const participant = actor === 'customer' || actor === 'artist';
   const apply = (action: BookingAction) => {

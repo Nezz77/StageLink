@@ -1,3 +1,4 @@
+import { EquipmentInspectionQueue } from './EquipmentInspection';
 import BookingDocuments from './BookingDocuments';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, Check, Landmark, ShieldCheck, X } from 'lucide-react';
@@ -47,6 +48,7 @@ export default function AdminPayments({ initialBookingId }: { initialBookingId?:
       ['StageLink fees collected', state.bookings.reduce((sum, record) => sum + settlement(record.ledger).feeChargedCents, 0)],
     ].map(([label,value]) => <div className="pw-stat" key={label}><div><span>{label}</span><Landmark size={17} /></div><strong>{money(value as number)}</strong></div>)}</div>
     {state.bookings.some(record => record.refund?.status === 'requested') && <section className="pw-panel pw-refund-queue" aria-label="Refund review queue"><span className="sl-eyebrow">NEEDS YOUR REVIEW</span><h2>Refund requests</h2>{state.bookings.filter(record => record.refund?.status === 'requested').map(record => <button className="pw-notification-item" key={record.id} onClick={() => { setId(record.id); setVerified(false); setConfirm(null); setError(''); }}><span><strong>{record.event}</strong><small>{record.id} · {money(record.refund!.amountCents)} held for review</small></span><ArrowUpRight size={17} /></button>)}</section>}
+    <EquipmentInspectionQueue />
     <PayoutAccountReview />
     <label className="pw-field">Booking to settle<select value={id} onChange={event => { setId(event.target.value); setVerified(false); setConfirm(null); setError(''); }}>{state.bookings.map(record => <option key={record.id} value={record.id}>{record.id} · {record.event}</option>)}</select></label>
     <div className="pw-two-col">
@@ -55,12 +57,12 @@ export default function AdminPayments({ initialBookingId }: { initialBookingId?:
         <RefundReview key={record.id} record={record} />
         <section className="pw-panel pw-review" aria-label="Release controls">
           <div className="pw-panel-heading"><span className="sl-eyebrow">ADMIN TRANSFER CONTROLS</span><ShieldCheck size={20} /></div><h2>{provider}</h2><p>Destination: {maskAccount(account)} (simulated).</p>{!bankReady && <p className="pw-alert">Transfers paused: the provider’s payout account needs admin verification.</p>}
-          {record.refund?.status !== 'refunded' && <div className="pw-callout"><h3>Verify the performance</h3>
+          {!record.ledger.adjudicatedAt && record.refund?.status !== 'refunded' && <div className="pw-callout"><h3>Verify the performance</h3>
             {record.ledger.performance === 'upcoming' ? <p>{requiresEscrow(record.ledger) ? "Waiting for verified completion and full payment. The 50% advance remains held in demo escrow." : "Waiting for the provider to report completion. An optional advance can be released before the gig."}</p> : record.ledger.performance === 'reported' ? <><label className="pw-check"><input type="checkbox" checked={verified} onChange={event => setVerified(event.target.checked)} />I have verified that the performance was completed.</label><button className="btn-ghost" disabled={!verified || refundBlocks(record)} onClick={() => { if (apply({ type: 'confirm_performance' })) setVerified(false); }}>Confirm performance</button></> : <p className="sl-transfer-status"><Check size={17} />Performance verified by admin</p>}
           </div>}
           {refundBlocks(record) && <p className="pw-alert">{record.refund?.status === 'refunded' ? 'Refund completed. This booking is cancelled; no payout is available.' : 'Refund under review. Transfers are paused until a decision is made.'}</p>}
           {!record.ledger.installments.length && <p className="pw-muted">{requiresEscrow(record.ledger) ? "No funds received. The required 50% demo escrow payment is pending." : "No funds have been received. The customer may skip the advance and pay after the gig."}</p>}
-          {record.ledger.installments.filter(item => !item.releasedAt && !item.refundedAt).map(item => {
+          {record.ledger.installments.filter(item => !item.releasedAt && !item.refundedAt && !item.allocation).map(item => {
             const ready = bankReady && !refundBlocks(record) && canRelease(record.ledger, item.kind);
             const fee = item.kind !== 'advance' && record.ledger.installments.some(other => other.kind === 'advance' && !other.releasedAt) ? 0 : totals.feeDueCents;
             return <article className="sl-installment" key={item.kind}><h3>{item.kind === 'advance' ? 'Release advance' : 'Release final payment'}</h3>

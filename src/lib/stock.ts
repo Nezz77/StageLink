@@ -7,7 +7,9 @@ export type StockState = { status: 'current' | 'stale' | 'unavailable'; checkedA
 export const initialStock = (at = new Date().toISOString()): StockState => ({ status: 'current', checkedAt: at, samples: [] });
 export type StockPhase = 'none' | 'pending' | 'confirmed' | 'out' | 'inspection' | 'expired';
 export function stockPhase(record: RecordBooking, date: string, now = new Date()): StockPhase {
-  if (record.status === 'cancelled' || record.status === 'rejected' || record.ledger.quoteStatus === 'declined' || record.ledger.payment === 'refunded') return 'none';
+  if (record.status === 'cancelled' || record.status === 'rejected' || record.ledger.quoteStatus === 'declined' || (record.ledger.payment === 'refunded' && record.arbitration?.status !== 'settled')) return 'none';
+  if (record.stockReturnedAt) return 'none';
+  if (record.inspection?.dispatchAckAt) return date >= record.date ? (record.inspection.returned ? 'inspection' : 'out') : 'none';
   if (record.status === 'completed') return date >= record.date && !record.stockReturnedAt ? 'inspection' : 'none';
   if (record.status === 'active') return date >= record.date ? 'out' : 'none';
   if (record.date !== date) return 'none';

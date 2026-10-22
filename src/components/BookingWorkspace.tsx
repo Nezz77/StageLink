@@ -1,3 +1,4 @@
+import EquipmentInspection from './EquipmentInspection'
 import StockAvailability from './StockAvailability'
 import { stockRequestError } from '../lib/stock'
 import { DepositSummary } from './SecurityDeposit'
@@ -507,6 +508,7 @@ function BookingDetails({
       <div className="pw-two-col">
         <div className="pw-stack">
           <StockAvailability serviceId={record.serviceId} date={record.date} record={record} demo />
+          <EquipmentInspection record={record} />
           <section className="pw-panel pw-review">
             <div className="pw-panel-heading">
               <span className="sl-eyebrow">THE EVENT</span>
@@ -862,6 +864,7 @@ function PaymentDetails({
       <div className="pw-two-col">
         <div className="pw-stack">
           <StockAvailability serviceId={record.serviceId} date={record.date} record={record} demo />
+          <EquipmentInspection record={record} />
           <section className="pw-panel pw-review">
             <h2>{record.event}</h2>
             <p>{bookingService(record).name} · {record.id}</p>

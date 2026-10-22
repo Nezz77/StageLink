@@ -1,3 +1,5 @@
+import DisputeArbitration from './DisputeArbitration';
+import { useBooking } from '../lib/BookingContext';
 import { useState } from 'react';
 import { ArrowUpRight, FileCheck2, FileText, MessageSquare, Save, ShieldCheck } from 'lucide-react';
 import { useDashboard } from '../lib/DashboardContext';
@@ -9,6 +11,8 @@ import { Badge, Empty, Modal, Notice, Panel, SearchField, Stats, requestDashboar
 
 function CaseDetail({ item, onPayment }: { item: ReviewCase; onPayment: (id: string) => void }) {
   const { state, dispatch } = useDashboard();
+  const {state: pipeline}=useBooking();
+  const booking=pipeline.bookings.find(r=>r.id===item.bookingId);
   const draft = state.drafts[draftKey('admin', `case:${item.id}`)];
   const [text, setText] = useState(draft?.text ?? ''), [kind, setKind] = useState<'reply' | 'internal'>(draft?.kind === 'internal' ? 'internal' : 'reply');
   const [reviewed, setReviewed] = useState(false), [document, setDocument] = useState<string | null>(null);
@@ -29,6 +33,7 @@ function CaseDetail({ item, onPayment }: { item: ReviewCase; onPayment: (id: str
     <h3>{item.subject}</h3><p>{item.body}</p><p className="mg-muted">Submitted {new Date(item.submitted).toLocaleDateString()}</p>
     {item.bookingId && <button className="btn-ghost" onClick={() => onPayment(item.bookingId!)}>Review linked payment · {item.bookingId}<ArrowUpRight size={15} /></button>}
     {!!item.documents.length && <div className="mg-document-list">{item.documents.map(name => <button key={name} onClick={() => { setDocument(name); setViewed(previous => [...new Set([...previous, name])]); }}><FileText size={19} /><span>{name}<small>{item.owner ? 'Attached document · open to review' : 'Sample document · open to review'}</small></span>{viewed.includes(name) && <FileCheck2 size={18} />}</button>)}</div>}
+    {item.kind==='disputes' && <DisputeArbitration item={item} record={booking} />}
     {verification && !closed && <label className="mg-check"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />I have reviewed the documents and profile information.</label>}
     <div className="mg-rule" /><h3>{verification ? 'Review history' : 'Case conversation'}</h3>
     <div className="mg-case-thread">{!item.notes.length && <p className="mg-muted">No notes yet. Record the first update below.</p>}{item.notes.map((note, index) => <article key={`${note.at}:${index}`} className={`mg-case-note mg-note-${note.kind}`}><header><strong>{note.kind === 'reply' ? note.author && note.author !== 'admin' ? `${item.name} · member reply` : 'Admin reply · demo thread' : note.kind === 'internal' ? 'Internal admin note' : 'Admin decision'}</strong><time dateTime={note.at}>{new Date(note.at).toLocaleString()}</time></header><p>{note.text}</p></article>)}</div>
@@ -38,8 +43,8 @@ function CaseDetail({ item, onPayment }: { item: ReviewCase; onPayment: (id: str
       <div className="mg-actions"><button className="btn-ghost" onClick={() => { if (dispatch({ type: 'draft', key: `case:${item.id}`, values: { text, kind } })) { setDirty(false); setNotice('Response saved for later in this session.'); } }}><Save size={15} />Save for later</button><button className="btn-ghost" onClick={() => {
         if (dispatch({ type: 'case_note', id: item.id, text, kind })) { setText(''); setDirty(false); setNotice(kind === 'reply' ? 'Reply added to the demo thread. No email or external message was sent.' : 'Internal note added.'); setError(''); } else setError('Write a note with 10–2,000 characters.');
       }}><MessageSquare size={15} />{kind === 'reply' ? 'Add demo reply' : 'Add internal note'}</button></div>
-      <div className="mg-rule" /><div className="mg-actions">{verification ? <><button className="btn-ghost" onClick={() => prepare('rejected')}>Reject profile</button><button className="btn-primary" onClick={() => prepare('approved')}><ShieldCheck size={15} />Approve profile</button></> : <button className="btn-primary" onClick={() => prepare('resolved')}>{item.kind === 'disputes' ? 'Record resolution' : 'Resolve ticket'}</button>}</div>
-      <p className="mg-muted">{verification ? 'Documents stay in this tab. Review decisions are simulated.' : item.kind === 'disputes' ? 'A resolution records the agreed outcome. Refunds and transfers are handled separately in Payments.' : 'Replies stay in this demo conversation. No external messaging service is connected.'}</p>
+      <div className="mg-rule" /><div className="mg-actions">{verification ? <><button className="btn-ghost" onClick={() => prepare('rejected')}>Reject profile</button><button className="btn-primary" onClick={() => prepare('approved')}><ShieldCheck size={15} />Approve profile</button></> : <button className="btn-primary" disabled={['processing','failed'].includes(booking?.arbitration?.status??'')} onClick={() => prepare('resolved')}>{item.kind === 'disputes' ? 'Close without payment change' : 'Resolve ticket'}</button>}</div>
+      <p className="mg-muted">{verification ? 'Documents stay in this tab. Review decisions are simulated.' : item.kind === 'disputes' ? 'Closing without a payment change only records case notes. Use Arbitrate held funds for a refund or payout allocation.' : 'Replies stay in this demo conversation. No external messaging service is connected.'}</p>
     </div> : <div className="mg-closed"><Badge value={item.status} /><p>This review is complete. Its notes remain available in this session.</p>{item.status === 'resolved' && <button className="btn-ghost" onClick={() => dispatch({ type: 'reopen_case', id: item.id })}>Reopen case</button>}</div>}
     {document && attachment && <EvidencePreview file={attachment} onClose={() => setDocument(null)} />}
     {document && !attachment && <Modal title={document} onClose={() => setDocument(null)}><div className="mg-sample-document"><span className="sl-eyebrow">STAGELINK / DEMONSTRATION COPY</span><FileText size={42} /><h3>{document}</h3><dl><div><dt>Applicant / case</dt><dd>{item.name}</dd></div><div><dt>Reference</dt><dd>{item.id}</dd></div><div><dt>Purpose</dt><dd>UI review demonstration</dd></div></dl><p>Sample content only. No genuine identity document, license or personal record is included.</p></div><button className="btn-primary" onClick={() => setDocument(null)}>Done reviewing</button></Modal>}

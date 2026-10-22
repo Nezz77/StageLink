@@ -144,7 +144,9 @@ export function bookingDocument(
         ["Booking total (not this transaction)", money(totals.totalCents)],
         [
           "Status",
-          payment.refundedAt
+          payment.allocation
+            ? "Allocated by dispute arbitration (demo)"
+            : payment.refundedAt
             ? "Refunded"
             : payment.releasedAt
               ? "Transferred to provider by admin"
@@ -161,7 +163,9 @@ export function bookingDocument(
       ? record.ledger.installments.map((item) => [
           `TX-${record.id}-${item.kind.toUpperCase()}`,
           `${money(item.grossCents)} · ${item.paidAt} · demo ${item.method} · ${
-            item.refundedAt
+            item.allocation
+              ? `arbitrated ${item.allocation.at}: refund ${money(item.allocation.refundCents)}, payout ${money(item.allocation.payoutCents)}, fee ${money(item.allocation.feeCents)}`
+              : item.refundedAt
               ? `refunded ${item.refundedAt}`
               : item.releasedAt
                 ? `released ${item.releasedAt}`
@@ -222,6 +226,7 @@ export function bookingDocument(
       ],
     ],
   })
+  if (record.arbitration) sections.push({title:'Dispute arbitration (demo)',rows:[['Case',record.arbitration.caseId],['Settlement state',record.arbitration.status],['Decision reason',record.arbitration.reason],['Refund allocated',record.arbitration.status==='settled'?money(record.arbitration.refundCents):'Pending — no allocation'],['Provider payout allocated',record.arbitration.status==='settled'?money(record.arbitration.payoutCents):'Pending — no allocation'],['StageLink fee allocated',record.arbitration.status==='settled'?money(record.arbitration.feeCents):'Pending — no allocation']]});
   return {
     kind,
     summary: {
@@ -240,7 +245,9 @@ export function bookingDocument(
       ),
       status:
         kind === "receipt"
-          ? payment!.refundedAt
+          ? payment!.allocation
+            ? "Allocated by dispute arbitration (demo)"
+            : payment!.refundedAt
             ? "Refunded to customer"
             : payment!.releasedAt
               ? "Transferred to provider by admin"
