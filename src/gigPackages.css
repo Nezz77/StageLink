@@ -2,3 +2,4 @@
 :root[data-theme=light] .gp-section,:root[data-theme=light] .gp-snapshot,.light .gp-section,.light .gp-snapshot{--gp-text:#201b30;--gp-muted:#655d75;--sl-surface:rgba(255,255,255,.8);--sl-border:rgba(45,25,75,.16)}
 @media(max-width:900px){.gp-grid{grid-template-columns:1fr}.gp-card h4{min-height:0}.gp-card{padding:20px}.pw-form .gp-card{display:flex}.gp-addon-edit{grid-template-columns:1fr 90px 32px}}@media(prefers-reduced-motion:reduce){.gp-section *{scroll-behavior:auto}}
 :root[data-theme=light] .gp-card,:root[data-theme=light] .gp-addons,:root[data-theme=light] .gp-snapshot{background:#fff}:root[data-theme=light] .gp-card.gp-selected{background:#f3efff}:root[data-theme=light] .gp-card .btn-ghost{color:#48385e;background:#f6f3fa;border-color:#d9d0e7}:root[data-theme=light] .gp-section .sl-eyebrow{color:#684ab1}
+:root[data-theme=light] .gp-section{background:#faf8ff;border-radius:20px;padding:24px}:root[data-theme=light] .gp-section .gp-heading h3{color:#201b30}

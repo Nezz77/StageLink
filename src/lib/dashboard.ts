@@ -1,3 +1,5 @@
+import { mediaError, type MediaItem } from './portfolioMedia.ts';
+export type { MediaItem } from './portfolioMedia.ts';
 import { packageErrors } from './gigPackages.ts';
 import { equipmentErrors, type EquipmentFields } from './equipmentSpecs.ts';
 import { depositErrors, type DepositFields } from './securityDeposit.ts';
@@ -13,7 +15,6 @@ export type Listing = DepositFields & EquipmentFields & {
   price: string; unit: 'hour' | 'event' | 'day'; quantity: string;
   status: 'live' | 'paused' | 'maintenance'; condition: string;
 };
-export type MediaItem = { id: string; caption: string; src: string; type: 'image' | 'video'; fileName: string; featured: boolean };
 export type CaseKind = 'verification' | 'disputes' | 'support';
 export type CaseStatus = 'pending' | 'reviewing' | 'approved' | 'rejected' | 'resolved';
 export type ReviewCase = {
@@ -37,7 +38,7 @@ export type DashboardAction = CommunityAction
   | { type: 'listing_status'; id: string; status: Listing['status'] }
   | { type: 'remove_listing'; id: string }
   | { type: 'add_media'; item: MediaItem }
-  | { type: 'edit_media'; id: string; caption: string }
+  | { type: 'edit_media'; id: string; caption: string; transcript?: string }
   | { type: 'feature_media' | 'remove_media'; id: string }
   | { type: 'review_case'; id: string }
   | { type: 'case_note'; id: string; text: string; kind: 'reply' | 'internal' }
@@ -148,13 +149,13 @@ export function reduceDashboard(state: DashboardState, action: DashboardAction, 
       return { ...state, listings: state.listings.map(value => value.id === item.id ? { ...value, status: action.status } : value) };
     }
     case 'add_media':
-      if (actor !== 'artist' || state.media.length >= 30 || state.media.some(item => item.id === action.item.id) || !validText(action.item.caption, 1, 160) || !action.item.src.startsWith('blob:') || !['image', 'video'].includes(action.item.type)) return state;
+      if (actor !== 'artist' || state.media.length >= 30 || state.media.some(item => item.id === action.item.id) || !!mediaError(action.item)) return state;
       return { ...state, media: [...state.media, { ...action.item, featured: state.media.length === 0 }] };
     case 'edit_media':
     case 'feature_media':
     case 'remove_media': {
       if (actor !== 'artist' || !state.media.some(item => item.id === action.id)) return state;
-      if (action.type === 'edit_media') return validText(action.caption, 1, 160) ? { ...state, media: state.media.map(item => item.id === action.id ? { ...item, caption: action.caption.trim() } : item) } : state;
+      if (action.type === 'edit_media') return validText(action.caption, 1, 160) && (action.transcript === undefined || validText(action.transcript, 0, 2000)) ? { ...state, media: state.media.map(item => item.id === action.id ? { ...item, caption: action.caption.trim(), ...(action.transcript !== undefined ? { transcript: action.transcript.trim() } : {}) } : item) } : state;
       if (action.type === 'feature_media') return { ...state, media: state.media.map(item => ({ ...item, featured: item.id === action.id })) };
       const media = state.media.filter(item => item.id !== action.id);
       if (media.length && !media.some(item => item.featured)) media[0] = { ...media[0], featured: true };

@@ -1,3 +1,4 @@
+import ArtistAudition from './ArtistAudition';
 import { GigPackagePicker, listingPackageCatalog } from './GigPackages';
 import { packagePriceLabel, packageSnapshot, type PackageChoice } from '../lib/gigPackages';
 import SaveListingButton from './SaveListingButton';
@@ -231,7 +232,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
 
   const tabs = [
     { key: 'overview', label: isArtist ? 'About' : 'Details' },
-    { key: 'portfolio', label: 'Gallery' },
+    { key: 'portfolio', label: isArtist ? 'Listen & watch' : 'Gallery' },
     { key: 'reviews', label: `Reviews (${data.reviewCount})` },
   ] as const;
 
@@ -511,6 +512,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
                         </motion.button>
                       ))}
                     </div>
+                    {isArtist && <ArtistAudition media={dashboard.media} />}
                     {chosen?.owner === 'artist' && <GigPackagePicker catalog={packageCatalog} choice={packageChoice} disabled={!available} onChange={choice => setPackageChoices(previous => ({ ...previous, [chosen.id]: choice }))} />}
                   </motion.div>
                 </motion.div>
@@ -525,6 +527,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 >
+                  {isArtist && <ArtistAudition media={dashboard.media} />}
                   <h2 className="text-xs font-bold tracking-[0.18em] uppercase text-slate-500 mb-6">
                     Gallery
                   </h2>
