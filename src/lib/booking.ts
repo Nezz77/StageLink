@@ -96,7 +96,7 @@ export function bookingStatus(state: BookingState) {
   if (totals.heldCents) return 'Held by StageLink';
   if (state.advance === 'paid') return 'Advance transferred';
   if (state.advance === 'skipped') return 'Pay after performance';
-  if (state.quoteStatus === 'accepted') return 'Optional advance available';
+  if (state.quoteStatus === 'accepted') return requiresEscrow(state) ? '50% escrow advance required' : 'Optional advance available';
   if (state.quoteStatus === 'declined') return 'Quote declined';
   return state.quoteStatus === 'awaiting_artist' ? 'Awaiting artist approval' : 'Awaiting customer approval';
 }

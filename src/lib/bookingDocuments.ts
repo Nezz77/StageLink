@@ -40,6 +40,7 @@ export function bookingDocument(
     (kind === "invoice" && !agreed && record.ledger.quoteStatus !== "accepted")
   )
     return null
+  if (record.gigPackage?.pricing === 'custom' && !record.quotations.length) return null
   const number = `${
     kind === "invoice" ? "INV" : kind === "receipt" ? "RCT" : "SET"
   }-${record.id}${
@@ -53,7 +54,15 @@ export function bookingDocument(
       : kind === "receipt"
         ? "Customer payment receipt"
         : "Customer booking invoice"
-  const sections: BookingDocument["sections"] = [
+  const selected = record.gigPackage
+  const packageSections: BookingDocument["sections"] = selected ? [{ title: 'Original requested package', rows: [
+    ['Package', `${selected.id.toUpperCase()} · ${selected.title} · edition ${selected.version}`],
+    ['Duration / lineup', `${selected.durationMinutes} minutes · ${selected.performers} performers`],
+    ['Included', selected.included.join('; ')], ['Excluded', selected.excluded.join('; ')],
+    ...selected.addons.map(a => [a.title, money(a.cents)] as [string, string]),
+    ['Package selection price', selected.totalCents === null ? 'Custom quote required; agreed price appears below' : money(selected.totalCents)],
+  ] }] : []
+  const sections: BookingDocument["sections"] = [ ...packageSections,
     {
       title: "Booking & participants",
       rows: [

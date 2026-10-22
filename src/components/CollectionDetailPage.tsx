@@ -1,3 +1,5 @@
+import { GigPackagePicker, listingPackageCatalog } from './GigPackages';
+import { packagePriceLabel, packageSnapshot, type PackageChoice } from '../lib/gigPackages';
 import SaveListingButton from './SaveListingButton';
 import { useState, useRef } from 'react';
 import '../collections.css';
@@ -199,7 +201,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
     rating: reviews.length ? Math.round(reviews.reduce((sum, record) => sum + record.review!.rating, 0) / reviews.length * 10) / 10 : 0,
     reviewCount: reviews.length, bookings: records.length,
     verified: dashboard.cases.some(row => row.owner === owner && row.kind === 'verification' && row.status === 'approved'),
-    services: services.map(row => ({ id: row.id, label: row.title, price: `${money(Number(row.price)*100)} / ${row.unit}`, desc: row.description })),
+    services: services.map(row => ({ id: row.id, label: row.title, price: row.gigPackages ? packagePriceLabel(listingPackageCatalog(row.gigPackages), money) : `${money(Number(row.price)*100)} / ${row.unit}`, desc: row.description })),
     reviews: reviews.map(record => ({ author: record.organizer ?? 'Jordan Rivera', role: `Completed booking · ${record.event}`, date: new Date(record.review!.at).toLocaleDateString(), rating: record.review!.rating, text: record.review!.text })),
   };
 
@@ -213,9 +215,13 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
   const [reviewDirty, setReviewDirty] = useState(false);
   const [reviewNotice, setReviewNotice] = useState('');
   const reviewGuard = useDraftGuard(reviewDirty);
+  const [packageChoices, setPackageChoices] = useState<Record<string, PackageChoice>>({});
   const chosen = selectedService === null ? item : services[selectedService];
   const available = item?.status === 'live' && chosen?.status === 'live';
-  const price = chosen ? `${money(Number(chosen.price)*100)} / ${chosen.unit}` : 'Currently unavailable';
+  const packageCatalog = listingPackageCatalog(chosen?.gigPackages, chosen?.gigPackageVersion);
+  const packageChoice = packageChoices[chosen?.id ?? ''] ?? {};
+  const selectedPackage = packageSnapshot(packageCatalog, packageChoice);
+  const price = selectedPackage ? (selectedPackage.totalCents === null ? 'Custom quote required' : `${money(selectedPackage.totalCents)} / event`) : chosen?.gigPackages ? packagePriceLabel(packageCatalog, money) : chosen ? `${money(Number(chosen.price)*100)} / ${chosen.unit}` : 'Currently unavailable';
   const [submittedReview, setSubmittedReview] = useState(false);
 
   const heroRef = useRef<HTMLDivElement>(null);
@@ -505,6 +511,7 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
                         </motion.button>
                       ))}
                     </div>
+                    {chosen?.owner === 'artist' && <GigPackagePicker catalog={packageCatalog} choice={packageChoice} disabled={!available} onChange={choice => setPackageChoices(previous => ({ ...previous, [chosen.id]: choice }))} />}
                   </motion.div>
                 </motion.div>
               )}
@@ -743,12 +750,12 @@ export default function CollectionDetailPage({ listing, onBack }: CollectionDeta
 
               {chosen && <SaveListingButton id={chosen.id} />}
               <motion.button
-                disabled={!available} onClick={() => chosen && marketAction(chosen.id, 'book')}
+                disabled={!available} onClick={() => chosen && marketAction(chosen.id, 'book', packageChoice)}
                 className="btn-primary w-full py-3.5 rounded-xl font-bold text-sm mb-3"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {!available ? 'Currently unavailable' : isArtist ? 'Book Now' : 'Request Rental'}
+                {!available ? 'Currently unavailable' : isArtist ? (packageChoice.packageId === 'vip' && packageCatalog.gigPackages?.find(p => p.id === 'vip')?.pricing === 'custom' ? 'Request VIP quotation' : 'Book Now') : 'Request Rental'}
               </motion.button>
 
               <motion.button

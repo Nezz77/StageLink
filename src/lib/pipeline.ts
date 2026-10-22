@@ -1,3 +1,4 @@
+import { choiceError, packageSnapshot, packageEnd, type PackageChoice, type PackageSnapshot } from './gigPackages.ts'
 import { applyArbitration, arbitrationLocked, type Arbitration, type ArbitrationCommand } from './arbitration.ts'
 import { applyInspection, type RentalInspection, type InspectionCommand } from './inspections.ts'
 import { initialStock, stockAvailability, stockPhase, stockRequestError, STOCK_HOLD_MS, type StockState } from './stock.ts'
@@ -47,7 +48,7 @@ export const services: Service[] = [
 ]
 export type ServiceId = string
 export type Status = "pending" | "accepted" | "active" | "completed" | "rejected" | "cancelled"
-export type BookingForm = {
+export type BookingForm = PackageChoice & {
   id: string
   serviceId: ServiceId
   event: string
@@ -60,6 +61,7 @@ export type BookingForm = {
   quantity?: string
 }
 export type RecordBooking = BookingForm & {
+  gigPackage?: PackageSnapshot
   arbitration?: Arbitration
   inspection?: RentalInspection
   stockHold?: { expiresAt: string }
@@ -170,6 +172,7 @@ export const blankForm = (): BookingForm => ({
 })
 export const quoteFor = (form: BookingForm, catalog: Service[] = services) => {
   const service = serviceFor(form.serviceId, catalog)
+  if (service.gigPackages?.length || form.packageId) return packageSnapshot(service, form)?.totalCents ?? 0
   return Math.round(service.rate * (service.unit === 'hour' ? (minutes(form.end) - minutes(form.start)) / 60 : 1) * (service.role === 'renter' ? Number(form.quantity ?? '1') : 1))
 }
 const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
@@ -228,6 +231,10 @@ export function validateForm(
   )
     errors.guests = "Enter 1–100,000 guests."
   const service = serviceFor(form.serviceId, options.catalog)
+  const packageIssue = choiceError(service, form)
+  if (packageIssue) errors.packageId = packageIssue
+  const selected = packageSnapshot(service, form)
+  if (selected && form.end !== packageEnd(form.start, selected.durationMinutes)) errors.end = 'Use the selected package duration. Choose an earlier start if it crosses midnight.'
   const quantity = form.quantity ?? '1'
   if (service.role === 'renter' && (!/^\d+$/.test(quantity) || Number(quantity) < 1 || Number(quantity) > service.capacity)) errors.quantity = `Choose 1–${service.capacity} available units.`
   const unavailable = availabilityError(form, options)
@@ -366,8 +373,8 @@ function initialQuotation(record: RecordBooking): Quotation {
   const service = bookingService(record)
   return { id: `${record.id}-Q1`, bookingId: record.id, providerId: service.id, providerName: service.provider,
     customerName: record.organizer ?? 'Jordan Rivera', eventDate: record.date, start: record.start, end: record.end,
-    description: service.detail, lines: record.id === 'BK-2901' ? [{ description: 'Base performance rate', quantity: 1, unitCents: Math.round(record.ledger.quoteCents * .8) }, { description: 'Sound gear add-on', quantity: 1, unitCents: record.ledger.quoteCents - Math.round(record.ledger.quoteCents * .8) }] : [{ description: service.role === 'artist' ? 'Base performance rate' : service.name, quantity: 1, unitCents: record.ledger.quoteCents }],
-    notes: record.requirements, included: 'Service and event arrangements as described in this booking.',
+    description: record.gigPackage ? `${record.gigPackage.id.toUpperCase()} · ${record.gigPackage.title}` : service.detail, lines: record.id === 'BK-2901' ? [{ description: 'Base performance rate', quantity: 1, unitCents: Math.round(record.ledger.quoteCents * .8) }, { description: 'Sound gear add-on', quantity: 1, unitCents: record.ledger.quoteCents - Math.round(record.ledger.quoteCents * .8) }] : record.gigPackage && record.gigPackage.baseCents !== null ? [{ description: `${record.gigPackage.id.toUpperCase()} · ${record.gigPackage.title}`, quantity: 1, unitCents: record.gigPackage.baseCents }, ...record.gigPackage.addons.map(a => ({ description: a.title, quantity: 1, unitCents: a.cents }))] : [{ description: service.role === 'artist' ? 'Base performance rate' : service.name, quantity: 1, unitCents: record.ledger.quoteCents }],
+    notes: record.requirements, included: record.gigPackage ? `Included: ${record.gigPackage.included.join('; ')}. Excluded: ${record.gigPackage.excluded.join('; ')}.` : 'Service and event arrangements as described in this booking.',
     version: record.ledger.quoteVersion, totalCents: record.ledger.quoteCents,
     offeredBy: record.ledger.quoteStatus === 'awaiting_artist' ? 'customer' : service.role, at: record.createdAt,
     status: record.ledger.quoteStatus === 'accepted' ? 'accepted' : record.ledger.quoteStatus === 'declined' ? 'declined' : 'pending' }
@@ -408,6 +415,7 @@ export const canRefund = (record: RecordBooking, now = new Date()) =>
   record.ledger.performance === "upcoming" &&
   !performanceStarted(record, now)
 export const paymentLabel = (record: RecordBooking) =>
+  record.gigPackage?.pricing === 'custom' && !record.quotations.length ? 'Custom quote required' :
   record.refund?.status === "refunded" ? "Refunded" : record.refund?.status === "requested" ? "Refund requested" : bookingStatus(record.ledger)
 function notificationFor(record: RecordBooking, action: PipelineAction, actor: BookingRole, title: string, at: string): BookingNotification {
   const inner = action.type === "settle" || action.type === "legacy" ? action.action.type : action.type
@@ -436,6 +444,7 @@ function safeForm(value: unknown): value is BookingForm {
         (form[(key as keyof BookingForm)] as string).length <=
           (key === "requirements" ? 3000 : 200),
     ) &&
+    ['packageId', 'packageVersion', 'packageAddonIds'].every(key => form[key as keyof BookingForm] === undefined || (typeof form[key as keyof BookingForm] === 'string' && (form[key as keyof BookingForm] as string).length <= 80)) &&
     typeof form.serviceId === "string" && form.serviceId.length > 0 && form.serviceId.length <= 100 && (form.quantity === undefined || (typeof form.quantity === "string" && form.quantity.length <= 10)) &&
     /^BK-[a-zA-Z0-9-]+$/.test(form.id)
   )
@@ -494,6 +503,7 @@ export function reducePipeline(
     const record: RecordBooking = {
       ...form,
       quotations: [],
+      gigPackage: packageSnapshot(service, form),
       stockHold: service.role === 'renter' ? { expiresAt: new Date(stockNow.getTime()+STOCK_HOLD_MS).toISOString() } : undefined,
       service: { ...service, depositPolicy: policy ? { ...policy } : undefined },
       securityDeposit: service.role === 'renter' ? snapshotDeposit({
@@ -508,15 +518,16 @@ export function reducePipeline(
       ledger: {
         ...initialBooking,
         quoteCents: quoteFor(form, options.catalog),
+        ...(service.gigPackages?.length ? { advancePolicy: 'escrow-50' as const } : {}),
         quoteStatus: "awaiting_artist",
         history: [],
       },
       activity: [{ label: "Request sent to provider", at, actor }],
     }
-    record.quotations = [initialQuotation(record)]
+    record.quotations = record.gigPackage?.pricing === 'custom' ? [] : [initialQuotation(record)]
     return {
       ...state,
-      messages: [...state.messages, { id: `message-${record.quotations[0].id}`, bookingId: record.id, sender: actor, text: '', at, quotationId: record.quotations[0].id }],
+      messages: [...state.messages, record.quotations.length ? { id: `message-${record.quotations[0].id}`, bookingId: record.id, sender: actor, text: '', at, quotationId: record.quotations[0].id } : { id: `message-${record.id}-request`, bookingId: record.id, sender: actor, text: `Custom quote requested: ${record.gigPackage!.title}. Please confirm scope and send a quotation before payment.`, at }],
       bookings: [record, ...state.bookings],
       notifications: [notificationFor(record, action, actor, "New booking request", at), ...state.notifications],
       drafts: state.drafts.filter((draft) => draft.id !== form.id),

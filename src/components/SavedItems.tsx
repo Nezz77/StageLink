@@ -1,3 +1,4 @@
+import { packagePriceLabel, parsePackages } from '../lib/gigPackages';
 import { useState } from "react"
 import { Heart, Package, Music } from "lucide-react"
 import { useDashboard } from "../lib/DashboardContext"
@@ -93,8 +94,7 @@ export default function SavedItems({
               </p>
               {listing && (
                 <strong>
-                  {money(Math.round(Number(listing.price) * 100))} /{" "}
-                  {listing.unit}
+                  {listing.owner === 'artist' && listing.gigPackages ? packagePriceLabel({gigPackages:parsePackages(listing.gigPackages)}, money) : `${money(Math.round(Number(listing.price) * 100))} / ${listing.unit}`}
                 </strong>
               )}
               {!detail && (

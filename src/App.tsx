@@ -1,3 +1,4 @@
+import type { PackageChoice } from './lib/gigPackages';
 import { useState, useEffect, useCallback } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
@@ -75,7 +76,7 @@ export default function App() {
   const [view, setView] = useState<View>('main');
   const [adminTarget, setAdminTarget] = useState<{ id: string; key: number } | undefined>();
   const [bookingTab, setBookingTab] = useState<'chat' | 'checkout'>('chat');
-  const [workspace, setWorkspace] = useState<{ section: WorkspaceSection; id?: string; serviceId?: string; inquiryId?: string; key: number }>({ section: 'bookings', key: 0 });
+  const [workspace, setWorkspace] = useState<{ section: WorkspaceSection; id?: string; serviceId?: string; packageChoice?: PackageChoice; inquiryId?: string; key: number }>({ section: 'bookings', key: 0 });
   const openWorkspace = (section: WorkspaceSection = 'bookings', id?: string) => { setWorkspace(previous => ({ section, id, key: previous.key + 1 })); setView('workspace'); };
   useEffect(() => { const openThread = (event: Event) => { const id = (event as CustomEvent<string>).detail; if (typeof id === 'string') { const run = () => openWorkspace('chat', id); if (window.dispatchEvent(new CustomEvent('stagelink:before-navigation', { detail: run, cancelable: true }))) run(); } }; window.addEventListener('stagelink:open-thread', openThread); return () => window.removeEventListener('stagelink:open-thread', openThread); }, []);
   useEffect(() => {
@@ -94,7 +95,7 @@ export default function App() {
   }, [role]);
   const [pendingMarket, setPendingMarket] = useState<MarketIntent | null>(null);
   const [customerPrompt, setCustomerPrompt] = useState(false);
-  const marketBook = useCallback((serviceId: string) => { setWorkspace(previous => ({ section: 'bookings', serviceId, key: previous.key + 1 })); setView('workspace'); }, []);
+  const marketBook = useCallback((serviceId: string, packageChoice: PackageChoice) => { setWorkspace(previous => ({ section: 'bookings', serviceId, packageChoice, key: previous.key + 1 })); setView('workspace'); }, []);
   const marketChat = useCallback((id?: string, inquiryId?: string) => { setWorkspace(previous => ({ section: 'chat', id, inquiryId, key: previous.key + 1 })); setView('workspace'); }, []);
   const marketDone = useCallback(() => setPendingMarket(null), []);
   useEffect(() => { const open = (event: Event) => { const id = (event as CustomEvent<string>).detail; if (typeof id === 'string') requestDashboardNavigation(() => marketChat(undefined, id)); }; window.addEventListener('stagelink:open-inquiry', open); return () => window.removeEventListener('stagelink:open-inquiry', open); }, [marketChat]);
@@ -171,7 +172,7 @@ export default function App() {
           <div className={`theme-root min-h-screen transition-colors duration-500 ease-in-out ${view === 'booking' ? 'sl-chat-open' : ''}`} style={{ background: 'var(--color-bg)' }}>
             {/* Booking Chat accessible to customer/artist */}
             {view === 'workspace' && ['customer', 'artist', 'renter'].includes(role) ? (
-              <BookingWorkspace roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} key={workspace.key} initialSection={workspace.section} initialBookingId={workspace.id} initialServiceId={workspace.serviceId} initialInquiryId={workspace.inquiryId} onBack={() => setView('main')} onGoToLanding={() => setView('landing')} />
+              <BookingWorkspace roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} key={workspace.key} initialSection={workspace.section} initialBookingId={workspace.id} initialServiceId={workspace.serviceId} initialPackageChoice={workspace.packageChoice} initialInquiryId={workspace.inquiryId} onBack={() => setView('main')} onGoToLanding={() => setView('landing')} />
             ) : (role === 'customer' || role === 'artist') && view === 'booking' ? (
               <BookingChat initialTab={bookingTab} onBack={() => setView('main')} />
             ) : role === 'visitor' || view === 'landing' ? (

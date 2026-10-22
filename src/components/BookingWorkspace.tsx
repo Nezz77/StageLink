@@ -1,3 +1,5 @@
+import { GigPackagePicker, GigPackageSummary } from './GigPackages'
+import { packageSnapshot, packageEnd, choiceError, packagePriceLabel, type PackageChoice } from '../lib/gigPackages'
 import EquipmentInspection from './EquipmentInspection'
 import StockAvailability from './StockAvailability'
 import { stockRequestError } from '../lib/stock'
@@ -124,6 +126,8 @@ function Summary({ form }: { form: BookingForm }) {
   const service = serviceFor(form.serviceId, options.catalog)
   const quote = Math.max(0, quoteFor(form, options.catalog) || 0)
   const { totalCents } = amounts(quote)
+  const selected = packageSnapshot(service, form)
+  const unpriced = !!service.gigPackages?.length && (!selected || selected.totalCents === null)
   return (
     <aside className="pw-pass">
       <div className="sl-eyebrow">YOUR EVENT / IN THE MAKING</div>
@@ -149,17 +153,18 @@ function Summary({ form }: { form: BookingForm }) {
           <dt>
             {service.role === "artist" ? "Performance" : `Equipment · ${form.quantity ?? 1} units`}
           </dt>
-          <dd>{money(quote)}</dd>
+          <dd>{unpriced ? (selected ? "Custom quote required" : "Choose a package") : money(quote)}</dd>
         </div>
         <div>
-          <dt>Optional advance · 10%</dt>
-          <dd>{money(Math.round(quote * .1))}</dd>
+          <dt>{selected ? "Advance escrow · 50% after agreement" : "Optional advance · 10%"}</dt>
+          <dd>{unpriced ? "After quotation" : money(Math.round(quote * (selected ? .5 : .1)))}</dd>
         </div>
         <div className="pw-total">
           <dt>Estimated total</dt>
-          <dd>{money(totalCents)}</dd>
+          <dd>{unpriced ? "To be agreed" : money(totalCents)}</dd>
         </div>
       </dl>
+      <GigPackageSummary snapshot={selected} />
       {service.role === 'renter' && <DepositSummary preview snapshot={snapshotDeposit({ depositMode: service.depositPolicy?.mode, depositValue: service.depositPolicy?.value, depositTerms: service.depositPolicy?.terms, depositCurrency: service.depositPolicy?.currency }, quote)} />}
       <p className="pw-caption">
         Demo USD pricing. The provider confirms availability before checkout.
@@ -195,7 +200,13 @@ function BookingEditor({
     return () => window.removeEventListener("beforeunload", warn)
   }, [dirty])
   const update = (key: keyof BookingForm, value: string) => {
-    setForm((valueForm) => ({ ...valueForm, [key]: value }))
+    setForm(valueForm => {
+      if (key === 'serviceId') return { ...valueForm, serviceId: value, packageId: undefined, packageVersion: undefined, packageAddonIds: undefined };
+      const next = { ...valueForm, [key]: value };
+      const selected = packageSnapshot(serviceFor(next.serviceId, options.catalog), next);
+      if (key === 'start' && selected) next.end = packageEnd(value, selected.durationMinutes);
+      return next;
+    })
     setErrors((previous) => ({ ...previous, [key]: undefined }))
     setNotice("")
     setDirty(true)
@@ -231,6 +242,7 @@ function BookingEditor({
         maxLength={type === "text" ? 200 : undefined}
         aria-invalid={!!errors[key]}
         aria-describedby={errors[key] ? `error-${key}` : undefined}
+        readOnly={key === 'end' && !!packageSnapshot(serviceFor(form.serviceId, options.catalog), form)}
         onChange={(event) => update(key, event.target.value)}
       />
       {errors[key] && (
@@ -297,7 +309,7 @@ function BookingEditor({
                 <strong>{service.name}</strong>
                 <small>{service.detail}</small>
                 <span>
-                  {money(service.rate)} / {service.unit}
+                  {service.gigPackages?.length ? packagePriceLabel(service, money) : `${money(service.rate)} / ${service.unit}`}
                 </span>
                 {form.serviceId === service.id && <Check size={15} />}
               </button>
@@ -305,6 +317,7 @@ function BookingEditor({
           </div>
           {!services.length && <p className="pw-alert">No listings are currently available. You can save a draft and return later.</p>}
           {errors.serviceId && <p className="pw-alert" role="alert">{errors.serviceId}</p>}
+          <GigPackagePicker catalog={serviceFor(form.serviceId, options.catalog)} choice={form} error={errors.packageId} onChange={choice => { const selected = packageSnapshot(serviceFor(form.serviceId, options.catalog), choice); setForm(previous => ({ ...previous, ...choice, end: selected ? packageEnd(previous.start, selected.durationMinutes) : previous.end })); setErrors(previous => ({ ...previous, packageId: undefined, end: undefined })); setDirty(true); }} />
           {serviceFor(form.serviceId, options.catalog).role === 'renter' && field('quantity', 'Equipment quantity', 'number')}
           <div className="pw-section-label">
             <span>02</span>
@@ -401,7 +414,7 @@ function BookingReview({
         eyebrow="02 / THE FINAL REHEARSAL"
         title="Everything,"
         emphasis="in tune."
-        description="Review your request. An optional 10% advance follows acceptance; the balance is due after the event."
+        description={serviceFor(form.serviceId, options.catalog).gigPackages?.length ? "Review your package request. Agree the quotation in chat before paying a 50% advance into demo escrow." : "Review your request. An optional 10% advance follows acceptance; the balance is due after the event."}
       />
       <div className="pw-two-col">
         <section className="pw-panel pw-review">
@@ -422,6 +435,7 @@ function BookingReview({
               </div>
             ))}
           </dl>
+          <GigPackageSummary snapshot={packageSnapshot(serviceFor(form.serviceId, options.catalog), form)} />
           <StockAvailability serviceId={form.serviceId} date={form.date} quantity={form.quantity} demo />
           <h3>Your requirements</h3>
           <p className="pw-prewrap">
@@ -452,7 +466,7 @@ function BookingReview({
                 if (dispatch({ type: "submit", form })) onDone(form.id)
                 else
                   setError(
-                    stockRequestError(form, serviceFor(form.serviceId, options.catalog), state.bookings, options.stock, now) || "The date or availability has changed. Return to the form and review your details.",
+                    choiceError(serviceFor(form.serviceId, options.catalog), form) || stockRequestError(form, serviceFor(form.serviceId, options.catalog), state.bookings, options.stock, now) || "The date or availability has changed. Return to the form and review your details.",
                   )
               }}
             >
@@ -532,6 +546,7 @@ function BookingDetails({
                 </div>
               ))}
             </dl>
+            <GigPackageSummary snapshot={record.gigPackage} />
             <h3>Requirements</h3>
             <p className="pw-prewrap">
               {record.requirements || "No additional requirements."}
@@ -564,10 +579,10 @@ function BookingDetails({
                     className="btn-primary"
                     disabled={!!(conflicts(record, state.bookings, options.catalog).length || !!availabilityError(record, options))}
                     onClick={() =>
-                      apply({ type: "respond", id: record.id, accept: true })
+                      record.gigPackage?.pricing === "custom" && !record.quotations.length ? onChat() : apply({ type: "respond", id: record.id, accept: true })
                     }
                   >
-                    Accept request
+                    {record.gigPackage?.pricing === "custom" && !record.quotations.length ? "Quote in chat" : "Accept request"}
                   </button>
                 </div>
               </div>
@@ -972,6 +987,7 @@ export default function BookingWorkspace({
   initialSection = "bookings",
   initialBookingId,
   initialServiceId,
+  initialPackageChoice,
   initialInquiryId,
   onBack,
   onGoToLanding,
@@ -980,6 +996,7 @@ export default function BookingWorkspace({
   initialSection?: WorkspaceSection
   initialBookingId?: string
   initialServiceId?: string
+  initialPackageChoice?: PackageChoice
   initialInquiryId?: string
   roleControl?: ReactNode
   onBack: () => void
@@ -987,7 +1004,7 @@ export default function BookingWorkspace({
 }) {
   const { actor, state, dispatch, options, getBooking } = useBooking()
   const [section, setSection] = useState<WorkspaceSection>(initialSection)
-  const [screen, setScreen] = useState<Screen>(() => initialServiceId ? { kind: "form", form: { ...blankForm(), serviceId: initialServiceId, quantity: "1" } } : initialBookingId && initialSection !== "chat"
+  const [screen, setScreen] = useState<Screen>(() => initialServiceId ? { kind: "form", form: { ...blankForm(), ...initialPackageChoice, serviceId: initialServiceId, quantity: "1", end: packageSnapshot(serviceFor(initialServiceId, options.catalog), initialPackageChoice ?? {}) ? packageEnd("19:00", packageSnapshot(serviceFor(initialServiceId, options.catalog), initialPackageChoice ?? {})!.durationMinutes) : "22:00" } } : initialBookingId && initialSection !== "chat"
     ? { kind: initialSection === "payments" ? "payment" : "details", id: initialBookingId } : { kind: "list" })
   const [checkout, setCheckout] = useState<CheckoutSession | null>(null)
   const [receipt, setReceipt] = useState<{ id: string; kind: PaymentKind } | null>(null)
@@ -1436,7 +1453,7 @@ export default function BookingWorkspace({
                     </StatusPill>
                     <span className="pw-row-price">
                       <strong>
-                        {money(settlement(record.ledger).totalCents)}
+                        {record.gigPackage?.pricing === 'custom' && !record.quotations.length ? 'Custom quote required' : money(settlement(record.ledger).totalCents)}
                       </strong>
                       <small>
                         {section === "payments"

@@ -1,3 +1,4 @@
+import { packageErrors } from './gigPackages.ts';
 import { equipmentErrors, type EquipmentFields } from './equipmentSpecs.ts';
 import { depositErrors, type DepositFields } from './securityDeposit.ts';
 import { initialAIEngine, reduceAIEngine, type AIEngineState, type AIAction } from './aiEngine.ts';
@@ -7,6 +8,7 @@ import type { BookingRole } from './booking.ts';
 export type MemberRole = 'customer' | 'artist' | 'renter';
 export type Profile = { name: string; email: string; city: string; phone: string; specialty: string; bio: string };
 export type Listing = DepositFields & EquipmentFields & {
+  gigPackages?: string; gigPackageVersion?: string;
   id: string; owner: 'artist' | 'renter'; title: string; category: string; description: string;
   price: string; unit: 'hour' | 'event' | 'day'; quantity: string;
   status: 'live' | 'paused' | 'maintenance'; condition: string;
@@ -64,11 +66,12 @@ export function listingErrors(item: Listing) {
   if (!validText(item.title, 3, 140)) errors.title = 'Enter a title with 3–140 characters.';
   if (!validText(item.description, 20, 2000)) errors.description = 'Describe the listing in 20–2,000 characters.';
   if (!validText(item.category, 2, 80)) errors.category = 'Choose a category.';
-  if (!/^\d+(\.\d{1,2})?$/.test(item.price) || Number(item.price) < 1 || Number(item.price) > 1000000) errors.price = 'Enter $1–$1,000,000 with up to two decimals.';
+  if (!(item.owner === 'artist' && item.gigPackages) && (!/^\d+(\.\d{1,2})?$/.test(item.price) || Number(item.price) < 1 || Number(item.price) > 1000000)) errors.price = 'Enter $1–$1,000,000 with up to two decimals.';
   if (!/^\d+$/.test(item.quantity) || Number(item.quantity) < 1 || Number(item.quantity) > 1000) errors.quantity = 'Enter 1–1,000 units.';
   if (!['hour', 'event', 'day'].includes(item.unit)) errors.unit = 'Choose a pricing unit.';
   if (!['live', 'paused', 'maintenance'].includes(item.status) || (item.owner === 'artist' && item.status === 'maintenance')) errors.status = 'Choose an available listing status.';
   if (!validText(item.condition, 0, 100)) errors.condition = 'Keep the condition under 100 characters.';
+  if (item.owner === 'artist' && item.gigPackages) { const issue = packageErrors(item.gigPackages); if (issue) errors.gigPackages = issue; }
   if (item.owner === 'renter') Object.assign(errors, depositErrors(item), equipmentErrors(item));
   return errors;
 }
@@ -133,7 +136,8 @@ export function reduceDashboard(state: DashboardState, action: DashboardAction, 
     case 'listing': {
       const item = action.listing, previous = state.listings.find(value => value.id === item.id);
       if (!['artist', 'renter'].includes(actor) || item.owner !== actor || (previous && previous.owner !== actor) || !validText(item.id, 1, 100) || Object.keys(listingErrors(item)).length) return state;
-      return { ...state, listings: previous ? state.listings.map(value => value.id === item.id ? { ...item } : value) : [{ ...item }, ...state.listings], drafts: withoutDraft(`listing:${item.id}`) };
+      const saved = { ...item, gigPackageVersion: item.owner === 'artist' ? String(Number(previous?.gigPackageVersion ?? '0') + (previous?.gigPackages !== item.gigPackages ? 1 : 0)) : undefined };
+      return { ...state, listings: previous ? state.listings.map(value => value.id === item.id ? saved : value) : [saved, ...state.listings], drafts: withoutDraft(`listing:${item.id}`) };
     }
     case 'listing_status':
     case 'remove_listing': {

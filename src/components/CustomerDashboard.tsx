@@ -1,3 +1,4 @@
+import { packagePriceLabel, parsePackages } from '../lib/gigPackages';
 import { useState, type ReactNode } from 'react';
 import SavedItems from './SavedItems';
 import { Package, LifeBuoy } from 'lucide-react';
@@ -47,7 +48,7 @@ export default function CustomerDashboard({ onOpenChat, onOpenBooking, onOpenPay
     const profile = dashboard.profiles[item.owner];
     const reviews = bookings.bookings.filter(record => record.serviceId === serviceIdFor(item.id) && record.review);
     const photos = ['photo-1511192336575-5a79af67a629','photo-1516450360452-9312f5e86fc7','photo-1598488035139-bdbb2231ce04','photo-1492684223066-81342ee5ff30'];
-    return { id:item.id, name:profile.name, category:item.title, rating:reviews.length ? reviews.reduce((sum, record)=>sum+record.review!.rating,0)/reviews.length : 0, price:`${money(Number(item.price)*100)}/${item.unit}`, image:photos[index%photos.length], collection };
+    return { id:item.id, name:profile.name, category:item.title, rating:reviews.length ? reviews.reduce((sum, record)=>sum+record.review!.rating,0)/reviews.length : 0, price:item.gigPackages ? packagePriceLabel({gigPackages:parsePackages(item.gigPackages)}, money) : `${money(Number(item.price)*100)}/${item.unit}`, image:photos[index%photos.length], collection };
   });
   const featuredEquipment: SpotlightListing[] = collectionsFor(dashboard, 'equipment').slice(0, 3).map((collection, index) => {
     const item = dashboard.listings.find(item => item.id === collection.catalogId)!;

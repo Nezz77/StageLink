@@ -39,11 +39,11 @@ export function QuoteComposer({
   const latest = record.quotations.at(-1)
   const [version] = useState(record.ledger.quoteVersion)
   const [description, setDescription] = useState(
-    saved?.description ?? latest?.description ?? bookingService(record).detail,
+    saved?.description ?? latest?.description ?? (record.gigPackage ? `${record.gigPackage.id.toUpperCase()} · ${record.gigPackage.title}` : bookingService(record).detail),
   )
   const [notes, setNotes] = useState(saved?.notes ?? ""),
     [included, setIncluded] = useState(
-      saved?.included ?? latest?.included ?? "",
+      saved?.included ?? latest?.included ?? (record.gigPackage ? `Included: ${record.gigPackage.included.join('; ')}. Excluded: ${record.gigPackage.excluded.join('; ')}.` : ""),
     )
   const [lines, setLines] = useState<{
     description: string
@@ -60,7 +60,7 @@ export function QuoteComposer({
     return (
       latest?.lines ?? [
         {
-          description: "Agreed service",
+          description: record.gigPackage ? `${record.gigPackage.id.toUpperCase()} · ${record.gigPackage.title}` : "Agreed service",
           quantity: 1,
           unitCents: record.ledger.quoteCents,
         },
@@ -68,7 +68,7 @@ export function QuoteComposer({
     ).map((line) => ({
       description: line.description,
       quantity: String(line.quantity),
-      price: (line.unitCents / 100).toFixed(2),
+      price: line.unitCents ? (line.unitCents / 100).toFixed(2) : "",
     }))
   })
   const [error, setError] = useState(""),

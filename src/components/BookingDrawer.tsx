@@ -1,3 +1,4 @@
+import { GigPackageSummary } from './GigPackages'
 import StockAvailability from './StockAvailability'
 import { useEffect, useId, useRef } from 'react'
 import { ArrowUpRight, CalendarDays, MessageCircle, X } from 'lucide-react'
@@ -10,6 +11,7 @@ export default function BookingDrawer({ record, onClose, onDetails, onChat }: { 
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const totals = settlement(record.ledger)
+  const unquoted = record.gigPackage?.pricing === 'custom' && !record.quotations.length
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const overflow = document.body.style.overflow
@@ -29,7 +31,8 @@ export default function BookingDrawer({ record, onClose, onDetails, onChat }: { 
   }}>
     <header className="sl-drawer-header"><div><span className="sl-eyebrow">{record.id} / BOOKING OVERVIEW</span><h2 id={titleId}>{record.event}</h2><p>{bookingService(record).name}</p></div><button autoFocus className="pw-icon" aria-label="Close booking details" onClick={onClose}><X size={20} /></button></header>
     <div className="sl-drawer-content"><div className="sl-drawer-date"><CalendarDays size={20} /><div><strong>{new Date(`${record.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {record.start}–{record.end}</strong><p>{record.venue}</p></div></div>
-      <dl className="sl-drawer-money"><div><dt>Agreed total</dt><dd>{money(totals.totalCents)}</dd></div><div><dt>Held in escrow</dt><dd>{money(totals.heldCents)}</dd></div><div><dt>Remaining balance</dt><dd>{money(totals.remainingCents)}</dd></div></dl>
+      <dl className="sl-drawer-money"><div><dt>{record.ledger.quoteStatus === 'accepted' ? 'Agreed total' : 'Requested total'}</dt><dd>{unquoted ? 'Custom quote required' : money(totals.totalCents)}</dd></div><div><dt>Held in escrow</dt><dd>{money(totals.heldCents)}</dd></div><div><dt>Remaining balance</dt><dd>{unquoted ? 'To be agreed' : money(totals.remainingCents)}</dd></div></dl>
+      <GigPackageSummary snapshot={record.gigPackage} />
       <StockAvailability serviceId={record.serviceId} date={record.date} record={record} compact />
       <BookingMilestones record={record} compact />
       <p className="pw-caption">Temporary frontend demo · refreshing resets this booking’s progress.</p>

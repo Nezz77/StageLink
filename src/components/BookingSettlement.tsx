@@ -9,11 +9,12 @@ import { paymentLabel, refundBlocks, performanceStarted, type RecordBooking } fr
 export function SettlementSummary({ record }: { record: RecordBooking }) {
   const totals = settlement(record.ledger);
   const refunded = record.refund?.status === 'refunded';
+  if (record.gigPackage?.pricing === 'custom' && !record.quotations.length) return <section className="pw-panel pw-review sl-settlement" aria-label="Payment breakdown"><span className="sl-eyebrow">VIP / QUOTATION FIRST</span><h2>Custom quote required</h2><p>The artist will confirm your scope and price in booking chat. Checkout becomes available after quotation agreement.</p><p className="pw-caption">No payment has been collected.</p></section>;
   return <section className="pw-panel pw-review sl-settlement" aria-label="Payment breakdown">
     <div className="pw-panel-heading"><span className="sl-eyebrow">ONE BOOKING · EVERY PAYMENT</span><ShieldCheck size={19} /></div>
     <h2>{money(totals.totalCents)}</h2><p>{paymentLabel(record)}</p>
     <dl className="sl-settlement-lines">
-      <div><dt>Agreed booking price</dt><dd>{money(record.ledger.quoteCents)}</dd></div>
+      <div><dt>{record.ledger.quoteStatus === 'accepted' ? 'Agreed booking price' : 'Requested booking price'}</dt><dd>{money(record.ledger.quoteCents)}</dd></div>
       <div><dt>Approved overtime</dt><dd>{money(totals.overtimeCents)}</dd></div>
       {record.ledger.installments.some(item => item.kind === 'legacy') && <div><dt>Previous demo surcharge</dt><dd>{money(totals.totalCents - record.ledger.quoteCents - totals.overtimeCents)}</dd></div>}
       <div><dt>Customer paid to StageLink</dt><dd>{money(totals.receivedCents)}</dd></div>
