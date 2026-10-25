@@ -1,3 +1,4 @@
+import { calendarBlockError, localCalendarDate, scheduleRevision, type CalendarBlock } from './calendar.ts';
 import type { BookingRole } from './booking.ts';
 import type { DashboardAction, DashboardState, MemberRole, CaseKind } from './dashboard.ts';
 import { defaultAvailability, type Availability } from './catalog.ts';
@@ -14,6 +15,8 @@ export type CommunityAction =
  | { type: 'bank_account'; account: Pick<BankAccount,'holder'|'bank'|'branch'|'number'> }
  | { type: 'review_bank'; provider: ProviderRole; approved: boolean; reason: string }
  | { type: 'availability'; schedule: Availability }
+ | { type: 'calendar_block'; block: CalendarBlock; revision: string }
+ | { type: 'calendar_unblock'; id: string; revision: string }
  | { type: 'evidence'; file: Evidence }
  | { type: 'submit_case'; kind: CaseKind; subject: string; body: string; bookingId?: string; evidenceIds: string[] }
  | { type: 'member_reply'; id: string; text: string }
@@ -65,6 +68,16 @@ export function reduceCommunity(state:DashboardState,action:DashboardAction,acto
  case 'review_bank':
   if(actor!=='admin'||!provider(action.provider)||typeof action.approved!=='boolean'||state.payoutAccounts[action.provider].status!=='pending'||!text(action.reason,10))return state;
   return {...state,payoutAccounts:{...state.payoutAccounts,[action.provider]:{...state.payoutAccounts[action.provider],status:action.approved?'verified':'rejected',reason:action.reason.trim()}},audit:[{label:`${action.provider} payout account ${action.approved?'verified':'rejected'} (demo)`,at},...state.audit]};
+ case 'calendar_block': case 'calendar_unblock': {
+  if(!provider(actor))return state;
+  const schedule=state.availability[actor];
+  if(action.revision!==scheduleRevision(schedule))return state;
+  if(action.type==='calendar_block'&&calendarBlockError(schedule,action.block,localCalendarDate(new Date(at))))return state;
+  if(action.type==='calendar_unblock'&&!schedule.blocks.some(block=>block.id===action.id))return state;
+  const next={...schedule,blocks:action.type==='calendar_block'?[...schedule.blocks,{...action.block,reason:action.block.reason.trim()}]:schedule.blocks.filter(block=>block.id!==action.id)};
+  if(scheduleError(next))return state;
+  return {...state,availability:{...state.availability,[actor]:next},drafts:clear('availability')};
+ }
  case 'availability':
   if(!provider(actor)||scheduleError(action.schedule))return state;
   return {...state,availability:{...state.availability,[actor]:{...action.schedule,days:[...action.schedule.days],blocks:action.schedule.blocks.map(block=>({...block}))}},drafts:clear('availability')};

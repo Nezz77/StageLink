@@ -1,3 +1,8 @@
+import CalendarDayActions from './CalendarDayActions'
+import { isFullDayBlock } from '../lib/calendar'
+import { useDashboard } from '../lib/DashboardContext'
+import { Notice } from './DashboardUI'
+import '../calendar.css'
 import { GigPackagePicker, GigPackageSummary } from './GigPackages'
 import { packageSnapshot, packageEnd, choiceError, packagePriceLabel, type PackageChoice } from '../lib/gigPackages'
 import EquipmentInspection from './EquipmentInspection'
@@ -15,6 +20,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  LockKeyhole,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -663,13 +669,19 @@ function CalendarView({
   open: (id: string) => void
   create?: (date: string) => void
 }) {
-  const { options } = useBooking()
-  const services = options.catalog ?? seedServices
+  const { options, actor } = useBooking()
+  const { state: dashboard } = useDashboard()
+  const provider=actor==='artist'||actor==='renter'
+  const schedule=provider?dashboard.availability[actor]:null
+  const [dayAction,setDayAction]=useState<string|null>(null)
+  const [calendarNotice,setCalendarNotice]=useState('')
+  const services = (options.catalog ?? seedServices).filter(item=>!provider||item.role===actor)
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   )
   const [selected, setSelected] = useState(dateKey(new Date()))
   const [service, setService] = useState("all")
+  useEffect(()=>{setService("all");setDayAction(null);setCalendarNotice("")},[actor])
   const records = bookings.filter(
     (record) =>
       !["rejected", "cancelled"].includes(record.status) &&
@@ -687,7 +699,7 @@ function CalendarView({
         eyebrow="YOUR PRODUCTION CALENDAR"
         title="Make room"
         emphasis="for the moment."
-        description="See your schedule at a glance. Select a day to explore its bookings."
+        description={provider?"Select a day to manage bookings and block personal time across your listings.":"See your schedule at a glance. Select a day to explore its bookings."}
       />
       <div className="pw-calendar-layout">
         <section className="pw-panel pw-calendar">
@@ -762,23 +774,28 @@ function CalendarView({
                 new Date(month.getFullYear(), month.getMonth(), day),
               )
               const items = records.filter((record) => record.date === date)
-              const conflict = items.some(
+              const blocks=schedule?.blocks.filter(block=>block.date===date)??[]
+              const blockedBooking=items.some(record=>blocks.some(block=>record.start<block.end&&record.end>block.start)&&['pending','accepted','active'].includes(record.status))
+              const conflict = blockedBooking || items.some(
                 (record) => conflicts(record, records, services).length,
               )
               return (
                 <button
                   key={date}
-                  className={`pw-day ${selected === date ? "selected" : ""} ${
+                  className={`pw-day ${blocks.length ? "pw-day-blocked" : ""} ${selected === date ? "selected" : ""} ${
                     date === dateKey(new Date()) ? "today" : ""
                   }`}
                   aria-label={`${dayLabel(date)}, ${items.length} bookings${
-                    conflict ? ", conflict" : ""
-                  }`}
+                    conflict ? ", scheduling warning" : ""
+                  }${blocks.length?", blocked time":""}${provider?", open day actions":""}`}
                   aria-pressed={selected === date}
-                  onClick={() => setSelected(date)}
+                  aria-haspopup={provider?"dialog":undefined}
+                  aria-expanded={provider?dayAction===date:undefined}
+                  onClick={event => {setSelected(date);setCalendarNotice('');if(provider){event.currentTarget.focus();setDayAction(date);}}}
                 >
                   <span>{day}</span>
                   <div className="pw-date-dots">
+                    {blocks.length>0&&<LockKeyhole className="sl-calendar-lock" aria-hidden="true"/>}
                     {items.slice(0, 3).map((record) => (
                       <i
                         key={record.id}
@@ -786,9 +803,10 @@ function CalendarView({
                       />
                     ))}
                   </div>
+                  {blocks.length>0&&items.length===0&&<small>Blocked</small>}
                   {items.length > 0 && (
                     <small>
-                      {conflict ? "Conflict" : `${items.length} booked`}
+                      {conflict ? "Check schedule" : `${items.length} booked`}
                     </small>
                   )}
                 </button>
@@ -802,12 +820,19 @@ function CalendarView({
             <span>
               <i className="pw-dot-pending" /> Pending
             </span>
-            <span>Empty days: no bookings in this demo</span>
+            {provider&&<span><i className="sl-calendar-block-dot"/>Blocked time</span>}
+            <span>{provider?"Select a day to manage time away":"Empty days: no bookings in this demo"}</span>
           </div>
         </section>
         <aside className="pw-panel pw-agenda">
           <span className="sl-eyebrow">ON THE CALL SHEET</span>
           <h2>{dayLabel(selected)}</h2>
+          <Notice>{calendarNotice}</Notice>
+          {provider&&<>
+            {(schedule?.blocks.filter(block=>block.date===selected)??[]).map(block=><div className="sl-calendar-agenda-block" key={block.id}><strong><LockKeyhole size={13}/> {isFullDayBlock(block)?'All day blocked':`${block.start}–${block.end} blocked`}</strong><p>{block.reason}</p><button className="btn-ghost" onClick={event=>{event.currentTarget.focus();setDayAction(selected);}}>Manage blocked period</button></div>)}
+            <button className="btn-ghost sl-calendar-agenda-action" onClick={event=>{event.currentTarget.focus();setDayAction(selected);}}><CalendarDays size={15}/>Manage date & availability</button>
+            {records.some(record=>record.date===selected&&['pending','accepted','active'].includes(record.status)&&(schedule?.blocks.some(block=>block.date===selected&&record.start<block.end&&record.end>block.start)))&&<Notice error>A saved block overlaps a booking below. The booking remains unchanged; coordinate the schedule in booking chat.</Notice>}
+          </>}
           {records
             .filter((record) => record.date === selected)
             .map((record) => (
@@ -828,7 +853,7 @@ function CalendarView({
             ))}
           {!records.some((record) => record.date === selected) && (
             <p className="pw-muted">
-              A little space for something great. No bookings on this date.
+              {schedule?.blocks.some(block=>block.date===selected)?"No bookings on this date. Blocked periods shown above still apply.":"A little space for something great. No bookings on this date."}
             </p>
           )}
           {create && selected >= dateKey(new Date()) && (
@@ -840,11 +865,11 @@ function CalendarView({
             </button>
           )}
           <p className="pw-caption">
-            Availability reflects bookings in this browser. Artist time slots
-            cannot overlap; equipment is reserved for the day.
+            {provider?"Blocked periods apply across all your listings and sync with Availability. Existing bookings remain unchanged. Changes reset on refresh.":"Availability reflects bookings in this browser. Artist time slots cannot overlap; equipment is reserved for the day."}
           </p>
         </aside>
       </div>
+      {provider&&dayAction&&<CalendarDayActions key={`${actor}:${dayAction}`} date={dayAction} onClose={()=>setDayAction(null)} onSaved={setCalendarNotice}/>}
     </>
   )
 }

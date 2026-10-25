@@ -1,3 +1,4 @@
+import { initialReminders, reduceReminders, syncReminderBookings, type ReminderState, type ReminderAction } from './reminders.ts'
 import { choiceError, packageSnapshot, packageEnd, type PackageChoice, type PackageSnapshot } from './gigPackages.ts'
 import { applyArbitration, arbitrationLocked, type Arbitration, type ArbitrationCommand } from './arbitration.ts'
 import { applyInspection, type RentalInspection, type InspectionCommand } from './inspections.ts'
@@ -99,6 +100,7 @@ export type BookingNotification = {
   section: "bookings" | "payments" | "chat"; recipients: BookingRole[]; readBy: BookingRole[]
 }
 export type PipelineState = {
+  reminders: ReminderState
   stock?: StockState
   messageDrafts: Record<string, string>
   notifications: BookingNotification[]
@@ -109,6 +111,7 @@ export type PipelineState = {
   read: Record<string, string>
 }
 export type PipelineAction =
+  | { type: "reminders"; action: ReminderAction }
   | { type: "arbitration"; id: string; expectedVersion: number; command: ArbitrationCommand }
   | { type: "inspection"; id: string; expectedVersion: number; command: InspectionCommand }
   | { type: "stock_sample"; scenario: "reserve" | "release" | "expire" | "stale" | "unavailable" | "refresh"; serviceId: string; date: string; units?: number; kind?: "confirmed" | "temporary" }
@@ -312,6 +315,7 @@ export function initialPipeline(now = new Date()): PipelineState {
   }
   refunded.ledger = { ...refunded.ledger, payment: "refunded", installments: refunded.ledger.installments.map(item => ({ ...item, refundedAt: refunded.refund!.decidedAt })) }
   const initial: PipelineState = {
+    reminders: initialReminders(),
     messageDrafts: {},
     bookings: [
       headline,
@@ -449,9 +453,9 @@ function safeForm(value: unknown): value is BookingForm {
     /^BK-[a-zA-Z0-9-]+$/.test(form.id)
   )
 }
-export function reducePipeline(
+function reducePipelineCore(
   state: PipelineState,
-  action: PipelineAction,
+  action: Exclude<PipelineAction, {type: "reminders"}>,
   actor: BookingRole,
   at = new Date().toISOString(),
   replayLegacy = false,
@@ -828,4 +832,17 @@ export function restorePipeline(
   } catch {
     return { state: initialPipeline(), events: [], damaged: true }
   }
+}
+
+export function reducePipeline(state:PipelineState,action:PipelineAction,actor:BookingRole,at=new Date().toISOString(),restoring=false,options:BookingOptions={}):PipelineState {
+  if(!action)return state;
+  if(action.type==='reminders'){
+    if(actor!=='admin')return state;
+    const reminders=reduceReminders(state.reminders,action.action,at);
+    return reminders===state.reminders?state:{...state,reminders:syncReminderBookings(reminders,state.bookings)};
+  }
+  const next=reducePipelineCore(state,action,actor,at,restoring,options);
+  if(next===state)return state;
+  const reminders=syncReminderBookings(next.reminders,next.bookings);
+  return reminders===next.reminders?next:{...next,reminders};
 }
