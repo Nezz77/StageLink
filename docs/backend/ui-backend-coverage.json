@@ -1,0 +1,1040 @@
+[
+  {
+    "coverage_id": "UI-001",
+    "module": "1",
+    "ui_feature": "Public landing feed and promotional slots",
+    "phase": "P06",
+    "supporting_phases": [
+      "P17",
+      "P18"
+    ],
+    "current_files": [
+      "src/components/LandingPage.tsx"
+    ],
+    "proposed_contract": "GET /public/feed; GET /public/announcements",
+    "entities": "listings; announcements; approved public aggregates",
+    "hardcoded_replacement": "Static artists, price/rating/count records and banner slots",
+    "acceptance": "An empty DB returns honest empty/zero results; only approved public data appears",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-011"
+  },
+  {
+    "coverage_id": "UI-002",
+    "module": "1",
+    "ui_feature": "Faceted artist/equipment discovery and radius search",
+    "phase": "P06",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/BrowseArtistsPage.tsx",
+      "src/components/RentEquipmentPage.tsx",
+      "src/components/CollectionBrowsePage.tsx"
+    ],
+    "proposed_contract": "GET /listings?type&genre&radius&budget&rating&cursor",
+    "entities": "listings; profile_locations; reviews",
+    "hardcoded_replacement": "Seed search arrays, fixed locations and ratings",
+    "acceptance": "Filter/sort/pagination/currency/radius work against persisted rows; private coordinates stay private",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-012"
+  },
+  {
+    "coverage_id": "UI-003",
+    "module": "1/2/3",
+    "ui_feature": "Public listing detail and preview",
+    "phase": "P05",
+    "supporting_phases": [
+      "P04",
+      "P06"
+    ],
+    "current_files": [
+      "src/components/CollectionDetailPage.tsx",
+      "src/lib/catalogPresentation.ts"
+    ],
+    "proposed_contract": "GET /listings/:id; GET /providers/:id/public-profile",
+    "entities": "listings; package_versions; approved media; public reviews",
+    "hardcoded_replacement": "Role-global names and copied collection detail fixtures",
+    "acceptance": "Paused/private/missing listings are handled correctly; accepted booking snapshots remain unchanged",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-013"
+  },
+  {
+    "coverage_id": "UI-004",
+    "module": "1",
+    "ui_feature": "Customer registration and login",
+    "phase": "P02",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/AuthModal.tsx",
+      "src/App.tsx"
+    ],
+    "proposed_contract": "POST /auth/register; POST /auth/login; GET /me",
+    "entities": "users; user_roles; sessions; customer_profiles",
+    "hardcoded_replacement": "Form-only signup and role-based demo access",
+    "acceptance": "Two independent customer accounts persist and cannot access each other",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-014"
+  },
+  {
+    "coverage_id": "UI-005",
+    "module": "2",
+    "ui_feature": "Artist specialized onboarding",
+    "phase": "P03",
+    "supporting_phases": [
+      "P02"
+    ],
+    "current_files": [
+      "src/components/AuthModal.tsx",
+      "src/components/MemberProfile.tsx"
+    ],
+    "proposed_contract": "POST /me/artist-profile; PATCH /me/artist-profile",
+    "entities": "artist_profiles; genres; profile_locations",
+    "hardcoded_replacement": "One seeded artist and local-only onboarding",
+    "acceptance": "Category/genre/experience/rate/service area survive reload and owner checks",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-015"
+  },
+  {
+    "coverage_id": "UI-006",
+    "module": "3",
+    "ui_feature": "Renter/storefront onboarding and profile",
+    "phase": "P03",
+    "supporting_phases": [
+      "P02"
+    ],
+    "current_files": [
+      "src/components/AuthModal.tsx",
+      "src/components/MemberProfile.tsx"
+    ],
+    "proposed_contract": "POST /me/renter-profile; PATCH /me/renter-profile",
+    "entities": "renter_profiles; profile_locations; operational terms",
+    "hardcoded_replacement": "One seeded storefront and sample contact/location",
+    "acceptance": "Multiple providers have independent approved profiles and private/public fields",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-016"
+  },
+  {
+    "coverage_id": "UI-007",
+    "module": "1",
+    "ui_feature": "Email verification and password recovery",
+    "phase": "P02",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/AccountRecovery.tsx"
+    ],
+    "proposed_contract": "POST /auth/email-verification; POST /auth/email-verification/confirm; POST /auth/password-reset; POST /auth/password-reset/complete",
+    "entities": "auth_tokens; sessions; delivery records",
+    "hardcoded_replacement": "Universal 246810 code and fake reset success",
+    "acceptance": "Expiring single-use hashed tokens; actual credential changed; no account enumeration; rate limits",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-017"
+  },
+  {
+    "coverage_id": "UI-008",
+    "module": "shared",
+    "ui_feature": "Session refresh logout role memberships and administrative access",
+    "phase": "P02",
+    "supporting_phases": [],
+    "current_files": [
+      "src/App.tsx",
+      "src/lib/BookingContext.tsx",
+      "src/lib/DashboardContext.tsx"
+    ],
+    "proposed_contract": "POST /auth/refresh; POST /auth/logout; GET /me/roles; POST /me/active-role",
+    "entities": "users; user_roles; sessions; admin_memberships",
+    "hardcoded_replacement": "Unrestricted demo role dropdown and reset identity",
+    "acceptance": "Only approved memberships can be selected; admin cannot be self-assigned; logout revokes socket access",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-018"
+  },
+  {
+    "coverage_id": "UI-009",
+    "module": "1/2/3",
+    "ui_feature": "Profile contact edits and verified email change",
+    "phase": "P03",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/MemberProfile.tsx"
+    ],
+    "proposed_contract": "GET /me/profile; PATCH /me/profile; POST /me/email-change",
+    "entities": "profiles; pending_email_changes; auth_tokens",
+    "hardcoded_replacement": "Profiles stored by role instead of account",
+    "acceptance": "Unverified email does not replace trusted delivery contact; per-user persistence and revisions",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-019"
+  },
+  {
+    "coverage_id": "UI-010",
+    "module": "1/4",
+    "ui_feature": "Categorized saved archive",
+    "phase": "P07",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/SavedItems.tsx",
+      "src/components/SaveListingButton.tsx"
+    ],
+    "proposed_contract": "GET /me/saved-items; PUT /me/saved-items/:entity; DELETE /me/saved-items/:entity",
+    "entities": "saved_items; listing references",
+    "hardcoded_replacement": "Local savedListings and numeric artist favorite IDs",
+    "acceptance": "Artist/gig/equipment references survive reload, deduplicate and allow removal after listing archive",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-020"
+  },
+  {
+    "coverage_id": "UI-011",
+    "module": "shared",
+    "ui_feature": "Save for later and message/form drafts",
+    "phase": "P07",
+    "supporting_phases": [],
+    "current_files": [
+      "src/lib/DashboardContext.tsx",
+      "src/components/ListingManager.tsx",
+      "src/components/PipelineChat.tsx"
+    ],
+    "proposed_contract": "GET /me/drafts; PUT /me/drafts/:key; DELETE /me/drafts/:key",
+    "entities": "drafts; draft_revisions",
+    "hardcoded_replacement": "Browser-only draft maps",
+    "acceptance": "Owner-scoped safe drafts persist, revision conflict is visible, submission consumes one draft; no plaintext bank secrets",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-021"
+  },
+  {
+    "coverage_id": "UI-012",
+    "module": "1",
+    "ui_feature": "Customer event requirements posts",
+    "phase": "P06",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/CustomerDashboard.tsx"
+    ],
+    "proposed_contract": "POST /event-posts; GET /me/event-posts; GET /event-posts/:id; PATCH /event-posts/:id; DELETE /event-posts/:id",
+    "entities": "event_posts; event_post_requirements",
+    "hardcoded_replacement": "Report scope has no complete persisted event-post feature",
+    "acceptance": "Event brief differs from one-provider booking; date/budget/equipment requirements persist",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-022"
+  },
+  {
+    "coverage_id": "UI-013",
+    "module": "1",
+    "ui_feature": "Verified reviews ratings and event photos",
+    "phase": "P13",
+    "supporting_phases": [
+      "P04",
+      "P06"
+    ],
+    "current_files": [
+      "src/components/BookingReview.tsx",
+      "src/components/CollectionDetailPage.tsx"
+    ],
+    "proposed_contract": "POST /bookings/:id/reviews; GET /listings/:id/reviews; PATCH /admin/reviews/:id/moderation",
+    "entities": "reviews; review_media; review_moderation",
+    "hardcoded_replacement": "Seed star ratings and local review record",
+    "acceptance": "Only allowed participant/completed booking can review; one allowed review; moderated aggregates refresh",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-023"
+  },
+  {
+    "coverage_id": "UI-014",
+    "module": "2",
+    "ui_feature": "Artist gig create edit publish pause archive",
+    "phase": "P05",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/ListingManager.tsx"
+    ],
+    "proposed_contract": "POST /me/gigs; PATCH /me/gigs/:id; POST /me/gigs/:id/publish; POST /me/gigs/:id/pause; DELETE /me/gigs/:id",
+    "entities": "artist_gigs; listing_versions",
+    "hardcoded_replacement": "Hardcoded GIG records and local reducer CRUD",
+    "acceptance": "Ownership/version enforcement; draft vs published; archive preserves booked history",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-024"
+  },
+  {
+    "coverage_id": "UI-015",
+    "module": "2",
+    "ui_feature": "Tier packages duration lineup and add-ons",
+    "phase": "P05",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/GigPackages.tsx",
+      "src/lib/gigPackages.ts"
+    ],
+    "proposed_contract": "PUT /me/gigs/:id/package-draft; POST /me/gigs/:id/package-versions",
+    "entities": "package_versions; package_tiers; package_addons",
+    "hardcoded_replacement": "demoPackages and serialized JSON-string authority",
+    "acceptance": "Standard/Deluxe/VIP/custom edits are versioned; stale selections fail; bookings snapshot selected version",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-025"
+  },
+  {
+    "coverage_id": "UI-016",
+    "module": "2/3",
+    "ui_feature": "Portfolio and listing photo audio video embeds",
+    "phase": "P04",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/PortfolioManager.tsx",
+      "src/components/ArtistAudition.tsx",
+      "src/components/ListingManager.tsx"
+    ],
+    "proposed_contract": "POST /assets/uploads; POST /assets/:id/finalize; POST /me/portfolio; PATCH /me/portfolio/:id; DELETE /me/portfolio/:id",
+    "entities": "assets; listing_media; asset_processing_jobs",
+    "hardcoded_replacement": "Blob-only media and fallback performances",
+    "acceptance": "Actual media survives reload; waveform/preview derived from asset; allowlisted embeds; empty profile has no fake performance",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-026"
+  },
+  {
+    "coverage_id": "UI-017",
+    "module": "2/5",
+    "ui_feature": "Artist AI bio and gig writing assistant",
+    "phase": "P15",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/ListingManager.tsx",
+      "src/components/MemberProfile.tsx"
+    ],
+    "proposed_contract": "POST /ai/generations/bio; POST /ai/generations/gig; GET /ai/generations/:id",
+    "entities": "generation_jobs; prompt_versions; model_calls",
+    "hardcoded_replacement": "Template title/description and absent persisted bio-generation service",
+    "acceptance": "Structured reviewed suggestion from configured model; no auto-publish; quotas/outage/errors visible",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-027"
+  },
+  {
+    "coverage_id": "UI-018",
+    "module": "2/3",
+    "ui_feature": "Regular availability and calendar blackout",
+    "phase": "P08",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/AvailabilityEditor.tsx",
+      "src/components/CalendarDayActions.tsx",
+      "src/components/BookingWorkspace.tsx"
+    ],
+    "proposed_contract": "GET /providers/:id/availability; PUT /me/availability; POST /me/availability/blocks; DELETE /me/availability/blocks/:id",
+    "entities": "availability_rules; availability_exceptions; provider_reservations",
+    "hardcoded_replacement": "Role-only schedule and local calendar revision",
+    "acceptance": "Provider-wide conflicts and expected revision enforced; private leave reason hidden; existing bookings not cancelled",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-028"
+  },
+  {
+    "coverage_id": "UI-019",
+    "module": "3",
+    "ui_feature": "Equipment listing stock rate and technical-spec editing",
+    "phase": "P05",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/ListingManager.tsx",
+      "src/components/EquipmentSpecsEditor.tsx"
+    ],
+    "proposed_contract": "POST /me/rentals; PATCH /me/rentals/:id; POST /me/rentals/:id/status",
+    "entities": "rental_listings; equipment_specs; rental_rate_plans",
+    "hardcoded_replacement": "EQ seed catalog quantities/prices and local spec fields",
+    "acceptance": "Actual provider ownership; no fake specs; policy/version updates do not rewrite bookings",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-029"
+  },
+  {
+    "coverage_id": "UI-020",
+    "module": "3",
+    "ui_feature": "Venue listings rental bundles hourly daily weekly terms",
+    "phase": "P05",
+    "supporting_phases": [
+      "P08"
+    ],
+    "current_files": [
+      "src/components/ListingManager.tsx",
+      "src/components/RentEquipmentPage.tsx"
+    ],
+    "proposed_contract": "POST /me/venues; PATCH /me/venues/:id; PUT /me/rentals/:id/rates; PUT /me/rental-packages/:id",
+    "entities": "venue_details; rental_rate_plans; package_contents",
+    "hardcoded_replacement": "Report scope is broader than current equipment-only form/rate units",
+    "acceptance": "Venue exclusivity/capacity and rental multi-day pricing have explicit tested contracts",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-030"
+  },
+  {
+    "coverage_id": "UI-021",
+    "module": "3/5",
+    "ui_feature": "AI equipment model/spec extraction",
+    "phase": "P15",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/EquipmentSpecsEditor.tsx",
+      "src/lib/equipmentSpecs.ts"
+    ],
+    "proposed_contract": "POST /ai/generations/equipment-specs; GET /ai/generations/:id",
+    "entities": "generation_jobs; sourced_specs; model_calls",
+    "hardcoded_replacement": "Deterministic Yamaha/Chauvet catalog and fixed deposit suggestion",
+    "acceptance": "Unknown fields stay unknown; source/provenance and reviewed apply; no factual certification by model alone",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-031"
+  },
+  {
+    "coverage_id": "UI-022",
+    "module": "3",
+    "ui_feature": "Fixed percentage none refundable deposit policy",
+    "phase": "P05",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/SecurityDeposit.tsx"
+    ],
+    "proposed_contract": "PUT /me/rentals/:id/deposit-policy",
+    "entities": "rental_policies; policy_versions",
+    "hardcoded_replacement": "Local depositMode/value/terms",
+    "acceptance": "Policy validates currency/basis/version; per-booking snapshot cannot be silently changed",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-032"
+  },
+  {
+    "coverage_id": "UI-023",
+    "module": "3/4",
+    "ui_feature": "Date-specific availability quantity reservations and hold expiry",
+    "phase": "P08",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/StockAvailability.tsx",
+      "src/lib/stock.ts"
+    ],
+    "proposed_contract": "GET /listings/:id/availability; POST /bookings/:id/reservation-renewals",
+    "entities": "inventory_capacity; inventory_reservations; reservation_lines",
+    "hardcoded_replacement": "Sample stock scenarios and client clock/hold authority",
+    "acceptance": "Parallel connections cannot oversell; late expiry worker is safe; API outage cannot pretend stock is current",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-033"
+  },
+  {
+    "coverage_id": "UI-024",
+    "module": "3",
+    "ui_feature": "Serial inventory maintenance quarantine and custody",
+    "phase": "P05",
+    "supporting_phases": [
+      "P08",
+      "P14"
+    ],
+    "current_files": [
+      "src/components/ListingManager.tsx",
+      "src/components/EquipmentInspection.tsx"
+    ],
+    "proposed_contract": "POST /me/inventory-units; PATCH /me/inventory-units/:id; GET /me/inventory-movements",
+    "entities": "inventory_units; inventory_movements; maintenance records",
+    "hardcoded_replacement": "Generated illustrative serials and role-global capacity",
+    "acceptance": "Real serial uniqueness; no concurrent dispatch reuse; out/overdue/maintenance units unavailable",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-034"
+  },
+  {
+    "coverage_id": "UI-025",
+    "module": "3/4",
+    "ui_feature": "Pre-dispatch return correction acknowledgment and photo comparison",
+    "phase": "P14",
+    "supporting_phases": [
+      "P04"
+    ],
+    "current_files": [
+      "src/components/EquipmentInspection.tsx"
+    ],
+    "proposed_contract": "POST /bookings/:id/inspections; PUT /inspections/:id/draft; POST /inspections/:id/submit; POST /inspections/:id/acknowledge; POST /inspections/:id/corrections",
+    "entities": "inspection_reports; observations; acknowledgments; photo_pairs",
+    "hardcoded_replacement": "Sample manifest/photos and simulated signature",
+    "acceptance": "Authenticated immutable evidence/revision history; paired real photos; no claim of legal signature or automatic liability",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-035"
+  },
+  {
+    "coverage_id": "UI-026",
+    "module": "3/4/5",
+    "ui_feature": "Deposit charge authorization refund deduction and clearance",
+    "phase": "P14",
+    "supporting_phases": [
+      "P11",
+      "P12",
+      "P16"
+    ],
+    "current_files": [
+      "src/components/EquipmentInspection.tsx",
+      "src/components/SecurityDeposit.tsx"
+    ],
+    "proposed_contract": "POST /bookings/:id/deposit-orders; POST /damage-claims; POST /damage-claims/:id/respond; POST /admin/damage-claims/:id/resolve; POST /bookings/:id/clearance",
+    "entities": "deposit_obligations; damage_claims; financial journal; clearance_reports",
+    "hardcoded_replacement": "Policy display without actual deposit funds",
+    "acceptance": "Cannot deduct beyond collected eligible deposit; zero-deposit cannot invent money; provider result reconciled; stock cleared separately",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-036"
+  },
+  {
+    "coverage_id": "UI-027",
+    "module": "4",
+    "ui_feature": "Booking request form draft review submit",
+    "phase": "P08",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/BookingWorkspace.tsx",
+      "src/lib/pipeline.ts"
+    ],
+    "proposed_contract": "POST /bookings; GET /me/bookings; GET /bookings/:id",
+    "entities": "bookings; booking_lines; snapshots; events",
+    "hardcoded_replacement": "initialPipeline records and synchronous form dispatch",
+    "acceptance": "Server validates customer/listing/date/quantity; duplicate request idempotent; persisted across reload",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-037"
+  },
+  {
+    "coverage_id": "UI-028",
+    "module": "4",
+    "ui_feature": "Provider request decisions and calendar/history projections",
+    "phase": "P09",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/BookingWorkspace.tsx",
+      "src/components/ProviderDashboard.tsx"
+    ],
+    "proposed_contract": "POST /bookings/:id/provider-decisions; GET /me/bookings?status&from&to; GET /me/calendar",
+    "entities": "bookings; reservations; booking_events",
+    "hardcoded_replacement": "Local provider respond and per-role list",
+    "acceptance": "Wrong provider/stale availability rejected; history/activity derived; accepted is not paid",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-038"
+  },
+  {
+    "coverage_id": "UI-029",
+    "module": "4",
+    "ui_feature": "Booking drawer milestone journey and check-in",
+    "phase": "P12",
+    "supporting_phases": [
+      "P13"
+    ],
+    "current_files": [
+      "src/components/BookingDrawer.tsx",
+      "src/components/BookingMilestones.tsx",
+      "src/components/DemoPerformance.tsx"
+    ],
+    "proposed_contract": "GET /bookings/:id/journey; POST /bookings/:id/check-ins; POST /bookings/:id/completion",
+    "entities": "check_ins; completion_records; booking_events",
+    "hardcoded_replacement": "Click-driven demo start/finish and simulated clock travel",
+    "acceptance": "Server-time role/advance gates; completion distinct from payout; no fake location proof",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-039"
+  },
+  {
+    "coverage_id": "UI-030",
+    "module": "1/4",
+    "ui_feature": "Pre-booking inquiries and conversion",
+    "phase": "P07",
+    "supporting_phases": [
+      "P10"
+    ],
+    "current_files": [
+      "src/components/MessagesCenter.tsx",
+      "src/lib/community.ts"
+    ],
+    "proposed_contract": "POST /inquiries; GET /me/conversations; POST /inquiries/:id/bookings",
+    "entities": "conversations; conversation_members; bookings",
+    "hardcoded_replacement": "Role-global local inquiry messages",
+    "acceptance": "Only customer/provider members; inquiry history survives booking conversion and reload",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-040"
+  },
+  {
+    "coverage_id": "UI-031",
+    "module": "4",
+    "ui_feature": "Booking text attachments read state typing and reconnect",
+    "phase": "P10",
+    "supporting_phases": [
+      "P04"
+    ],
+    "current_files": [
+      "src/components/PipelineChat.tsx",
+      "src/components/AttachmentPreview.tsx",
+      "src/lib/chatAttachments.ts"
+    ],
+    "proposed_contract": "GET /conversations/:id/messages; POST /conversations/:id/messages; PUT /conversations/:id/read; Socket.IO join/send/typing/read/ack",
+    "entities": "messages; message_attachments; conversation_reads; members",
+    "hardcoded_replacement": "File map local messages and fake reply/typing/seen controls",
+    "acceptance": "Two independent users; persist-before-ack; duplicate IDs dedupe; reconnect cursor; unauthorized joins blocked",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-041"
+  },
+  {
+    "coverage_id": "UI-032",
+    "module": "4",
+    "ui_feature": "Quotation composer counteroffer accept decline versions",
+    "phase": "P09",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/QuotationCard.tsx",
+      "src/lib/quotations.ts"
+    ],
+    "proposed_contract": "POST /bookings/:id/quotations; POST /quotations/:id/decisions; GET /bookings/:id/quotations",
+    "entities": "quotations; quotation_lines; quotation_decisions",
+    "hardcoded_replacement": "Client price/version/offer authority",
+    "acceptance": "Self/old/duplicate offers rejected; server totals; stock and accepted snapshot commit consistently",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-042"
+  },
+  {
+    "coverage_id": "UI-033",
+    "module": "4",
+    "ui_feature": "Accepted agreement and SHA-256 evidence",
+    "phase": "P09",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/QuotationCard.tsx",
+      "src/components/BookingDocuments.tsx"
+    ],
+    "proposed_contract": "GET /bookings/:id/agreement; GET /agreements/:id/artifact",
+    "entities": "agreement_artifacts; quotation_decisions; audit",
+    "hardcoded_replacement": "No durable signed/stamped agreement evidence",
+    "acceptance": "Canonical terms digest and authenticated decision; SHA-256 is not misrepresented as a signature",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-043"
+  },
+  {
+    "coverage_id": "UI-034",
+    "module": "4",
+    "ui_feature": "PayHere checkout sessions advance balance and deposits",
+    "phase": "P11",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/PaymentCheckout.tsx",
+      "src/lib/demoCheckout.ts"
+    ],
+    "proposed_contract": "POST /bookings/:id/payment-orders; POST /payment-orders/:id/sessions; GET /payment-orders/:id; POST /payments/webhooks/payhere",
+    "entities": "payment_orders; payment_attempts; provider_events; journal",
+    "hardcoded_replacement": "Demo cards/wallet and artificial outcome buttons",
+    "acceptance": "Actual sandbox verified checksum/amount/currency; no PAN/CVV to server; pending/late success reconciled",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-044"
+  },
+  {
+    "coverage_id": "UI-035",
+    "module": "4",
+    "ui_feature": "Stripe checkout adapter and eligible Connect settlement",
+    "phase": "P11",
+    "supporting_phases": [
+      "P12"
+    ],
+    "current_files": [
+      "src/components/PaymentCheckout.tsx",
+      "src/components/AdminPayments.tsx"
+    ],
+    "proposed_contract": "POST /payment-orders/:id/sessions; POST /payments/webhooks/stripe; provider capability status",
+    "entities": "payment_attempts; provider_events; transfer_orders",
+    "hardcoded_replacement": "No real Stripe SDK/notification/connected destination",
+    "acceptance": "Signature/raw body and duplicate events tested; merchant/country capability verified; no unsupported payout success",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-045"
+  },
+  {
+    "coverage_id": "UI-036",
+    "module": "4",
+    "ui_feature": "Overtime proposals completion and final balance",
+    "phase": "P12",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/BookingSettlement.tsx",
+      "src/components/DemoPerformance.tsx"
+    ],
+    "proposed_contract": "POST /bookings/:id/overtime; POST /overtime/:id/decisions; POST /bookings/:id/completion; POST /admin/bookings/:id/completion-verification",
+    "entities": "overtime_proposals; completion_records; payment_orders",
+    "hardcoded_replacement": "Local settle actions and forced demo completion",
+    "acceptance": "Counterparty approval; pending overtime blocks final; immutable original fee basis; no event completion equals payout",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-046"
+  },
+  {
+    "coverage_id": "UI-037",
+    "module": "4/5",
+    "ui_feature": "Cancellation refund request reviewed outcome",
+    "phase": "P12",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/RefundReview.tsx",
+      "src/components/BookingWorkspace.tsx"
+    ],
+    "proposed_contract": "POST /bookings/:id/cancellations; POST /bookings/:id/refund-requests; POST /admin/refund-requests/:id/decisions",
+    "entities": "refunds; booking_events; journal; provider_events",
+    "hardcoded_replacement": "Client cancellation/refund/status success",
+    "acceptance": "Eligible policy and held amounts; concurrent payout/refund cannot overspend; late charged cancellation remains recorded",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-047"
+  },
+  {
+    "coverage_id": "UI-038",
+    "module": "3/4/5",
+    "ui_feature": "Provider earnings admin held funds and payout controls",
+    "phase": "P12",
+    "supporting_phases": [
+      "P18"
+    ],
+    "current_files": [
+      "src/components/ProviderFinances.tsx",
+      "src/components/AdminPayments.tsx"
+    ],
+    "proposed_contract": "GET /me/earnings; GET /admin/payments; POST /admin/payouts; POST /admin/bookings/:id/holds; GET /payouts/:id",
+    "entities": "journal; fund_allocations; transfer_orders; reconciliation_runs",
+    "hardcoded_replacement": "Local transferred flag and sample earnings",
+    "acceptance": "One original-price fee; funds reserved once; verified destination revision; pending/unknown not transferred",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-048"
+  },
+  {
+    "coverage_id": "UI-039",
+    "module": "4",
+    "ui_feature": "Invoice receipt settlement preview and PDF download",
+    "phase": "P13",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/BookingDocuments.tsx",
+      "src/lib/documentPdf.ts"
+    ],
+    "proposed_contract": "GET /bookings/:id/documents; POST /documents/:id/render-retry; GET /documents/:id/download",
+    "entities": "documents; document_versions; assets",
+    "hardcoded_replacement": "Browser-generated document authority and temporary transaction IDs",
+    "acceptance": "Stable server number and snapshot; specific installment receipt; PDF works and private access enforced",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-049"
+  },
+  {
+    "coverage_id": "UI-040",
+    "module": "2/3",
+    "ui_feature": "Provider payout destination submission",
+    "phase": "P03",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/PayoutAccount.tsx"
+    ],
+    "proposed_contract": "GET /me/payout-destination; PUT /me/payout-destination",
+    "entities": "payout_destinations; destination_revisions",
+    "hardcoded_replacement": "Seeded verified demo bank accounts",
+    "acceptance": "Masked restricted/tokenized data; update requires review and pauses stale payout execution",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-050"
+  },
+  {
+    "coverage_id": "UI-041",
+    "module": "5",
+    "ui_feature": "Payout account administrator review",
+    "phase": "P03",
+    "supporting_phases": [
+      "P16"
+    ],
+    "current_files": [
+      "src/components/PayoutAccount.tsx",
+      "src/components/AdminPayments.tsx"
+    ],
+    "proposed_contract": "GET /admin/payout-destinations; POST /admin/payout-destinations/:id/decisions",
+    "entities": "payout_destination_reviews; audit_logs",
+    "hardcoded_replacement": "Client review_bank verified flag",
+    "acceptance": "Permission/reason/revision checks; review is not assumed provider onboarding verification",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-051"
+  },
+  {
+    "coverage_id": "UI-042",
+    "module": "2/3/5",
+    "ui_feature": "Provider verification evidence and review",
+    "phase": "P16",
+    "supporting_phases": [
+      "P04"
+    ],
+    "current_files": [
+      "src/components/CasePortal.tsx",
+      "src/components/AdminReviewDesk.tsx"
+    ],
+    "proposed_contract": "POST /verification-cases; GET /me/verification; GET /admin/verification-cases; POST /admin/verification-cases/:id/decisions",
+    "entities": "provider_documents; verification_cases; case_notes; assets",
+    "hardcoded_replacement": "Local document names and seeded VRF cases",
+    "acceptance": "Private persisted evidence; required review; reject/resubmit; no other provider case disclosure",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-052"
+  },
+  {
+    "coverage_id": "UI-043",
+    "module": "1/2/3/5",
+    "ui_feature": "Support tickets replies assignments internal notes and support chat",
+    "phase": "P16",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/CasePortal.tsx",
+      "src/components/AdminReviewDesk.tsx",
+      "src/components/MessagesCenter.tsx"
+    ],
+    "proposed_contract": "POST /cases; GET /me/cases; POST /cases/:id/replies; GET /admin/cases; POST /admin/cases/:id/notes; POST /admin/cases/:id/status; authorized support events",
+    "entities": "cases; case_members; notes; conversations",
+    "hardcoded_replacement": "Local case maps and seeded support counts",
+    "acceptance": "Member/staff visibility; auditable assignment/reopen; support chat persistence; no internal-note leakage",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-053"
+  },
+  {
+    "coverage_id": "UI-044",
+    "module": "4/5",
+    "ui_feature": "Dispute arbitration full refund release custom split",
+    "phase": "P16",
+    "supporting_phases": [
+      "P12"
+    ],
+    "current_files": [
+      "src/components/DisputeArbitration.tsx",
+      "src/lib/arbitration.ts"
+    ],
+    "proposed_contract": "POST /bookings/:id/disputes; POST /admin/disputes/:id/decisions; GET /arbitrations/:id; POST /admin/arbitrations/:id/retry",
+    "entities": "arbitration_decisions; execution; fund_allocations; journal",
+    "hardcoded_replacement": "Forced success/failure arbitration simulation",
+    "acceptance": "Remaining eligible funds only; financial lock/version; execution distinct from decision; idempotent reconciled outcomes",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-054"
+  },
+  {
+    "coverage_id": "UI-045",
+    "module": "5",
+    "ui_feature": "AI Engine matchmaking weights and measured model operations",
+    "phase": "P15",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/AdminAIEngine.tsx",
+      "src/lib/aiEngine.ts"
+    ],
+    "proposed_contract": "GET /admin/ai/status; GET /admin/ai/metrics; GET /admin/ai/config; PUT /admin/ai/config",
+    "entities": "ai_configs; matching_versions; model_calls; usage",
+    "hardcoded_replacement": "sampleMetrics and scenario toggles",
+    "acceptance": "Published weights affect requests; actual token/latency/cache queries; missing service shows unavailable",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-055"
+  },
+  {
+    "coverage_id": "UI-046",
+    "module": "5",
+    "ui_feature": "Prompt draft preview publish rollback version manager",
+    "phase": "P15",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/AdminAIEngine.tsx"
+    ],
+    "proposed_contract": "GET /admin/ai/prompts; PUT /admin/ai/prompts/:key/draft; POST /admin/ai/prompts/:key/preview; POST /admin/ai/prompts/:key/publish; POST /admin/ai/prompts/:key/rollback",
+    "entities": "prompt_templates; prompt_versions; generation_jobs",
+    "hardcoded_replacement": "In-memory prompt versions and static illustrative outputs",
+    "acceptance": "Expected revisions; audited publish/rollback; actual call records template version; bounded preview costs",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-056"
+  },
+  {
+    "coverage_id": "UI-047",
+    "module": "1/5",
+    "ui_feature": "Top-three event recommendations and semantic ranking",
+    "phase": "P15",
+    "supporting_phases": [
+      "P06"
+    ],
+    "current_files": [
+      "src/components/CustomerDashboard.tsx",
+      "src/components/BrowseArtistsPage.tsx"
+    ],
+    "proposed_contract": "POST /event-posts/:id/recommendations; GET /recommendations/:id",
+    "entities": "recommendation_runs; listing_embeddings; matching_versions",
+    "hardcoded_replacement": "Static curated/trending artist lists labeled as recommendations",
+    "acceptance": "Real eligible records; normalized budget/currency/location/ratings; embedding/version provenance; reproducible eval",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-057"
+  },
+  {
+    "coverage_id": "UI-048",
+    "module": "5",
+    "ui_feature": "24-hour and 2-hour SMS/email reminder queue",
+    "phase": "P17",
+    "supporting_phases": [
+      "P08",
+      "P12"
+    ],
+    "current_files": [
+      "src/components/ReminderQueue.tsx",
+      "src/lib/reminders.ts"
+    ],
+    "proposed_contract": "GET /admin/reminders; GET /admin/reminders/:id; POST /admin/reminders/:id/retry; POST /admin/reminders/:id/cancel; worker delivery/reconcile",
+    "entities": "scheduled_reminders; delivery_attempts; outbox",
+    "hardcoded_replacement": "14/42 sample records frozen clock and sample recipients",
+    "acceptance": "Derived real counts; current schedule checked at send; reschedule/cancel invalidation; queued is not delivered",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-058"
+  },
+  {
+    "coverage_id": "UI-049",
+    "module": "shared",
+    "ui_feature": "Notification bell per-user unread and delivery preferences",
+    "phase": "P17",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/NotificationCenter.tsx"
+    ],
+    "proposed_contract": "GET /me/notifications; PUT /me/notifications/:id/read; GET /me/notification-preferences; PATCH /me/notification-preferences; scoped notification event",
+    "entities": "notifications; notification_preferences; conversation_reads",
+    "hardcoded_replacement": "Local recipient roles/read arrays and reset state",
+    "acceptance": "Authenticated per-user counts/read state survive reload; no unrelated event disclosure",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-059"
+  },
+  {
+    "coverage_id": "UI-050",
+    "module": "5",
+    "ui_feature": "Maintenance announcements cache controls session revocation audit",
+    "phase": "P17",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/SystemControls.tsx"
+    ],
+    "proposed_contract": "GET /system/public-status; PUT /admin/system/maintenance; PUT /admin/announcements; POST /admin/cache/invalidate; POST /admin/sessions/revoke; GET /admin/audit",
+    "entities": "system_settings; announcements; sessions; audit_logs",
+    "hardcoded_replacement": "Simulate purge/refresh and local maintenance flag",
+    "acceptance": "Real bounded operation with permissions/reason; audit recorded; no cache operation deletes reservations/ledger",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-060"
+  },
+  {
+    "coverage_id": "UI-051",
+    "module": "5",
+    "ui_feature": "Promotional email/SMS campaign workflow",
+    "phase": "P17",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/SystemControls.tsx"
+    ],
+    "proposed_contract": "POST /admin/campaigns; POST /admin/campaigns/:id/preview; POST /admin/campaigns/:id/schedule; POST /admin/campaigns/:id/cancel; GET /admin/campaigns/:id",
+    "entities": "campaigns; recipients; consent/preferences; delivery_attempts",
+    "hardcoded_replacement": "Proposal capability beyond current local announcement form",
+    "acceptance": "Preview, consent, recipient eligibility and rate/cost limits; distinguish campaign from transactional reminders",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-061"
+  },
+  {
+    "coverage_id": "UI-052",
+    "module": "5",
+    "ui_feature": "Admin KPI GMV revenue user growth and provider analytics",
+    "phase": "P18",
+    "supporting_phases": [],
+    "current_files": [
+      "src/components/AdminAnalytics.tsx",
+      "src/components/ProviderFinances.tsx"
+    ],
+    "proposed_contract": "GET /admin/analytics?currency&environment&from&to; GET /me/analytics",
+    "entities": "journal; bookings; users; analytics_projections",
+    "hardcoded_replacement": "Sample counts/chart series and role-scoped amounts",
+    "acceptance": "Documented captured/refunded/released definitions; no mixed-currency or test/live aggregates; DB-reconciled charts",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-062"
+  },
+  {
+    "coverage_id": "UI-053",
+    "module": "1/2",
+    "ui_feature": "Public pricing decks artist cards and derived package previews",
+    "phase": "P06",
+    "supporting_phases": [
+      "P05"
+    ],
+    "current_files": [
+      "src/components/PricingShowcase.tsx",
+      "src/components/PricingCard.tsx",
+      "src/components/ArtistCollectionCard.tsx"
+    ],
+    "proposed_contract": "GET /public/featured-packages; GET /public/feed",
+    "entities": "published listing/package versions; content settings",
+    "hardcoded_replacement": "Static carousel price bands, decorative rating/business claims",
+    "acceptance": "Live previews resolve published package data; only static animation/artwork remains in code",
+    "requires_new_report_ui": false,
+    "status": "planned",
+    "ticket_id": "BE-063"
+  },
+  {
+    "coverage_id": "UI-054",
+    "module": "1/5",
+    "ui_feature": "Natural-language discovery input",
+    "phase": "P15",
+    "supporting_phases": [
+      "P06"
+    ],
+    "current_files": [
+      "src/components/watermelon/morphing-discovery-bar.tsx",
+      "src/components/BrowseArtistsPage.tsx"
+    ],
+    "proposed_contract": "POST /discovery/intent; GET /listings with confirmed parsed filters",
+    "entities": "search intents; optional generation/model usage",
+    "hardcoded_replacement": "Any decorative/example natural-language query treated as a real match",
+    "acceptance": "Parsed requirements are reviewable; bounded configured model or deterministic parser; no fake search results",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-064"
+  },
+  {
+    "coverage_id": "UI-055",
+    "module": "3",
+    "ui_feature": "Equipment gallery and storefront media management",
+    "phase": "P05",
+    "supporting_phases": [
+      "P04"
+    ],
+    "current_files": [
+      "src/components/ListingManager.tsx",
+      "src/components/CollectionDetailPage.tsx"
+    ],
+    "proposed_contract": "POST /me/rentals/:id/media; PATCH /me/rentals/:id/media/:assetId; DELETE /me/rentals/:id/media/:assetId",
+    "entities": "listing_media; assets; renter_profiles",
+    "hardcoded_replacement": "Stock images without provider-owned durable gallery controls",
+    "acceptance": "Provider can publish/edit/remove approved equipment photos/video; ownership and evidence retention respected",
+    "requires_new_report_ui": true,
+    "status": "planned",
+    "ticket_id": "BE-065"
+  }
+]

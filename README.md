@@ -188,3 +188,8 @@ To preview the production build locally:
 pnpm preview
 # or: npm run preview
 ```
+
+
+## Backend development
+
+Backend work lives on the separate `backend` branch. See [backend setup and implementation progress](docs/backend/README.md) for the API, PostgreSQL, Redis, worker and FastAPI services. The existing UI remains a demo until each feature is connected in the documented implementation phases.

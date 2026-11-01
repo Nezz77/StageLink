@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-02",
+  "baseline_commit": "9cbbe0ded3112a347c8ba1ffdf7029bd4fde268e",
+  "branch": "backend",
+  "frontend": {
+    "tests_passed": 158,
+    "typecheck": "passed",
+    "build": "passed",
+    "warning": "Existing large bundle warning",
+    "source_changes": false,
+    "browser_qa": "Not performed; computer-use permissions unavailable"
+  },
+  "backend": {
+    "typecheck": "passed",
+    "build": "passed",
+    "unit_tests_passed": 3,
+    "prisma_version": "7.10.1",
+    "nest_version": "12.3.2",
+    "clean_lockfile_install": "passed",
+    "compiled_api_real_http_readiness": "passed",
+    "development_api_real_http_readiness": "passed",
+    "contract_generation": "passed",
+    "contract_generator": "7.13.0"
+  },
+  "ai": {
+    "pytest": "passed",
+    "tests_passed": 1,
+    "warning": "Starlette httpx test client deprecation"
+  },
+  "compose_config": "passed",
+  "database_integration": {
+    "status": "passed",
+    "postgres_version": "17.11",
+    "redis_version": "7.4.12",
+    "empty_database_migration": "passed",
+    "repeat_migration": "passed",
+    "real_dependency_outages": "passed",
+    "outbox_transaction_rollback": "passed",
+    "queue_failure_and_redis_loss_recovery": "passed",
+    "idempotent_consumer": "passed",
+    "worker_process_restart": "passed",
+    "unsupported_event_dead_letter": "passed",
+    "concurrent_first_deliveries": "passed"
+  },
+  "container_builds": "not_run",
+  "remote_ci": "not_run",
+  "pushed": false,
+  "deployed": false,
+  "dependency_audit": {
+    "runtime": {
+      "total": 0
+    },
+    "all_dependencies": {
+      "moderate": 3,
+      "high": 0,
+      "critical": 0
+    },
+    "remaining": "Development-only openapi-typescript / Redocly / minimatch; one underlying glob amplification advisory",
+    "reference": "https://github.com/advisories/GHSA-g3hv-75wg-m249"
+  }
+}

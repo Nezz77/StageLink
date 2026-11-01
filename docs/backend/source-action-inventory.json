@@ -1,0 +1,544 @@
+{
+  "src/lib/dashboard.ts": {
+    "sha256": "574be1e0b947ae965b857ddf9ad17bf6e8ad154f35d5405fd36ef1d8e4c340fb",
+    "actions": [
+      "add_media",
+      "discard_draft",
+      "draft",
+      "edit_media",
+      "favorite",
+      "feature_media",
+      "listing",
+      "listing_status",
+      "profile",
+      "remove_listing",
+      "remove_media"
+    ],
+    "entry_points": [
+      {
+        "line": 6,
+        "text": "import { initialAIEngine, reduceAIEngine, type AIEngineState, type AIAction } from './aiEngine.ts';"
+      },
+      {
+        "line": 7,
+        "text": "import { initialCommunity, reduceCommunity, type CommunityState, type CommunityAction } from './community.ts';"
+      },
+      {
+        "line": 31,
+        "text": "export type DashboardAction = CommunityAction"
+      },
+      {
+        "line": 52,
+        "text": "export const draftKey = (actor: BookingRole, key: string) => `${actor}:${key}`;"
+      },
+      {
+        "line": 53,
+        "text": "export const terminalCase = (item: ReviewCase) => ['approved', 'rejected', 'resolved'].includes(item.status);"
+      },
+      {
+        "line": 55,
+        "text": "export function profileErrors(profile: Profile) {"
+      },
+      {
+        "line": 65,
+        "text": "export function listingErrors(item: Listing) {"
+      },
+      {
+        "line": 79,
+        "text": "export function initialDashboard(): DashboardState {"
+      },
+      {
+        "line": 83,
+        "text": "...initialCommunity(),"
+      },
+      {
+        "line": 84,
+        "text": "aiEngine: initialAIEngine(),"
+      },
+      {
+        "line": 121,
+        "text": "export function reduceDashboard(state: DashboardState, action: DashboardAction, actor: BookingRole, at = new Date().toISOString()): DashboardState {"
+      }
+    ]
+  },
+  "src/lib/community.ts": {
+    "sha256": "b83e4d96582f021803184a20d080dc61a3ebf4eac939372564bfad2849349680",
+    "actions": [
+      "availability",
+      "bank_account",
+      "calendar_block",
+      "calendar_unblock",
+      "evidence",
+      "inquiry",
+      "inquiry_read",
+      "inquiry_send",
+      "member_reply",
+      "review_bank",
+      "save_listing",
+      "submit_case",
+      "verify_email"
+    ],
+    "entry_points": [
+      {
+        "line": 10,
+        "text": "export type CommunityAction ="
+      },
+      {
+        "line": 24,
+        "text": "export function initialCommunity(): CommunityState {"
+      },
+      {
+        "line": 31,
+        "text": "export function bankErrors(account:Pick<BankAccount,'holder'|'bank'|'branch'|'number'>) {"
+      },
+      {
+        "line": 39,
+        "text": "export const maskAccount=(account:BankAccount)=>`${account.bank} \u00b7 \u2022\u2022\u2022\u2022 ${account.number.slice(-4)}`;"
+      },
+      {
+        "line": 40,
+        "text": "export function scheduleError(schedule:Availability) {"
+      },
+      {
+        "line": 47,
+        "text": "export const inquiryUnread=(item:Inquiry,actor:MemberRole)=>item.messages.filter(message=>message.sender!==actor&&Date.parse(message.at)>Date.parse(item.read[actor]??'1970-01-01')).length;"
+      },
+      {
+        "line": 48,
+        "text": "export function reduceCommunity(state:DashboardState,action:DashboardAction,actor:BookingRole,at:string):DashboardState|undefined {"
+      }
+    ]
+  },
+  "src/lib/pipeline.ts": {
+    "sha256": "5b6740145a883dfea61bdb616ddffbf90bf622b6f50d1977c039a3287927eadd",
+    "actions": [
+      "agree",
+      "arbitration",
+      "cancel",
+      "complete",
+      "demo_finish",
+      "demo_start",
+      "inspection",
+      "legacy",
+      "pay",
+      "payment_failed",
+      "quotation",
+      "quote_response",
+      "refund",
+      "resolve_refund",
+      "respond",
+      "review",
+      "settle",
+      "venue_check_in"
+    ],
+    "entry_points": [
+      {
+        "line": 1,
+        "text": "import { initialReminders, reduceReminders, syncReminderBookings, type ReminderState, type ReminderAction } from './reminders.ts'"
+      },
+      {
+        "line": 5,
+        "text": "import { initialStock, stockAvailability, stockPhase, stockRequestError, STOCK_HOLD_MS, type StockState } from './stock.ts'"
+      },
+      {
+        "line": 11,
+        "text": "initialBooking,"
+      },
+      {
+        "line": 21,
+        "text": "export const services: Service[] = ["
+      },
+      {
+        "line": 113,
+        "text": "export type PipelineAction ="
+      },
+      {
+        "line": 155,
+        "text": "export const PIPELINE_KEY = \"stagelink:pipeline:v1\""
+      },
+      {
+        "line": 156,
+        "text": "export const serviceFor = (id: ServiceId, catalog: Service[] = services): Service =>"
+      },
+      {
+        "line": 158,
+        "text": "export const bookingService = (record: RecordBooking): Service => record.service ?? serviceFor(record.serviceId)"
+      },
+      {
+        "line": 159,
+        "text": "export const bookingStockService = (record: RecordBooking, catalog: Service[] = services): Service => catalog.find(service => service.id === record.serviceId) ?? { ...bookingService(record), available: false, capacity: 0"
+      },
+      {
+        "line": 162,
+        "text": "export const dateKey = (date: Date) =>"
+      },
+      {
+        "line": 164,
+        "text": "export const blankForm = (): BookingForm => ({"
+      },
+      {
+        "line": 176,
+        "text": "export const quoteFor = (form: BookingForm, catalog: Service[] = services) => {"
+      },
+      {
+        "line": 183,
+        "text": "export const visibleTo = (record: RecordBooking, actor: BookingRole) => actor === 'customer' || actor === 'admin' || bookingService(record).role === actor"
+      },
+      {
+        "line": 184,
+        "text": "export const conflicts = (form: BookingForm, bookings: RecordBooking[], catalog: Service[] = services, now = new Date()) => {"
+      },
+      {
+        "line": 194,
+        "text": "export function availabilityError(form: BookingForm, options: BookingOptions = {}) {"
+      },
+      {
+        "line": 204,
+        "text": "export function validateForm("
+      },
+      {
+        "line": 272,
+        "text": "...initialBooking,"
+      },
+      {
+        "line": 291,
+        "text": "export function initialPipeline(now = new Date()): PipelineState {"
+      },
+      {
+        "line": 301,
+        "text": "headline.ledger = { ...initialBooking, history: [] }"
+      },
+      {
+        "line": 318,
+        "text": "reminders: initialReminders(),"
+      },
+      {
+        "line": 369,
+        "text": "initial.bookings = initial.bookings.map(record => ({ ...record, quotations: [initialQuotation(record)] }))"
+      },
+      {
+        "line": 376,
+        "text": "function initialQuotation(record: RecordBooking): Quotation {"
+      },
+      {
+        "line": 386,
+        "text": "export const negotiationOpen = (record: RecordBooking) =>"
+      },
+      {
+        "line": 389,
+        "text": "export const unreadFor = ("
+      },
+      {
+        "line": 400,
+        "text": "export const performanceEndsAt = (record: RecordBooking) => new Date("
+      },
+      {
+        "line": 403,
+        "text": "export const refundBlocks = (record: RecordBooking) =>"
+      },
+      {
+        "line": 405,
+        "text": "export const performanceStarted = (record: RecordBooking, now = new Date()) =>"
+      },
+      {
+        "line": 407,
+        "text": "export const canCancel = (record: RecordBooking, now = new Date()) =>"
+      },
+      {
+        "line": 409,
+        "text": "export const messageSeen = (state: PipelineState, message: Message, record: RecordBooking) => {"
+      },
+      {
+        "line": 413,
+        "text": "export const notificationsFor = (state: PipelineState, actor: BookingRole) =>"
+      },
+      {
+        "line": 415,
+        "text": "export const canRefund = (record: RecordBooking, now = new Date()) =>"
+      },
+      {
+        "line": 421,
+        "text": "export const paymentLabel = (record: RecordBooking) =>"
+      },
+      {
+        "line": 473,
+        "text": "const service = serviceFor(action.serviceId, options.catalog), previous = state.stock ?? initialStock(at)"
+      },
+      {
+        "line": 523,
+        "text": "...initialBooking,"
+      },
+      {
+        "line": 531,
+        "text": "record.quotations = record.gigPackage?.pricing === 'custom' ? [] : [initialQuotation(record)]"
+      },
+      {
+        "line": 629,
+        "text": "const quote: Quotation = { ...initialQuotation(record), ...action.input, lines: action.input.lines.map(line => ({ ...line })),"
+      },
+      {
+        "line": 818,
+        "text": "export function restorePipeline("
+      },
+      {
+        "line": 825,
+        "text": "let state = initialPipeline()"
+      },
+      {
+        "line": 833,
+        "text": "return { state: initialPipeline(), events: [], damaged: true }"
+      },
+      {
+        "line": 837,
+        "text": "export function reducePipeline(state:PipelineState,action:PipelineAction,actor:BookingRole,at=new Date().toISOString(),restoring=false,options:BookingOptions={}):PipelineState {"
+      }
+    ]
+  },
+  "src/lib/booking.ts": {
+    "sha256": "612e0e2bc7a6023be8f28a150248ca5f65845adf6d5ea273ed0a1f36e16d90ec",
+    "actions": [
+      "accept",
+      "collect",
+      "confirm_performance",
+      "counter",
+      "decline",
+      "pay",
+      "propose_overtime",
+      "release",
+      "report_performance",
+      "resolve_overtime",
+      "skip_advance",
+      "toggle_hold"
+    ],
+    "entry_points": [
+      {
+        "line": 16,
+        "text": "export type BookingAction ="
+      },
+      {
+        "line": 35,
+        "text": "export const bookingDetails = {"
+      },
+      {
+        "line": 40,
+        "text": "export const initialBooking: BookingState = {"
+      },
+      {
+        "line": 45,
+        "text": "export function money(cents: number) {"
+      },
+      {
+        "line": 48,
+        "text": "export function amounts(quoteCents: number) {"
+      },
+      {
+        "line": 51,
+        "text": "export const advancePercent = (state: BookingState) => state.advancePolicy === 'escrow-50' ? 50 : 10;"
+      },
+      {
+        "line": 52,
+        "text": "export const requiresEscrow = (state: BookingState) => state.advancePolicy === 'escrow-50';"
+      },
+      {
+        "line": 53,
+        "text": "export function settlement(state: BookingState) {"
+      },
+      {
+        "line": 67,
+        "text": "export function checkoutFor(state: BookingState): { kind: PaymentKind; amountCents: number } | null {"
+      },
+      {
+        "line": 77,
+        "text": "export function canRelease(state: BookingState, kind: Installment['kind']) {"
+      },
+      {
+        "line": 84,
+        "text": "export function canRespond(state: BookingState, actor: BookingRole) {"
+      },
+      {
+        "line": 89,
+        "text": "export function bookingStatus(state: BookingState) {"
+      },
+      {
+        "line": 104,
+        "text": "export function transitionBooking(state: BookingState, action: BookingAction, actor: BookingRole, at = new Date().toISOString(), replayLegacy = false): BookingState {"
+      },
+      {
+        "line": 169,
+        "text": "export const BOOKING_STORAGE_KEY = 'stagelink:demo-booking:v1';"
+      },
+      {
+        "line": 171,
+        "text": "export function restoreBooking(raw: string | null): { state: BookingState; events: StoredEvent[] } {"
+      },
+      {
+        "line": 176,
+        "text": "let state = initialBooking;"
+      },
+      {
+        "line": 186,
+        "text": "} catch { return { state: initialBooking, events: [] }; }"
+      },
+      {
+        "line": 188,
+        "text": "export function validateDemoCard(details: { name: string; number: string; expiry: string; cvv: string }, now = new Date()) {"
+      }
+    ]
+  },
+  "src/lib/aiEngine.ts": {
+    "sha256": "66322d5d686b54b911758048c37f3f7921f02cdb5c249ceb87f0229c2182c36a",
+    "actions": [],
+    "entry_points": [
+      {
+        "line": 1,
+        "text": "export const weightKeys = ['genre', 'budget', 'location', 'rating'] as const"
+      },
+      {
+        "line": 4,
+        "text": "export const defaultWeights: MatchWeights = { genre: 40, budget: 30, location: 20, rating: 10 }"
+      },
+      {
+        "line": 6,
+        "text": "export const promptDefinitions = {"
+      },
+      {
+        "line": 18,
+        "text": "export type AIAction ="
+      },
+      {
+        "line": 25,
+        "text": "export function initialAIEngine(): AIEngineState {"
+      },
+      {
+        "line": 35,
+        "text": "export function weightsError(weights: MatchWeights) {"
+      },
+      {
+        "line": 39,
+        "text": "export function promptError(key: PromptKey, body: string) {"
+      },
+      {
+        "line": 46,
+        "text": "export function promptPreview(key: PromptKey, body: string) {"
+      },
+      {
+        "line": 53,
+        "text": "export function reduceAIEngine(state: AIEngineState, action: AIAction, at: string): AIEngineState {"
+      },
+      {
+        "line": 71,
+        "text": "export function sampleMetrics(model: MetricsModel, period: MetricsPeriod, scenario: AIEngineState['scenario']) {"
+      }
+    ]
+  },
+  "src/lib/inspections.ts": {
+    "sha256": "f7f15b2818bebd057ff6e7442bac7dab6f30c733bfe20ed3ccb46cb53ed949b2",
+    "actions": [],
+    "entry_points": [
+      {
+        "line": 9,
+        "text": "export type InspectionCommand ="
+      },
+      {
+        "line": 18,
+        "text": "export const sampleInspectionPhoto = (phase: InspectionPhase): InspectionPhoto => ({ id: `inspection-sample-${phase}`, name: `Illustrative ${phase} sample \u2014 not real evidence`, size: 0, type: 'image/svg+xml', source: 'sa"
+      },
+      {
+        "line": 19,
+        "text": "export function blankInspection(i: Pick<RentalInspection, 'serials' | 'accessories'>): InspectionInput { return { units: i.serials.map(() => ({ serial: '', verified: false, condition: 'good', notes: '' })), accessories: "
+      },
+      {
+        "line": 20,
+        "text": "export function hasDiscrepancy(input: InspectionInput) { return input.units.some(u => ['damaged','missing'].includes(u.condition)) || input.accessories.some(v => !v); }"
+      },
+      {
+        "line": 21,
+        "text": "export function safeInspectionInput(input: InspectionInput, i: RentalInspection): boolean {"
+      },
+      {
+        "line": 24,
+        "text": "export function inspectionErrors(input: InspectionInput, i: RentalInspection, phase: InspectionPhase): string[] {"
+      },
+      {
+        "line": 35,
+        "text": "export const copyInspection = (input: InspectionInput): InspectionInput => ({ ...input, units: input.units.map(u => ({ ...u, serial: u.serial.trim().toUpperCase(), notes: u.notes.trim() })), accessories: [...input.access"
+      },
+      {
+        "line": 36,
+        "text": "export function inspectionManifest(record: RecordBooking, bookings: RecordBooking[], service: Service): Pick<RentalInspection,'serials'|'accessories'> | null {"
+      },
+      {
+        "line": 45,
+        "text": "export function applyInspection(record: RecordBooking, command: InspectionCommand, expectedVersion: number, actor: string, at: string, bookings: RecordBooking[], service: Service): { patch: Partial<RecordBooking>; label:"
+      }
+    ]
+  },
+  "src/lib/arbitration.ts": {
+    "sha256": "bd543392dd6687bf5b99f4519d0c999ef0f8330b9bc97ac3379c1a20136418ac",
+    "actions": [],
+    "entry_points": [
+      {
+        "line": 10,
+        "text": "export type ArbitrationCommand ="
+      },
+      {
+        "line": 14,
+        "text": "export const arbitrationLocked = (r: RecordBooking) => ['processing','failed'].includes(r.arbitration?.status ?? '');"
+      },
+      {
+        "line": 15,
+        "text": "export function arbitrationFingerprint(r: RecordBooking) { return JSON.stringify([r.ledger.quoteVersion,r.ledger.quoteCents,r.ledger.installments,r.ledger.overtime,r.ledger.adjudicatedAt ?? null,r.refund ?? null]); }"
+      },
+      {
+        "line": 16,
+        "text": "export function arbitrationAmounts(ledger: BookingState, refundCents: number) {"
+      },
+      {
+        "line": 20,
+        "text": "export function applyArbitration(r: RecordBooking, command: ArbitrationCommand, version: number, actor: string, at: string, options: BookingOptions): {patch: Partial<RecordBooking>; label: string} | null {"
+      }
+    ]
+  },
+  "src/lib/reminders.ts": {
+    "sha256": "1c27817fd826be10969207581a9723ffb8f38d50bf42f484b34a09b3182ba169",
+    "actions": [],
+    "entry_points": [
+      {
+        "line": 7,
+        "text": "export type ReminderAction = { command:'load'|'failure_example'|'refresh'|'stale'|'error' } | { command:'run'; outcome:'success'|'failure' } | { command:'retry'|'cancel'|'cancel_event'; id:string; version:number };"
+      },
+      {
+        "line": 8,
+        "text": "export const REMINDER_ZONE='Asia/Colombo';"
+      },
+      {
+        "line": 10,
+        "text": "export const initialReminders=():ReminderState=>({loaded:false,health:'ready',clock:'',checkedAt:'',events:[],jobs:[]});"
+      },
+      {
+        "line": 12,
+        "text": "export function loadReminderFixtures(at:string):ReminderState {"
+      },
+      {
+        "line": 21,
+        "text": "export function syncReminderBookings(state:ReminderState,bookings:ReminderBooking[]):ReminderState {"
+      },
+      {
+        "line": 42,
+        "text": "export function reminderActionError(state:ReminderState,job:ReminderJob,command:'retry'|'cancel'|'cancel_event') {"
+      },
+      {
+        "line": 54,
+        "text": "export function reduceReminders(state:ReminderState,action:ReminderAction,at:string):ReminderState {"
+      },
+      {
+        "line": 86,
+        "text": "export function reminderView(state:ReminderState,filters:ReminderFilters){"
+      },
+      {
+        "line": 92,
+        "text": "export function reminderTime(value:string,zone:string=REMINDER_ZONE){return new Intl.DateTimeFormat('en-GB',{timeZone:zone,dateStyle:'medium',timeStyle:'short'}).format(new Date(value));}"
+      }
+    ]
+  }
+}

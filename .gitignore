@@ -26,3 +26,17 @@ logs/
 
 # Brag video output (generated, not source)
 brag-output/
+
+# Backend tooling and sanitized environment templates
+!.env.example
+!**/.env.example
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Also ignore a local development dependency symlink.
+/node_modules
+
+# Generated Prisma client, recreated before build.
+/backend/generated/

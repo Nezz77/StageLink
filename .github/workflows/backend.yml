@@ -1,0 +1,86 @@
+name: Backend foundation
+on:
+  push:
+    branches: [backend]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  node:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_USER: stagelink
+          POSTGRES_PASSWORD: isolated-ci-only
+          POSTGRES_DB: stagelink_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd 'pg_isready -U stagelink -d stagelink_test'
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7.4.12-bookworm
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd 'redis-cli ping'
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://stagelink:isolated-ci-only@127.0.0.1:5432/stagelink_test?connect_timeout=3
+      REDIS_URL: redis://127.0.0.1:6379
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run db:migrate
+      - run: npm run db:migrate # Re-running deploy must be safe.
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run contracts
+      - run: git diff --exit-code -- ../contracts/openapi.json ../packages/contracts/src/api.d.ts
+      - run: docker compose --env-file infra/.env.example -f infra/compose.backend.yml config --quiet
+        working-directory: .
+      - run: docker build -f backend/Dockerfile -t stagelink-backend:ci .
+        working-directory: .
+  python:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.29'
+          python-version: '3.12.14'
+      - run: uv sync --frozen
+      - run: uv run --frozen pytest -q
+      - run: docker build -t stagelink-ai:ci .
+  frontend:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - run: corepack enable && corepack prepare pnpm@10.34.3 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
