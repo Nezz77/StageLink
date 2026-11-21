@@ -17,11 +17,11 @@ test('calendar blocks update shared availability and reject new requests without
  assert.equal(after.availability.artist.blocks[0].reason,'Personal leave');
  assert.equal(after.availability.renter,before.availability.renter);
  const error=availabilityError(form,options(after));assert.match(error,/blocked/);assert.ok(!error.includes('Personal leave'));
- assert.match(validateForm(form,initialPipeline().bookings,new Date(at),options(after)).serviceId,/blocked/);
+ assert.match(validateForm(form,initialPipeline(new Date(at)).bookings,new Date(at),options(after)).serviceId,/blocked/);
  assert.equal(isFullDayBlock(after.availability.artist.blocks[0]),true);
 });
 test('a block after a request prevents provider acceptance and unblocking restores acceptance',()=>{
- let dashboard=initialDashboard(),pipeline=initialPipeline();
+ let dashboard=initialDashboard(),pipeline=initialPipeline(new Date(at));
  pipeline=reducePipeline(pipeline,{type:'submit',form:request()},'customer',at,false,options(dashboard));
  const pending=pipeline.bookings.find(record=>record.id==='BK-BLACKOUT');assert.ok(pending);
  dashboard=add(dashboard);
