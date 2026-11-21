@@ -1,6 +1,14 @@
 # StageLink booking, payments and chat
 
-The existing landing and login pages are unchanged. The new booking workspace uses the same violet/amber glass styling, dashboard shell, typography and reduced-motion preferences.
+## SMS preferences
+
+Set `VITE_STAGELINK_API_ORIGIN` before building to add the **SMS preferences** link in the marketplace footer and member profile. Compose passes the same variable as a frontend build argument. Use the API's HTTPS origin on staging or a loopback origin for local testing. Configure the backend's `WEB_ORIGIN` for the deployed frontend and serve both origins on the same site.
+
+The `/account/sms-preferences` page signs in to the real StageLink account for this workflow. It keeps the access and CSRF tokens in memory, reads the masked contact and submits the account's off-only SMS action. Members can stop booking texts, promotional texts, or both. Sign-out revokes the session. The backend controls access and records the consent change, including during read-only maintenance.
+
+Figma handoff is pending. The footer and member profile need the SMS preferences entry point. The account flow needs the signed-out, loading, masked contact, successful opt-out, expired session and API error states.
+
+The booking workspace uses the same violet/amber glass styling, dashboard shell, typography and reduced-motion preferences.
 
 ## Open the workspace
 
