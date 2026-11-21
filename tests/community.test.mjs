@@ -5,6 +5,7 @@ import { catalogFor, defaultAvailability, serviceIdFor } from '../src/lib/catalo
 import { initialPipeline, reducePipeline, validateForm, quoteFor, bookingService, conflicts, availabilityError } from '../src/lib/pipeline.ts';
 import { bankErrors, inquiryUnread, scheduleError } from '../src/lib/community.ts';
 const at='2026-10-15T09:00:00Z';
+const seededPipeline=()=>initialPipeline(new Date(at));
 const manage=(s,a,role='artist',when=at)=>reduceDashboard(s,a,role,when);
 const options=state=>({catalog:catalogFor(state),availability:state.availability,organizer:state.profiles.customer.name});
 const form=(patch={})=>({id:'BK-NEW',serviceId:'GIG-CUSTOM',event:'Moonlit sessions',date:'2026-12-05',start:'18:00',end:'21:00',venue:'Grand Hall',guests:'80',quantity:'1',requirements:'',...patch});
@@ -12,7 +13,7 @@ const booking=(s,a,role='customer',dashboard=initialDashboard())=>reducePipeline
 function catalogState(){let state=initialDashboard();return manage(state,{type:'listing',listing:{...state.listings[0],id:'GIG-CUSTOM',title:'Moonlit set',price:'425',unit:'hour',status:'live'}});}
 
 test('published provider data feeds booking selection and fixes its agreed service and price',()=>{
- let dashboard=catalogState();const input=form();const pipeline=initialPipeline();
+ let dashboard=catalogState();const input=form();const pipeline=seededPipeline();
  assert.deepEqual(validateForm(input,pipeline.bookings,new Date(at),options(dashboard)),{});
  assert.equal(quoteFor(input,catalogFor(dashboard)),127500);
  let next=booking(pipeline,{type:'submit',form:input},'customer',dashboard);const record=next.bookings.find(r=>r.id===input.id);
@@ -25,17 +26,17 @@ test('published provider data feeds booking selection and fixes its agreed servi
  assert.equal(record.service.name,'Aria Nova · Moonlit set');
 });
 test('paused listings cannot create requests and artist conflicts cover different gigs',()=>{
- let dashboard=catalogState();const pipeline=booking(initialPipeline(),{type:'submit',form:form()},'customer',dashboard);
+ let dashboard=catalogState();const pipeline=booking(seededPipeline(),{type:'submit',form:form()},'customer',dashboard);
  const overlap=form({id:'BK-SECOND',serviceId:'aria',start:'20:00',end:'22:00'});
  assert.equal(conflicts(overlap,pipeline.bookings,catalogFor(dashboard),new Date(at)).length,1);
  assert.equal(booking(pipeline,{type:'submit',form:overlap},'customer',dashboard),pipeline);
  dashboard=manage(dashboard,{type:'listing_status',id:'GIG-CUSTOM',status:'paused'});
- assert.equal(booking(initialPipeline(),{type:'submit',form:form()},'customer',dashboard).bookings.length,initialPipeline().bookings.length);
+ assert.equal(booking(seededPipeline(),{type:'submit',form:form()},'customer',dashboard).bookings.length,seededPipeline().bookings.length);
 });
 test('rental capacity sums units across the entire day and acceptance checks reduced stock',()=>{
  let dashboard=initialDashboard();const equipment=dashboard.listings.find(item=>item.id==='EQ-001');
  dashboard=manage(dashboard,{type:'listing',listing:{...equipment,quantity:'3',status:'live'}},'renter');
- const first=form({serviceId:'pa',quantity:'2'});let pipeline=booking(initialPipeline(),{type:'submit',form:first},'customer',dashboard);
+ const first=form({serviceId:'pa',quantity:'2'});let pipeline=booking(seededPipeline(),{type:'submit',form:first},'customer',dashboard);
  assert.equal(pipeline.bookings[0].ledger.quoteCents,Number(equipment.price)*100*2);
  const second=form({id:'BK-SECOND',serviceId:'pa',quantity:'2',start:'08:00',end:'09:00'});
  assert.equal(conflicts(second,pipeline.bookings,catalogFor(dashboard),new Date(at)).length,1);
@@ -44,7 +45,7 @@ test('rental capacity sums units across the entire day and acceptance checks red
  assert.equal(booking(pipeline,{type:'respond',id:first.id,accept:true},'renter',dashboard),pipeline);
 });
 test('available weekdays, hours and blocked dates apply at request and acceptance',()=>{
- let dashboard=catalogState();const request=form();let pipeline=booking(initialPipeline(),{type:'submit',form:request},'customer',dashboard);
+ let dashboard=catalogState();const request=form();let pipeline=booking(seededPipeline(),{type:'submit',form:request},'customer',dashboard);
  const schedule={...defaultAvailability(),blocks:[{id:'holiday',date:request.date,start:'17:00',end:'22:00',reason:'Private rehearsal'}]};
  assert.equal(manage(dashboard,{type:'availability',schedule},'customer'),dashboard);
  dashboard=manage(dashboard,{type:'availability',schedule});
@@ -96,7 +97,7 @@ test('support replies remain scoped to the submitting member and terminal cases 
  assert.equal(manage(state,{...action,kind:'disputes'},'customer'),state);
 });
 test('completed bookings permit exactly one customer review; invalid ratings and other roles fail',()=>{
- let state=initialPipeline();const complete=state.bookings.find(r=>r.status==='completed'),pending=state.bookings.find(r=>r.status==='pending');
+ let state=seededPipeline();const complete=state.bookings.find(r=>r.status==='completed'),pending=state.bookings.find(r=>r.status==='pending');
  const action={type:'review',id:complete.id,rating:5,text:'Wonderful performance and excellent communication.'};
  for(const actor of ['artist','renter','admin','visitor'])assert.equal(booking(state,action,actor),state);
  assert.equal(booking(state,{...action,id:pending.id}),state);
