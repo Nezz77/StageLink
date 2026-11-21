@@ -1,3 +1,4 @@
+import { configuredApiOrigin, parseApiOrigin } from './apiTransport.ts';
 export const smsPreferencesPath = '/account/sms-preferences';
 
 export type SmsChannel = 'booking' | 'marketing' | 'all';
@@ -18,19 +19,8 @@ export class SmsApiError extends Error {
   }
 }
 
-export function parseApiOrigin(raw: string | undefined) {
-  if (!raw) return null;
-  try {
-    const url = new URL(raw);
-    const loopback = ['127.0.0.1', '[::1]', 'localhost'].includes(url.hostname);
-    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) return null;
-    return raw === url.origin || raw === url.origin + '/' ? url.origin : null;
-  } catch {
-    return null;
-  }
-}
-
-export const configuredSmsApiOrigin = parseApiOrigin(import.meta.env?.VITE_STAGELINK_API_ORIGIN);
+export { parseApiOrigin } from './apiTransport.ts';
+export const configuredSmsApiOrigin = configuredApiOrigin;
 
 function object(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('Unexpected API response.');
