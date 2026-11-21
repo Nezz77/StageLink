@@ -16,6 +16,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Build production bundle
+ARG VITE_STAGELINK_API_ORIGIN
 RUN pnpm run build
 
 # ─── Stage 2: Serve ───────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import { MorphingDiscoveryBar, type Category } from './watermelon/morphing-disco
 import PricingShowcase from './PricingShowcase';
 import MusicNoteField from './MusicNoteField';
 import { useMotionEnvironment } from '../lib/useMotionEnvironment';
+import { configuredSmsApiOrigin, smsPreferencesPath } from '../lib/smsPreferences';
 
 const DISCOVERY_CATEGORIES: Category[] = [
   {
@@ -362,6 +363,7 @@ export default function LandingPage({ onAuth, isDark, onThemeChange, isSplashLog
                   <span className="cursor-pointer hover:text-slate-400">Privacy</span>
                   <span className="cursor-pointer hover:text-slate-400">Terms</span>
                   <span className="cursor-pointer hover:text-slate-400">Support</span>
+                  {configuredSmsApiOrigin && <a href={smsPreferencesPath} className="text-slate-400 hover:text-slate-200">SMS preferences</a>}
                 </div>
               </div>
             </footer>

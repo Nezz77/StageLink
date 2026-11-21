@@ -4,6 +4,7 @@ import { Save, UserRound } from 'lucide-react';
 import { useBooking } from '../lib/BookingContext';
 import { useDashboard } from '../lib/DashboardContext';
 import { draftKey, profileErrors, type MemberRole, type Profile } from '../lib/dashboard';
+import { configuredSmsApiOrigin, smsPreferencesPath } from '../lib/smsPreferences';
 import { DashboardIntro } from './DashboardShell';
 import { Badge, Notice, Panel, useDraftGuard } from './DashboardUI';
 
@@ -34,6 +35,10 @@ export default function MemberProfile() {
         </form>
       </Panel>
       <Panel title="Your backstage pass" eyebrow="SAVED PROFILE" className="mg-profile-pass"><div className="mg-profile-symbol"><UserRound size={32} /></div><h3>{state.profiles[role].name}</h3><p>{state.profiles[role].specialty}</p><p>{state.profiles[role].city}</p><Badge value="live">Demo account</Badge><div className="mg-rule" /><p>Saved details stay available when you navigate or switch roles. Drafts and changes reset on refresh.</p></Panel>
-    </div><EmailVerification />{guard}
+    </div><EmailVerification />
+    {configuredSmsApiOrigin && <Panel title="SMS preferences">
+      <a className="text-violet-300 underline underline-offset-4" href={smsPreferencesPath}>Manage booking and promotional texts</a>
+    </Panel>}
+    {guard}
   </div>;
 }

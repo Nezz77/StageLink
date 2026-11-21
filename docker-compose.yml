@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_STAGELINK_API_ORIGIN: ${VITE_STAGELINK_API_ORIGIN:-}
     image: stagelink-ui:latest
     container_name: stagelink-ui
     ports:
