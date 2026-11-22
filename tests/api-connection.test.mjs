@@ -178,3 +178,37 @@ test('connected account subscriptions expose the public account and follow role 
   assert.deepEqual(changes, [null, 'customer', 'artist', null]);
   assert.deepEqual(credentialFields, []);
 });
+
+test('email settings use the current session and CSRF for request and cancellation', async () => {
+  const change = { email: 'new-address@stagelink.test', expiresAt: '2026-11-22T08:10:00.000Z' };
+  let pending = null;
+  const paths = [];
+  const api = createApiSession(origin, async (url, init) => {
+    paths.push(url.pathname);
+    if (url.pathname.endsWith('/login')) return json(saved);
+    const headers = new Headers(init.headers);
+    assert.equal(headers.get('Authorization'), 'Bearer ' + saved.accessToken);
+    assert.equal(headers.get('X-CSRF-Token'), init.method === 'GET' ? null : saved.csrfToken);
+    if (init.method === 'GET') return json({ pending });
+    if (url.pathname.endsWith('/cancel')) {
+      assert.deepEqual(JSON.parse(init.body), {});
+      pending = null;
+    } else {
+      assert.deepEqual(JSON.parse(init.body), { email: change.email, password: 'fixture password' });
+      pending = { ...change, token: 'ignored by the client' };
+    }
+    return json({ message: 'Recorded.' });
+  });
+  await assert.rejects(api.pendingEmailChange(), { status: 401 });
+  await api.signIn(user.email, 'fixture password');
+  assert.equal(await api.pendingEmailChange(), null);
+  await api.requestEmailChange(change.email, 'fixture password');
+  assert.deepEqual(await api.pendingEmailChange(), change);
+  await api.cancelEmailChange();
+  assert.equal(await api.pendingEmailChange(), null);
+  assert.equal(api.snapshot().user.email, user.email);
+  assert.deepEqual(paths, [
+    '/api/v1/auth/login', '/api/v1/me/email-change', '/api/v1/me/email-change',
+    '/api/v1/me/email-change', '/api/v1/me/email-change/cancel', '/api/v1/me/email-change',
+  ]);
+});

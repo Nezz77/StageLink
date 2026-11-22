@@ -1,7 +1,8 @@
+import AccountEmailSettings from './components/AccountEmailSettings';
 import { useBackendAccount } from './lib/BackendAccountContext';
 import type { AccountRole } from './lib/apiSession';
 import type { PackageChoice } from './lib/gigPackages';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { Icon } from './components/Icons';
@@ -38,8 +39,9 @@ const roleConfig: Record<Role, { label: string; color: string; badgeClass: strin
   admin: { label: 'Administrator', color: '#fb7185', badgeClass: 'badge-rose' },
 };
 
-function RoleSwitcher({ currentRole, onSwitch, inline = false, onSignIn }: { currentRole: Role; onSwitch: (r: Role) => void; inline?: boolean; onSignIn?: () => void }) {
+function RoleSwitcher({ currentRole, onSwitch, inline = false, onSignIn, onEmailSettings }: { currentRole: Role; onSwitch: (r: Role) => void; inline?: boolean; onSignIn?: () => void; onEmailSettings: () => void }) {
   const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const backend = useBackendAccount();
   const roles: Role[] = backend.connected ? backend.account?.roles ?? [] : ['visitor', 'customer', 'artist', 'renter', 'admin'];
   if (backend.connected && !backend.account) return <button type="button" className="btn-primary fixed bottom-6 right-6 z-50" disabled={backend.checking || backend.busy} onClick={onSignIn}>{backend.checking ? 'Checking account…' : 'Sign in'}</button>;
@@ -58,11 +60,14 @@ function RoleSwitcher({ currentRole, onSwitch, inline = false, onSignIn }: { cur
               {currentRole === r && <span className="ml-2 text-xs text-violet-500">● active</span>}
             </button>
           ))}
-          {backend.connected && <button type="button" disabled={backend.busy} className="w-full text-left px-3 py-2 text-sm text-rose-300" onClick={() => { setOpen(false); void backend.signOut().catch(() => {}); }}>Sign out</button>}
+          {backend.connected && <>
+            <button type="button" className="w-full px-3 py-2 text-left text-sm" onClick={() => { setOpen(false); trigger.current?.focus(); onEmailSettings(); }}>Email settings</button>
+            <button type="button" disabled={backend.busy} className="w-full text-left px-3 py-2 text-sm text-rose-300" onClick={() => { setOpen(false); void backend.signOut().catch(() => {}); }}>Sign out</button>
+          </>}
         </div>
       )}
       <button
-        type="button" disabled={backend.busy || backend.checking} aria-expanded={open} aria-label={backend.connected ? 'Account roles and sign out' : 'Switch demo role'}
+        ref={trigger} type="button" disabled={backend.busy || backend.checking} aria-expanded={open} aria-label={backend.connected ? 'Account roles and sign out' : 'Switch demo role'}
         onClick={() => setOpen(!open)}
         className="btn-primary flex items-center gap-2 shadow-2xl glow-violet"
         style={{ borderRadius: 12 }}
@@ -80,6 +85,7 @@ export default function App() {
   useEffect(() => { const reset = () => { setSession(value => value + 1); setView('main'); setPendingMarket(null); setAdminTarget(undefined); setCustomerPrompt(false); }; window.addEventListener('stagelink:reset-demo', reset); return () => window.removeEventListener('stagelink:reset-demo', reset); }, []);
   const backend = useBackendAccount();
   const [demoRole, setDemoRole] = useState<Role>('visitor');
+  const [showEmailSettings, setShowEmailSettings] = useState(false);
   const role: Role = backend.connected ? backend.account?.activeRole ?? 'visitor' : demoRole;
   const [view, setView] = useState<View>('main');
   const [adminTarget, setAdminTarget] = useState<{ id: string; key: number } | undefined>();
@@ -172,10 +178,10 @@ export default function App() {
 
   useEffect(() => {
     if (!backend.connected) return;
-    setSession(value => value + 1); setView('main'); setAdminTarget(undefined); setCustomerPrompt(false);
+    setSession(value => value + 1); setView('main'); setAdminTarget(undefined); setCustomerPrompt(false); setShowEmailSettings(false);
     if (backend.account) setAuthMode(null); else setPendingMarket(null);
   }, [backend.connected, backend.account?.id]);
-  const control = (inline = false) => <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline={inline} onSignIn={() => { setView('landing'); setAuthMode('login'); }} />;
+  const control = (inline = false) => <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline={inline} onSignIn={() => { setView('landing'); setAuthMode('login'); }} onEmailSettings={() => setShowEmailSettings(true)} />;
   const canSwitchCustomer = !backend.connected || backend.account?.roles.includes('customer');
 
   return (
