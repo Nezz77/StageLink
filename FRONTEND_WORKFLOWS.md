@@ -12,6 +12,14 @@ The delivery history shows up to 20 recent SMS verification attempts and 20 book
 
 Figma handoff is pending for the footer and member profile link and for the SMS account screens. Include the signed-out, loading, masked contact, verification pending and failed, replacement, consent, contact removal, empty and populated delivery history, expired session and API error states.
 
+## Connected accounts
+
+Set `VITE_STAGELINK_API_ORIGIN` and configure the backend's `WEB_ORIGIN` for the same-site frontend before building. The marketplace sign-in and registration forms use StageLink accounts in this configuration. Sign-in restores the account through the protected refresh cookie. The workspace role menu offers only roles assigned to the signed-in account and signs out through the API. The signed-in workspace shows sample bookings and payments for preview.
+
+An unverified member can request a confirmation email from the workspace. The frontend reads the backend's email links for verification, password reset and email-change confirmation and removes the token from the address bar before rendering. Password reset exchanges the one-time link for a short-lived grant before accepting a new password. With no API origin configured, the marketplace uses the demo workspace.
+
+Figma handoff is pending for connected registration, sign-in, session restore and expiry, account roles, resend verification, and the email verification, email change and password reset screens.
+
 The booking workspace uses the same violet/amber glass styling, dashboard shell, typography and reduced-motion preferences.
 
 ## Open the workspace
