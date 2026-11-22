@@ -8,7 +8,9 @@ The `/account/sms-preferences` page signs in to the real StageLink account. It k
 
 Members can stop booking texts, promotional texts, or both, and can remove the contact or cancel pending verification. Opt-out and removal remain available during read-only maintenance. If the server detects a settings change since the page loaded, the page refreshes the contact for review. Sign-out revokes the session.
 
-Figma handoff is pending for the footer and member profile link and for the SMS account screens. Include the signed-out, loading, masked contact, verification pending and failed, replacement, consent, contact removal, expired session and API error states.
+The delivery history shows up to 20 recent SMS verification attempts and 20 booking reminder messages, with masked verification targets and delivery status. Members can refresh the lists during maintenance.
+
+Figma handoff is pending for the footer and member profile link and for the SMS account screens. Include the signed-out, loading, masked contact, verification pending and failed, replacement, consent, contact removal, empty and populated delivery history, expired session and API error states.
 
 The booking workspace uses the same violet/amber glass styling, dashboard shell, typography and reduced-motion preferences.
 

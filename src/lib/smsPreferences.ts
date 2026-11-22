@@ -7,6 +7,11 @@ export type SmsTopic = 'booking' | 'marketing';
 export type SmsChannel = SmsTopic | 'all';
 export type SmsSession = { accessToken: string; csrfToken: string; email: string; emailVerified: boolean };
 type SmsChallenge = { id: string; last4: string; expiresAt: string; status: string };
+type SmsDelivery = { id: string; status: string };
+export type SmsHistory = {
+  verifications: (SmsDelivery & { last4: string; createdAt: string; confirmedAt: string | null })[];
+  reminders: (SmsDelivery & { startsAt: string; dueAt: string; offsetHours: 2 | 24 })[];
+};
 export type SmsContact = {
   revision: number;
   enabled: boolean;
@@ -23,16 +28,55 @@ export function normalizeSmsNumber(value: string) {
   return '+' + digits.replace(/^\+/, '').replace(/^0/, '94');
 }
 
+function isTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
+}
+
+function isMaskedNumber(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}$/.test(value);
+}
+
+function readDelivery({ id, status }: Record<string, unknown>): SmsDelivery {
+  if (typeof id !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id) ||
+    typeof status !== 'string' || !/^[a-z_]{1,32}$/.test(status)) {
+    throw new Error('Unexpected SMS delivery response.');
+  }
+  return { id, status };
+}
+
 function readChallenge(value: unknown): SmsChallenge | null {
   if (value === null) return null;
-  const { id, last4, expiresAt, status } = apiObject(value);
-  if (typeof id !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id) ||
-    typeof last4 !== 'string' || !/^\d{4}$/.test(last4) ||
-    typeof expiresAt !== 'string' || !Number.isFinite(Date.parse(expiresAt)) ||
-    typeof status !== 'string' || !/^[a-z_]{1,32}$/.test(status)) {
+  const entry = apiObject(value);
+  const { last4, expiresAt } = entry;
+  if (!isMaskedNumber(last4) || !isTimestamp(expiresAt)) {
     throw new Error('Unexpected SMS verification response.');
   }
-  return { id, last4, expiresAt, status };
+  return { ...readDelivery(entry), last4, expiresAt };
+}
+
+function historyItems(value: unknown) {
+  const { items } = apiObject(value);
+  if (!Array.isArray(items) || items.length > 20) throw new Error('Unexpected SMS history response.');
+  return items.map(apiObject);
+}
+
+function readHistory(verifications: unknown, reminders: unknown): SmsHistory {
+  return {
+    verifications: historyItems(verifications).map(entry => {
+      const { last4, createdAt, confirmedAt } = entry;
+      if (!isMaskedNumber(last4) || !isTimestamp(createdAt) || (confirmedAt !== null && !isTimestamp(confirmedAt))) {
+        throw new Error('Unexpected SMS verification history response.');
+      }
+      return { ...readDelivery(entry), last4, createdAt, confirmedAt };
+    }),
+    reminders: historyItems(reminders).map(entry => {
+      const { startsAt, dueAt, offsetHours } = entry;
+      if (!isTimestamp(startsAt) || !isTimestamp(dueAt) || (offsetHours !== 2 && offsetHours !== 24)) {
+        throw new Error('Unexpected SMS reminder history response.');
+      }
+      return { ...readDelivery(entry), startsAt, dueAt, offsetHours };
+    }),
+  };
 }
 
 function readContact(value: unknown): SmsContact {
@@ -40,7 +84,7 @@ function readContact(value: unknown): SmsContact {
   if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 0 || revision > 2147483646 ||
     typeof enabled !== 'boolean' || typeof verified !== 'boolean' ||
     typeof bookingConsent !== 'boolean' || typeof marketingConsent !== 'boolean' ||
-    (last4 !== null && (typeof last4 !== 'string' || !/^\d{4}$/.test(last4)))) {
+    (last4 !== null && !isMaskedNumber(last4))) {
     throw new Error('Unexpected SMS contact response.');
   }
   return { revision, enabled, verified, last4, bookingConsent, marketingConsent, pending: readChallenge(pending) };
@@ -63,6 +107,13 @@ export function createSmsPreferencesApi(rawOrigin: string, send = fetch) {
     },
     async contact(session: SmsSession) {
       return readContact(await api.request(contactPath, session));
+    },
+    async history(session: SmsSession) {
+      const [verifications, reminders] = await Promise.all([
+        api.request('me/sms-verifications', session),
+        api.request('me/booking-sms-reminders', session),
+      ]);
+      return readHistory(verifications, reminders);
     },
     async requestCode(session: SmsSession, revision: number, number: string) {
       return readContact(await api.request(contactPath + '/verification', { ...session, method: 'POST', body: { revision, number } }));
