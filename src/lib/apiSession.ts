@@ -43,8 +43,8 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
   let refreshFlight: Promise<ApiSession | null> | null = null;
   let cookieQueue: Promise<unknown> = Promise.resolve();
   const channel = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('stagelink-account:' + api.origin) : null;
-  function announceChange() {
-    try { channel?.postMessage({ kind: 'changed' }); } catch { /* Session commands also work without tab notifications. */ }
+  function announceChange(kind: 'changed' | 'signed-out' = 'changed') {
+    try { channel?.postMessage({ kind }); } catch { /* Session commands also work without tab notifications. */ }
   }
   function enqueue<T>(action: () => Promise<T>): Promise<T> {
     const result = cookieQueue.then(async () => {
@@ -100,7 +100,8 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     }
   }
   channel?.addEventListener('message', event => {
-    if (event.data?.kind === 'changed') {
+    if (event.data?.kind === 'signed-out') clear();
+    else if (event.data?.kind === 'changed') {
       clear();
       void refreshSession().catch(() => {});
     }
@@ -122,7 +123,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     refreshSession,
     async signOut() {
       const previous = current ? copy(current) : null;
-      clear();
+      clear(); announceChange('signed-out');
       return enqueue(async () => {
         try {
           const token = csrf(apiObject(await api.request('auth/csrf')).csrfToken);
@@ -177,7 +178,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     },
     async confirmEmailChange(token: string) {
       const result = apiObject(await api.request('auth/email-change/confirm', { method: 'POST', body: { token } }));
-      clear(); announceChange(); return result;
+      clear(); announceChange('signed-out'); return result;
     },
     async requestPasswordReset(email: string) {
       return apiObject(await api.request('auth/password-reset', { method: 'POST', body: { email } }));
@@ -190,7 +191,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     },
     async completePasswordReset(grant: string, password: string) {
       const result = apiObject(await api.request('auth/password-reset/complete', { method: 'POST', body: { grant, password } }));
-      clear(); announceChange(); return result;
+      clear(); announceChange('signed-out'); return result;
     },
     async register(input: { displayName: string; email: string; password: string; role: Exclude<AccountRole, 'admin'> }) {
       const reply = apiObject(await api.request('auth/register', { method: 'POST', body: input }));

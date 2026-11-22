@@ -1,5 +1,5 @@
+import AccountVerificationNotice from './AccountVerificationNotice';
 import { useBackendAccount } from '../lib/BackendAccountContext';
-import { ApiError } from '../lib/apiTransport';
 import DemoReset from './DemoReset';
 import '../module4.css';
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
@@ -48,29 +48,6 @@ const identities = {
   renter: { title: 'Equipment studio', name: 'AudioVault Rentals', initials: 'AV', tag: 'Rental demo account', note: 'Behind every great show.' },
   admin: { title: 'Control room', name: 'StageLink Admin', initials: 'AD', tag: 'Platform operations', note: 'Keep the show running.' },
 };
-
-function VerifyEmailNotice() {
-  const { busy, requestVerification } = useBackendAccount();
-  const [notice, setNotice] = useState('');
-  const [error, setError] = useState('');
-  async function send() {
-    setError('');
-    setNotice('');
-    try {
-      await requestVerification();
-      setNotice('Verification email requested. Check your inbox for the latest link.');
-    } catch (issue) {
-      setError(issue instanceof ApiError ? issue.message : 'StageLink could not request a verification email. Try again.');
-    }
-  }
-  return <div className="mg-workspace-banner">
-    <strong>Verify your email</strong>
-    <p>Confirm your email before using protected StageLink features.</p>
-    <button className="btn-ghost" type="button" onClick={() => void send()} disabled={busy}>Send verification email</button>
-    {notice && <p role="status">{notice}</p>}
-    {error && <p role="alert">{error}</p>}
-  </div>;
-}
 
 export default function DashboardShell({ role, navItems, activeTab, onNavigate, onGoToLanding, onOpenChat, controls, children }: {
   role: keyof typeof identities; navItems: DashboardNav[]; activeTab: string;
@@ -229,7 +206,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
         </header>
         <main ref={contentRef} id="dashboard-content" className="sl-main" tabIndex={-1}>
           {backend.connected && <div className="mg-workspace-banner" role="status"><strong>Preview workspace</strong>You’re signed in. Bookings, payments and other workspace activity are still simulated.</div>}
-          {backend.account && !backend.account.emailVerified && <VerifyEmailNotice />}
+          <AccountVerificationNotice />
           {dashboard.maintenance && <div className="mg-workspace-banner mg-maintenance-banner" role="status"><strong>Maintenance preview</strong>The demo is showing a maintenance notice. You can continue exploring the workspace.</div>}
           {dashboard.announcement && <div className="mg-workspace-banner" role="status"><strong>From the StageLink team · Demo announcement</strong>{dashboard.announcement}</div>}
 {children}</main>

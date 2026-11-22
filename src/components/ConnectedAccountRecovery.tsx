@@ -1,3 +1,5 @@
+import { useAppearance } from '../lib/AppearanceContext';
+import { SwitchMode } from './SwitchMode';
 import { useState } from 'react';
 import { Modal, Notice } from './DashboardUI';
 import { configuredSessionApi } from '../lib/apiSession';
@@ -5,6 +7,7 @@ import { ApiError } from '../lib/apiTransport';
 
 type Props = { initialEmail: string; onClose: () => void; initialToken?: string };
 export default function ConnectedAccountRecovery({ initialEmail, onClose, initialToken }: Props) {
+  const appearance = useAppearance();
   const [linkMode, setLinkMode] = useState(Boolean(initialToken));
   const [step, setStep] = useState<'email' | 'token' | 'password' | 'done'>(initialToken ? 'token' : 'email');
   const [email, setEmail] = useState(initialEmail), [token, setToken] = useState(initialToken ?? '');
@@ -29,6 +32,7 @@ export default function ConnectedAccountRecovery({ initialEmail, onClose, initia
     finally { setBusy(false); }
   }
   return <Modal title={step === 'done' ? 'Password updated' : step === 'password' ? 'Choose a new password' : 'Recover your account'} onClose={onClose}>
+    <div className="sl-recovery-theme"><SwitchMode width={80} height={38} isDark={appearance.isDark} onChange={appearance.onThemeChange} /></div>
     {step === 'done' ? <div className="mg-page"><Notice>Your password has been updated and existing sessions have been revoked. Sign in with your new password.</Notice><button className="btn-primary" type="button" onClick={onClose}>Back to sign in</button></div> : <form className="mg-page" onSubmit={submit}>
       {notice && <Notice>{notice}</Notice>}
       {step === 'email' ? <label className="mg-field">Recovery email<input type="email" aria-label="Recovery email" autoComplete="email" maxLength={200} required disabled={busy} value={email} onChange={event => setEmail(event.target.value)} /></label> : step === 'token' ? linkMode ? <p>Your email link is ready. Continue to choose a new password.</p> : <label className="mg-field">Reset token<input aria-label="Reset token" autoComplete="off" spellCheck={false} minLength={43} maxLength={43} required disabled={busy} value={token} onChange={event => setToken(event.target.value)} /></label> : <>

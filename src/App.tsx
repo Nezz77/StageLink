@@ -44,7 +44,7 @@ function RoleSwitcher({ currentRole, onSwitch, inline = false, onSignIn, onEmail
   const trigger = useRef<HTMLButtonElement>(null);
   const backend = useBackendAccount();
   const roles: Role[] = backend.connected ? backend.account?.roles ?? [] : ['visitor', 'customer', 'artist', 'renter', 'admin'];
-  if (backend.connected && !backend.account) return <button type="button" className="btn-primary fixed bottom-6 right-6 z-50" disabled={backend.checking || backend.busy} onClick={onSignIn}>{backend.checking ? 'Checking account…' : 'Sign in'}</button>;
+  if (backend.connected && !backend.account) return <div className="fixed bottom-6 right-6 z-50"><button type="button" className="btn-primary" disabled={backend.checking || backend.busy} onClick={onSignIn}>{backend.checking ? 'Checking account…' : 'Sign in'}</button></div>;
   return (
     <div className={inline ? 'relative z-50 sl-inline-role' : `fixed bottom-6 right-6 z-50 ${currentRole !== 'visitor' ? 'sl-app-controls' : ''}`}>
       {open && (
@@ -191,6 +191,7 @@ export default function App() {
       <MarketplaceBridge actor={role} pending={pendingMarket} onDone={marketDone} onBook={marketBook} onChat={marketChat} onNeedCustomer={intent => { setPendingMarket(intent); if (role === 'visitor') setAuthMode('login'); else setCustomerPrompt(true); }} />
       {customerPrompt && <ConfirmDialog title={backend.connected ? canSwitchCustomer ? 'Switch to your customer role?' : 'Customer access required' : 'Continue as the demo customer?'} confirm={canSwitchCustomer ? backend.connected ? 'Switch to customer' : 'Use customer demo' : 'Close'} onClose={() => { setCustomerPrompt(false); setPendingMarket(null); }} onConfirm={() => { setCustomerPrompt(false); if (canSwitchCustomer) handleRoleSwitch('customer'); else setPendingMarket(null); }}>{canSwitchCustomer ? 'Bookings and enquiries use your customer role.' : 'This account does not include customer access. Sign in with an account that has customer membership to book.'}</ConfirmDialog>}
       {backend.error && <div className="sl-account-error" role="alert"><span>{backend.error}</span><button type="button" onClick={backend.retry} disabled={backend.busy || backend.checking}>Try again</button><button type="button" aria-label="Dismiss account notice" onClick={backend.dismiss}>×</button></div>}
+      {showEmailSettings && backend.account && <AccountEmailSettings email={backend.account.email} onClose={() => setShowEmailSettings(false)} />}
       <LayoutGroup id="stagelink-brand">
         <AnimatePresence>
           {!isLoaded && <SplashScreen key="splash" onComplete={handleSplashComplete} />}
@@ -230,7 +231,7 @@ export default function App() {
               <AdminDashboard paymentTarget={adminTarget} roleControl={control(true)} onGoToLanding={() => setView('landing')} />
             )}
 
-            {(role === 'visitor' || view === 'landing' || view === 'booking') && control()}
+            {!authMode && !customerPrompt && (role === 'visitor' || view === 'landing' || view === 'booking') && control()}
           </div>
         )}
       </LayoutGroup>

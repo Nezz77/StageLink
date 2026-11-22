@@ -1,10 +1,12 @@
+import { AppearanceProvider } from '../lib/AppearanceContext';
+import { SwitchMode } from './SwitchMode';
 import { useState } from 'react';
 import { configuredSessionApi } from '../lib/apiSession';
 import { ApiError } from '../lib/apiTransport';
 import type { EmailAction } from '../lib/emailAction';
 import ConnectedAccountRecovery from './ConnectedAccountRecovery';
 
-export default function AccountEmailAction({ action }: { action: EmailAction }) {
+function EmailActionView({ action }: { action: EmailAction }) {
   const [done, setDone] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const title = action.kind === 'verify' ? 'Verify your email' : action.kind === 'emailchange' ? 'Confirm your new email' : 'Reset your password';
   async function confirm() {
@@ -26,4 +28,10 @@ export default function AccountEmailAction({ action }: { action: EmailAction }) 
     {error && <p role="alert" className="sl-auth-message is-error">{error}</p>}
     <button className="btn-ghost" type="button" onClick={back} style={{ marginTop: 20 }}>Back to StageLink</button>
   </section></main>;
+}
+
+export default function AccountEmailAction({ action }: { action: EmailAction }) {
+  const [isDark, setIsDark] = useState(() => document.documentElement.dataset.theme !== 'light');
+  const change = (next: boolean) => { setIsDark(next); document.documentElement.dataset.theme = next ? 'dark' : 'light'; };
+  return <AppearanceProvider isDark={isDark} onThemeChange={change}><div className="sl-email-theme-control"><SwitchMode width={80} height={38} isDark={isDark} onChange={change} /></div><EmailActionView action={action} /></AppearanceProvider>;
 }

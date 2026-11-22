@@ -10,7 +10,8 @@
     "format": "oxfmt",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "check:api-session": "node --experimental-strip-types scripts/check-api-session.mjs"
+    "check:api-session": "node --experimental-strip-types scripts/check-api-session.mjs",
+    "check:authentication-ui": "node --experimental-strip-types scripts/check-authentication-ui.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

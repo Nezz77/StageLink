@@ -1,0 +1,693 @@
+{
+  "date": "2026-11-22",
+  "frontendBase": "2a0ed0f",
+  "backendTestedCommit": "d41c19d",
+  "frontendTests": {
+    "passed": 182,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "browserReport": {
+    "passed": true,
+    "checks": [
+      "keyboard-focus-stays-in-modal-and-escape-closes-it",
+      "invalid-login-does-not-open-a-dashboard",
+      "server-identity-and-preview-status",
+      "role-switch-requires-existing-membership",
+      "http-only-cookie-restores-account",
+      "credentials-absent-from-browser-storage",
+      "role-changes-propagate-between-tabs",
+      "logout-clears-tabs-and-revokes-restoration",
+      "mobile-login-fits-viewport",
+      "registration-persists-without-inventing-a-session",
+      "email-link-is-scrubbed-and-server-verified",
+      "verification-link-replay-is-rejected",
+      "recovery-uses-a-real-reset-request",
+      "reset-link-updates-password-and-revokes-sessions",
+      "old-password-rejected-and-new-password-accepted",
+      "mobile-account-and-membership-menu-fit",
+      "connected-account-light-theme",
+      "email-settings-open-request-and-cancel-persist",
+      "email-change-confirmation-revokes-prior-sessions",
+      "network-failure-cannot-invent-a-session",
+      "loading-prevents-repeated-sign-in-submission",
+      "short-landscape-login-remains-scrollable"
+    ],
+    "screenshots": [
+      "desktop-login.png",
+      "desktop-login-error.png",
+      "desktop-artist.png",
+      "desktop-role-menu.png",
+      "mobile-login.png",
+      "mobile-registration.png",
+      "mobile-registration-requested.png",
+      "mobile-verify.png",
+      "mobile-verified.png",
+      "mobile-reset-request.png",
+      "mobile-reset-password.png",
+      "mobile-reset-done.png",
+      "mobile-artist.png",
+      "mobile-role-menu.png",
+      "desktop-restored-artist.png",
+      "desktop-artist-light.png",
+      "desktop-email-settings.png",
+      "desktop-email-change.png",
+      "desktop-login-unavailable.png",
+      "desktop-login-loading.png",
+      "landscape-login.png"
+    ],
+    "fixtureAccountsRemaining": 0,
+    "pageErrors": [],
+    "error": null,
+    "externalMessagesSent": false,
+    "browser": "Playwright Chromium, isolated headless context"
+  },
+  "figma": {
+    "fileKey": "T5OZJHgSNwPIXYwHnM85yj",
+    "sessionId": "62ce074d-d741-44c1-aaf4-0aa7a9cbc570",
+    "design": {
+      "login": "504:6267",
+      "register": "504:6288",
+      "registered": "504:6317",
+      "error": "504:6339",
+      "artist": "504:6361",
+      "customer": "504:6424",
+      "verification-requested": "504:6487",
+      "verify": "504:6551",
+      "verified-success": "504:6569",
+      "verified": "504:6582",
+      "reset-email": "504:6641",
+      "reset-code": "504:6659",
+      "reset-password": "504:6678",
+      "reset-done": "504:6699",
+      "unavailable": "504:6712",
+      "light": "504:6717",
+      "mobile-account": "504:6772",
+      "mobile-login": "504:6839",
+      "loading": "562:6593",
+      "mobile-register": "562:6601",
+      "email-change": "562:6626",
+      "invalid-link": "562:6635",
+      "mobile-verify": "562:6644",
+      "mobile-reset": "562:6653",
+      "role-menu": "563:7646",
+      "mobile-role-menu": "563:7847",
+      "email-changed": "571:7764",
+      "mobile-verified": "571:7773",
+      "email-settings": "575:7823",
+      "email-settings-pending": "575:7848"
+    },
+    "wireframe": {
+      "login": "505:23778",
+      "register": "505:23799",
+      "registered": "505:23828",
+      "error": "505:23850",
+      "artist": "505:23872",
+      "customer": "505:23935",
+      "verification-requested": "505:23998",
+      "verify": "505:24062",
+      "verified-success": "505:24080",
+      "verified": "505:24093",
+      "reset-email": "505:24152",
+      "reset-code": "505:24170",
+      "reset-password": "505:24189",
+      "reset-done": "505:24210",
+      "unavailable": "505:24223",
+      "light": "505:24228",
+      "mobile-account": "505:24283",
+      "mobile-login": "505:24350",
+      "loading": "567:26512",
+      "mobile-register": "567:26520",
+      "email-change": "567:26525",
+      "invalid-link": "567:26534",
+      "mobile-verify": "567:26542",
+      "mobile-reset": "567:26551",
+      "role-menu": "567:26575",
+      "mobile-role-menu": "567:26773",
+      "email-changed": "571:29269",
+      "mobile-verified": "571:29271",
+      "email-settings": "576:26675",
+      "email-settings-pending": "576:26677"
+    },
+    "prototype": {
+      "login": "509:118195",
+      "register": "509:118220",
+      "registered": "509:118257",
+      "error": "509:118283",
+      "artist": "509:118309",
+      "customer": "509:118379",
+      "verification-requested": "509:118449",
+      "verify": "509:118520",
+      "verified-success": "509:118541",
+      "verified": "509:118555",
+      "reset-email": "509:118619",
+      "reset-code": "509:118640",
+      "reset-password": "509:118662",
+      "reset-done": "509:118687",
+      "unavailable": "509:118701",
+      "light": "509:118707",
+      "mobile-account": "509:118769",
+      "mobile-login": "509:118842",
+      "loading": "568:142147",
+      "mobile-register": "568:142155",
+      "email-change": "568:142160",
+      "invalid-link": "568:142169",
+      "mobile-verify": "568:142177",
+      "mobile-reset": "568:142186",
+      "role-menu": "568:142210",
+      "mobile-role-menu": "568:142408",
+      "email-changed": "571:144904",
+      "mobile-verified": "571:144906",
+      "email-settings": "576:142360",
+      "email-settings-pending": "576:142362"
+    },
+    "audit": {
+      "design": {
+        "frames": 30,
+        "descendants": 2774,
+        "counts": {
+          "FRAME": 1079,
+          "INSTANCE": 278,
+          "TEXT": 815,
+          "VECTOR": 573,
+          "RECTANGLE": 24,
+          "ELLIPSE": 5
+        },
+        "fonts": [
+          "Fraunces",
+          "Geist",
+          "JetBrains Mono"
+        ],
+        "imageFilledNodes": [
+          {
+            "id": "563:6631",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "563:6636",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "563:6723",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "563:6821",
+            "name": "sl-dashboard sl-customer",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 2261.050048828125
+          },
+          {
+            "id": "563:6826",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "563:6890",
+            "name": "Discover your next performer",
+            "type": "FRAME",
+            "width": 1120,
+            "height": 374.7699890136719
+          },
+          {
+            "id": "I563:6927;46:20942",
+            "name": "Aria Nova",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I563:6928;46:20987",
+            "name": "Aria Nova",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I563:6929;46:21032",
+            "name": "Aria Nova",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I563:6940;46:21077",
+            "name": "AudioVault Rentals",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I563:6941;46:21122",
+            "name": "AudioVault Rentals",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I563:6942;46:21167",
+            "name": "AudioVault Rentals",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "563:6960",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "563:6972",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "563:6984",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "563:6996",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "563:7008",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "563:7034",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "563:7039",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "563:7126",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "563:7233",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "563:7238",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "563:7325",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "563:7433",
+            "name": "Light theme background pattern",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1100
+          },
+          {
+            "id": "563:7438",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "563:7525",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "504:6772",
+            "name": "P02 · Persistent accounts / mobile-account",
+            "type": "FRAME",
+            "width": 390,
+            "height": 844
+          },
+          {
+            "id": "563:7626",
+            "name": "StageLink logo",
+            "type": "RECTANGLE",
+            "width": 85,
+            "height": 57
+          },
+          {
+            "id": "563:7649",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "563:7654",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "563:7743",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "563:7847",
+            "name": "P02 · Persistent accounts / mobile-role-menu",
+            "type": "FRAME",
+            "width": 390,
+            "height": 844
+          },
+          {
+            "id": "563:7850",
+            "name": "StageLink logo",
+            "type": "RECTANGLE",
+            "width": 85,
+            "height": 57
+          }
+        ],
+        "connections": 0,
+        "invalidDestinations": 0
+      },
+      "wireframe": {
+        "frames": 30,
+        "descendants": 2774,
+        "counts": {
+          "FRAME": 1079,
+          "INSTANCE": 278,
+          "TEXT": 815,
+          "VECTOR": 573,
+          "RECTANGLE": 24,
+          "ELLIPSE": 5
+        },
+        "fonts": [
+          "Fraunces",
+          "Geist",
+          "JetBrains Mono"
+        ],
+        "imageFilledNodes": [],
+        "connections": 0,
+        "invalidDestinations": 0
+      },
+      "prototype": {
+        "frames": 30,
+        "descendants": 2774,
+        "counts": {
+          "FRAME": 1079,
+          "INSTANCE": 278,
+          "TEXT": 815,
+          "VECTOR": 573,
+          "RECTANGLE": 24,
+          "ELLIPSE": 5
+        },
+        "fonts": [
+          "Fraunces",
+          "Geist",
+          "JetBrains Mono"
+        ],
+        "imageFilledNodes": [
+          {
+            "id": "568:141052",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "568:141057",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "568:141145",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "568:141243",
+            "name": "sl-dashboard sl-customer",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 2261.050048828125
+          },
+          {
+            "id": "568:141248",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "568:141314",
+            "name": "Discover your next performer",
+            "type": "FRAME",
+            "width": 1120,
+            "height": 374.7699890136719
+          },
+          {
+            "id": "I568:141351;46:20942",
+            "name": "Aria Nova",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I568:141352;46:20987",
+            "name": "Aria Nova",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I568:141353;46:21032",
+            "name": "Aria Nova",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I568:141364;46:21077",
+            "name": "AudioVault Rentals",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I568:141365;46:21122",
+            "name": "AudioVault Rentals",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "I568:141366;46:21167",
+            "name": "AudioVault Rentals",
+            "type": "RECTANGLE",
+            "width": 346.6600036621094,
+            "height": 190
+          },
+          {
+            "id": "568:141384",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "568:141396",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "568:141408",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "568:141420",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "568:141432",
+            "name": "Image",
+            "type": "RECTANGLE",
+            "width": 48,
+            "height": 48
+          },
+          {
+            "id": "568:141449",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "568:141454",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "568:141543",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "568:141656",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "568:141661",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "568:141749",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "568:141935",
+            "name": "Light theme background pattern",
+            "type": "FRAME",
+            "width": 1440,
+            "height": 1100
+          },
+          {
+            "id": "568:141940",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "568:142028",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "509:118769",
+            "name": "P02 · Prototype / mobile-account",
+            "type": "FRAME",
+            "width": 390,
+            "height": 844
+          },
+          {
+            "id": "568:142126",
+            "name": "StageLink logo",
+            "type": "RECTANGLE",
+            "width": 85,
+            "height": 57
+          },
+          {
+            "id": "568:142213",
+            "name": "sl-dashboard sl-artist",
+            "type": "FRAME",
+            "width": 1436,
+            "height": 1273.77001953125
+          },
+          {
+            "id": "568:142218",
+            "name": "StageLink",
+            "type": "RECTANGLE",
+            "width": 124,
+            "height": 82.66000366210938
+          },
+          {
+            "id": "568:142307",
+            "name": "album art",
+            "type": "RECTANGLE",
+            "width": 200,
+            "height": 200
+          },
+          {
+            "id": "568:142408",
+            "name": "P02 · Prototype / mobile-role-menu",
+            "type": "FRAME",
+            "width": 390,
+            "height": 844
+          },
+          {
+            "id": "568:142411",
+            "name": "StageLink logo",
+            "type": "RECTANGLE",
+            "width": 85,
+            "height": 57
+          }
+        ],
+        "connections": 79,
+        "invalidDestinations": 0
+      }
+    }
+  }
+}

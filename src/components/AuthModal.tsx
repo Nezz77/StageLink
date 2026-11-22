@@ -113,7 +113,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
   };
 
   const solidBtnStyle: React.CSSProperties = {
-    background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
+    background: backend.connected ? 'var(--color-violet)' : 'linear-gradient(135deg, #7c3aed, #a78bfa)',
     color: '#fff',
     border: 'none',
     borderRadius: 20,
@@ -145,7 +145,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
     <>
     {recovery && (backend.connected ? <ConnectedAccountRecovery initialEmail={loginEmail} onClose={() => setRecovery(false)} /> : <AccountRecovery initialEmail={loginEmail} onClose={() => setRecovery(false)} />)}
     <div
-      ref={dialog} role="dialog" inert={recovery} aria-hidden={recovery || undefined} aria-modal="true" aria-label={rightPanelActive ? 'Create account' : 'Sign in'}
+      ref={dialog} role="dialog" aria-modal={!recovery} inert={recovery} aria-hidden={recovery} aria-label={rightPanelActive ? 'Create account' : 'Sign in'}
       className="fixed inset-0 z-50 flex items-center justify-center sl-auth-backdrop"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
@@ -230,7 +230,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               ))}
             </div>
 
-            <span style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
+            <span style={{ fontSize: 12, color: backend.connected ? '#94a3b8' : '#64748b', marginBottom: 16 }}>
               {backend.connected ? 'Use your email and password' : 'or use your account'}
             </span>
 
@@ -328,7 +328,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               ))}
             </div>
 
-            <span style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
+            <span style={{ fontSize: 12, color: backend.connected ? '#94a3b8' : '#64748b', marginBottom: 14 }}>
               {backend.connected ? 'Create your StageLink account' : 'or use your email for registration'}
             </span>
 
@@ -390,7 +390,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
                     background: signupRole === r.value
                       ? 'rgba(124,58,237,0.15)'
                       : 'transparent',
-                    color: signupRole === r.value ? '#a78bfa' : '#64748b',
+                    color: signupRole === r.value ? '#a78bfa' : backend.connected ? '#94a3b8' : '#64748b',
                   }}
                 >
                   {r.label}
@@ -452,7 +452,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
             }}
           >
             {/* LEFT OVERLAY PANEL — "Welcome Back!" */}
-            <div
+            <div inert={!rightPanelActive} aria-hidden={!rightPanelActive}
               style={{
                 width: '50%',
                 height: '100%',
@@ -503,7 +503,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
             </div>
 
             {/* RIGHT OVERLAY PANEL — "Hey There!" */}
-            <div
+            <div inert={rightPanelActive} aria-hidden={rightPanelActive}
               style={{
                 width: '50%',
                 height: '100%',
