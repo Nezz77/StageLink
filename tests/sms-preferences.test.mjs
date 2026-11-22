@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createSmsPreferencesApi, parseApiOrigin, SmsApiError } from '../src/lib/smsPreferences.ts';
+import { createSmsPreferencesApi, normalizeSmsNumber, parseApiOrigin, SmsApiError } from '../src/lib/smsPreferences.ts';
 
 const origin = 'https://api.stagelink.example';
-const session = { email: 'member@stagelink.test', accessToken: 'test.account.signature', csrfToken: 'c'.repeat(43) };
-const contact = { verified: true, last4: '4567', bookingConsent: true, marketingConsent: true };
+const session = { email: 'member@stagelink.test', emailVerified: true, accessToken: 'test.account.signature', csrfToken: 'c'.repeat(43) };
+const contact = { revision: 7, enabled: true, verified: true, last4: '4567', bookingConsent: true, marketingConsent: true, pending: null };
 
 test('SMS preferences requires a canonical HTTPS staging origin or loopback HTTP', () => {
   assert.equal(parseApiOrigin(origin + '/'), origin);
@@ -16,8 +16,8 @@ test('SMS preferences requires a canonical HTTPS staging origin or loopback HTTP
 
 test('SMS controls use a scoped bearer session and off-only endpoints', async () => {
   const replies = [
-    ['auth/login', { email: session.email, password: 'fixture password' }, { accessToken: session.accessToken, csrfToken: session.csrfToken, user: { email: session.email } }],
-    ['me/sms-contact', null, { ...contact, revision: 7 }],
+    ['auth/login', { email: session.email, password: 'fixture password' }, { accessToken: session.accessToken, csrfToken: session.csrfToken, user: { email: session.email, emailVerified: true } }],
+    ['me/sms-contact', null, contact],
     ['me/sms-contact/opt-out', { channel: 'marketing' }, { ...contact, marketingConsent: false }],
     ['me/sms-contact/opt-out', { channel: 'booking' }, { ...contact, bookingConsent: false, marketingConsent: false }],
     ['me/sms-contact/opt-out', { channel: 'all' }, { ...contact, bookingConsent: false, marketingConsent: false }],
@@ -56,4 +56,40 @@ test('SMS preferences rejects expired sessions and an unconfirmed opt-out', asyn
   await assert.rejects(unchanged.stop(session, 'marketing'), /did not confirm/);
   const unmasked = createSmsPreferencesApi(origin, async () => Response.json({ ...contact, last4: '+94771234567' }));
   await assert.rejects(unmasked.contact(session), /Unexpected SMS contact/);
+});
+
+test('SMS enrollment uses revisioned mutations and preserves the other text preference', async () => {
+  assert.equal(normalizeSmsNumber(' 077-123 4567 '), '+94771234567');
+  assert.equal(normalizeSmsNumber('+94 77 123 4567'), '+94771234567');
+  assert.equal(normalizeSmsNumber('94771234567'), '+94771234567');
+  for (const invalid of ['+44771234567', '07123456', '+94771234567 / 0771234567']) assert.equal(normalizeSmsNumber(invalid), null);
+
+  const pending = { id: 'cc570238-c517-41c0-9b6b-3bbd456fe108', last4: '8901', expiresAt: '2026-11-22T08:10:00.000Z', status: 'queued' };
+  const requested = { ...contact, revision: 8, pending };
+  const confirmed = { ...contact, revision: 9, last4: '8901', bookingConsent: false, marketingConsent: false };
+  const enabled = { ...confirmed, revision: 10, marketingConsent: true };
+  const removed = { ...confirmed, revision: 11, verified: false, last4: null };
+  const replies = [
+    ['verification', 'POST', { revision: 7, number: '+94771238901' }, { ...requested, pending: { ...pending, number: '+94771238901' } }],
+    ['confirm', 'POST', { challengeId: pending.id, code: '012345' }, confirmed],
+    ['consent', 'PUT', { revision: 9, bookingConsent: false, marketingConsent: true }, enabled],
+    ['consent', 'PUT', { revision: 10, bookingConsent: true, marketingConsent: true }, { code: 'SMS_REVISION_CONFLICT' }, 409],
+    ['revoke', 'POST', { revision: 10 }, removed],
+  ];
+  const api = createSmsPreferencesApi(origin, async (url, init) => {
+    const [action, method, body, result, status] = replies.shift();
+    assert.equal(url.pathname, '/api/v1/me/sms-contact/' + action);
+    assert.equal(init.method, method);
+    assert.equal(init.credentials, 'omit');
+    assert.equal(new Headers(init.headers).get('X-CSRF-Token'), session.csrfToken);
+    assert.deepEqual(JSON.parse(init.body), body);
+    return Response.json(result, { status });
+  });
+
+  assert.deepEqual(await api.requestCode(session, contact.revision, '+94771238901'), requested);
+  assert.deepEqual(await api.confirmCode(session, pending.id, '012345'), confirmed);
+  assert.deepEqual(await api.enable(session, confirmed, 'marketing'), enabled);
+  await assert.rejects(api.enable(session, enabled, 'booking'), { status: 409, code: 'SMS_REVISION_CONFLICT' });
+  assert.deepEqual(await api.remove(session, enabled.revision), removed);
+  assert.equal(replies.length, 0);
 });
