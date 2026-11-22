@@ -18,7 +18,7 @@ test('session subscribers receive copied changes and can unsubscribe without aff
   const client = createApiSession('https://api.example.test', async url => Response.json(url.pathname.endsWith('/login') ? saved : user));
   const changes = [];
   client.subscribe(() => { throw Error('Consumer failure'); });
-  const unsubscribe = client.subscribe(value => { changes.push(value); if (value) value.user.roles.push('admin'); });
+  const unsubscribe = client.subscribe(value => { changes.push(value); if (value) { assert.equal('accessToken' in value, false); assert.equal('csrfToken' in value, false); value.roles.push('admin'); } });
   await client.signIn(user.email, 'fixture password');
   assert.equal(changes.length, 2); assert.equal(changes[0], null);
   assert.deepEqual(client.snapshot().user.roles, ['customer']);

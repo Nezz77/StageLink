@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useBackendAccount } from '../lib/BackendAccountContext';
-import { configuredSessionApi } from '../lib/apiSession';
 import { ApiError } from '../lib/apiTransport';
 export default function AccountVerificationNotice() {
-  const { account } = useBackendAccount();
+  const { account, requestVerification } = useBackendAccount();
   const [busy, setBusy] = useState(false), [notice, setNotice] = useState('');
   if (!account || account.emailVerified) return null;
   async function request() {
-    if (busy || !configuredSessionApi) return; setBusy(true); setNotice('');
-    try { await configuredSessionApi.requestVerification(); setNotice('If eligible, a verification email will arrive. Open its link to confirm your address.'); }
+    if (busy) return; setBusy(true); setNotice('');
+    try { await requestVerification(); setNotice('If eligible, a verification email will arrive. Open its link to confirm your address.'); }
     catch (issue) { setNotice(issue instanceof ApiError ? issue.message : 'The email could not be requested. Try again.'); }
     finally { setBusy(false); }
   }

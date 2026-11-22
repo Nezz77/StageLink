@@ -24,6 +24,8 @@ The runner starts its own ephemeral API and Vite processes, uses an isolated bro
 
 Local browser evidence and screenshots are under `outputs/stagelink-authentication-2026-11-22/browser-qa` in the Software Project workspace. This is local browser validation, not a hosted API deployment test. No real provider messages or payments were sent.
 
+Current combined results: 182 frontend tests, type checking and production build pass; all 22 browser cases pass with zero page errors and zero remaining fixture accounts. The SDK retains the public-account-only subscriptions and email-setting methods added on the shared branch.
+
 ## Figma handoff
 
 The existing P02 account flow was refreshed in the authorized StageLINK file. Existing frame IDs were retained; additional states were added.
@@ -32,9 +34,9 @@ The existing P02 account flow was refreshed in the authorized StageLINK file. Ex
 - [Account wireframes](https://www.figma.com/design/T5OZJHgSNwPIXYwHnM85yj/StageLINK?node-id=505-23778)
 - [Account prototype](https://www.figma.com/proto/T5OZJHgSNwPIXYwHnM85yj/StageLINK?page-id=60%3A1117&node-id=509-118195&starting-point-node-id=509%3A118195&scaling=scale-down)
 
-Each page has 28 account states and 2,729 native descendants, including editable text, vectors and reusable input/button/form instances. The wireframes contain no image fills. Design/prototype image fills are discrete source backgrounds, branding, album art and profile imagery. A background-only canvas check confirmed the large dark dashboard image is an instrument texture. Full-view screenshots were reviewed and long-label/font wrapping corrected.
+Each page has 30 account states and 2,774 native descendants, including editable text, vectors and reusable input/button/form instances. The wireframes contain no image fills. Design/prototype image fills are discrete source backgrounds, branding, album art and profile imagery. A background-only canvas check confirmed the large dark dashboard image is an instrument texture. Full-view screenshots were reviewed and long-label/font wrapping corrected.
 
-The prototype has 72 navigation actions, including recovery, changed-email confirmation and mobile verification results. All destinations were checked as different top-level frames on the prototype page. Existing unrelated flow entry points were preserved. These are illustrative Figma interactions; actual API behavior is validated separately in the browser.
+The prototype has 79 navigation actions, including recovery, changed-email confirmation and mobile verification results. All destinations were checked as different top-level frames on the prototype page. Existing unrelated flow entry points were preserved. These are illustrative Figma interactions; actual API behavior is validated separately in the browser.
 
 The machine-readable frame map, native-node census and validation boundary are in [the evidence file](validation/Authentication-2026-11-22.json).
 

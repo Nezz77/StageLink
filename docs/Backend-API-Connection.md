@@ -1,6 +1,6 @@
 # Backend API connection foundation
 
-This branch provides shared JSON transport and session handling for replacing demo data. It does not yet connect the main authentication modal or replace dashboard data. The standalone SMS opt-out page preserves its existing scoped bearer-only session and reuses the shared API origin parser.
+This branch provides shared JSON transport and session handling for replacing demo data. The main authentication modal, account restoration, memberships and recovery are now connected; dashboard activity remains a labelled preview. See [the account handoff](Backend-Authentication.md). The standalone SMS opt-out page preserves its existing scoped bearer-only session and reuses the shared API origin parser.
 
 Set `VITE_STAGELINK_API_ORIGIN` in an ignored `.env.local` before starting Vite, for example `http://localhost:4000` for local development. Use HTTPS in staging. This setting is an origin with no API path, query or credentials. Never put backend signing, database, payment or provider secrets in Vite variables. The frontend origin must match the backend's `WEB_ORIGIN` exactly.
 
@@ -12,7 +12,7 @@ The transport sends cookies only to its fixed API origin, rejects unsafe relativ
 
 Simultaneous refresh requests share one operation. Cookie-changing actions are serialized, and a generation check prevents stale login, account or refresh responses from restoring an obsolete local session. Logout clears memory immediately; server failure is still reported. A new page restores from the HTTP-only cookie rather than browser storage. Where available, [Web Locks](https://www.w3.org/TR/web-locks/) serialize cookie actions across clients sharing the same frontend origin. Without that API, serialization is limited to the client instance; applications must handle session expiry from server responses. A denied coordination request is reported rather than silently bypassing the lock.
 
-The main UI integration should restore once on startup, render from the returned account, and send role changes to the server. Route-level permissions remain enforced by the backend. Other workflows should add validated business clients over `createApiTransport`, with loading, empty and failure states. Binary media and PDF downloads require their own private capability flow; the JSON transport is not a file uploader.
+The main UI restores on startup, renders the returned account, and sends role changes to the server. Route-level permissions remain enforced by the backend. Other workflows should add validated business clients over `createApiTransport`, with loading, empty and failure states. Binary media and PDF downloads require their own private capability flow; the JSON transport is not a file uploader.
 
 ## Verification
 
@@ -20,4 +20,4 @@ Run `npm test`, `npm run typecheck` and `npm run build`. GitHub checks use Node 
 
 `npm run check:api-session` exercises this frontend client against the real local Nest API. Set `STAGELINK_BACKEND_CHECKOUT` to an absolute built StageLink backend checkout, `NODE_ENV=test`, and the backend test environment. PostgreSQL must be migrated, loopback-only and have a database name ending `_test`; Redis must also be loopback-only. Use a disposable test database. The command starts an ephemeral API, creates one synthetic account, tests sign-in/account/role/refresh/logout and token revocation, then removes its account and rate-limit keys. It sends no external message. The cookie jar emulates browser cookie handling for HTTP checks; it is not a browser or hosted proxy test.
 
-Current local evidence: all 173 frontend tests pass, type checking and production build pass, and the real-API command confirms zero remaining fixture accounts. Main sign-in UI wiring, representative browser QA, staged workflow data replacement and Figma sync remain pending.
+Current combined evidence: all 182 frontend tests pass, type checking and production build pass, and 22 local browser checks confirm account, recovery, role, multi-tab, email-settings and responsive states with zero remaining fixture accounts. The account Figma design, wireframes and prototype contain 30 states and 79 navigation actions. Persistent profile and business-data integration remains next.

@@ -7,10 +7,11 @@ type AccountState = {
   error: string; retry: () => void; dismiss: () => void;
   signIn: (email: string, password: string) => Promise<ApiAccount>;
   register: (input: { displayName: string; email: string; password: string; role: 'customer' | 'artist' | 'renter' }) => Promise<void>;
+  requestVerification: () => Promise<void>;
   changeRole: (role: AccountRole) => Promise<void>; signOut: () => Promise<void>;
 };
 const unavailable = async (): Promise<never> => { throw new Error('Account sign-in is unavailable.'); };
-const Context = createContext<AccountState>({ connected: false, account: null, checking: false, busy: false, error: '', retry: () => {}, dismiss: () => {}, signIn: unavailable, register: unavailable, changeRole: unavailable, signOut: unavailable });
+const Context = createContext<AccountState>({ connected: false, account: null, checking: false, busy: false, error: '', retry: () => {}, dismiss: () => {}, signIn: unavailable, register: unavailable, requestVerification: unavailable, changeRole: unavailable, signOut: unavailable });
 const message = (error: unknown) => error instanceof ApiError ? error.message + (error.requestId ? ' Reference: ' + error.requestId : '') : 'Account access is unavailable. Try again.';
 
 export function BackendAccountProvider({ children }: { children: ReactNode }) {
@@ -42,7 +43,7 @@ export function BackendAccountProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     mounted.current = true;
     if (!api) return () => { mounted.current = false; };
-    const unsubscribe = api.subscribe(value => { if (mounted.current) setAccount(value?.user ?? null); });
+    const unsubscribe = api.subscribe(value => { if (mounted.current) setAccount(value); });
     setAccount(api.snapshot()?.user ?? null);
     void restore();
     return () => { mounted.current = false; restoreVersion.current++; unsubscribe(); };
@@ -64,7 +65,9 @@ export function BackendAccountProvider({ children }: { children: ReactNode }) {
     connected, account, checking, busy: pending > 0, error,
     retry: () => { void retryAction.current().catch(() => {}); }, dismiss: () => setError(''),
     signIn: (email, password) => run(() => requireApi().signIn(email, password)).then(value => value.user),
-    register: input => run(() => requireApi().register(input)).then(() => undefined), changeRole, signOut,
+    register: input => run(() => requireApi().register(input)).then(() => undefined),
+    requestVerification: () => run(() => requireApi().requestVerification()).then(() => undefined),
+    changeRole, signOut,
   }}>{children}</Context.Provider>;
 }
 export const useBackendAccount = () => useContext(Context);

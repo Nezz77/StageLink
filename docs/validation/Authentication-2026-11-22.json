@@ -1,15 +1,69 @@
 {
   "date": "2026-11-22",
-  "frontendBase": "1321d6b",
+  "frontendBase": "2a0ed0f",
   "backendTestedCommit": "d41c19d",
   "frontendTests": {
-    "passed": 177,
+    "passed": 182,
     "failed": 0,
     "skipped": 0
   },
   "typecheck": "passed",
   "productionBuild": "passed",
-  "browserReport": "See check:authentication-ui and local artifact report; 21 browser cases passed, zero fixture accounts remaining, zero page errors, no external messages sent",
+  "browserReport": {
+    "passed": true,
+    "checks": [
+      "keyboard-focus-stays-in-modal-and-escape-closes-it",
+      "invalid-login-does-not-open-a-dashboard",
+      "server-identity-and-preview-status",
+      "role-switch-requires-existing-membership",
+      "http-only-cookie-restores-account",
+      "credentials-absent-from-browser-storage",
+      "role-changes-propagate-between-tabs",
+      "logout-clears-tabs-and-revokes-restoration",
+      "mobile-login-fits-viewport",
+      "registration-persists-without-inventing-a-session",
+      "email-link-is-scrubbed-and-server-verified",
+      "verification-link-replay-is-rejected",
+      "recovery-uses-a-real-reset-request",
+      "reset-link-updates-password-and-revokes-sessions",
+      "old-password-rejected-and-new-password-accepted",
+      "mobile-account-and-membership-menu-fit",
+      "connected-account-light-theme",
+      "email-settings-open-request-and-cancel-persist",
+      "email-change-confirmation-revokes-prior-sessions",
+      "network-failure-cannot-invent-a-session",
+      "loading-prevents-repeated-sign-in-submission",
+      "short-landscape-login-remains-scrollable"
+    ],
+    "screenshots": [
+      "desktop-login.png",
+      "desktop-login-error.png",
+      "desktop-artist.png",
+      "desktop-role-menu.png",
+      "mobile-login.png",
+      "mobile-registration.png",
+      "mobile-registration-requested.png",
+      "mobile-verify.png",
+      "mobile-verified.png",
+      "mobile-reset-request.png",
+      "mobile-reset-password.png",
+      "mobile-reset-done.png",
+      "mobile-artist.png",
+      "mobile-role-menu.png",
+      "desktop-restored-artist.png",
+      "desktop-artist-light.png",
+      "desktop-email-settings.png",
+      "desktop-email-change.png",
+      "desktop-login-unavailable.png",
+      "desktop-login-loading.png",
+      "landscape-login.png"
+    ],
+    "fixtureAccountsRemaining": 0,
+    "pageErrors": [],
+    "error": null,
+    "externalMessagesSent": false,
+    "browser": "Playwright Chromium, isolated headless context"
+  },
   "figma": {
     "fileKey": "T5OZJHgSNwPIXYwHnM85yj",
     "sessionId": "62ce074d-d741-44c1-aaf4-0aa7a9cbc570",
@@ -41,7 +95,9 @@
       "role-menu": "563:7646",
       "mobile-role-menu": "563:7847",
       "email-changed": "571:7764",
-      "mobile-verified": "571:7773"
+      "mobile-verified": "571:7773",
+      "email-settings": "575:7823",
+      "email-settings-pending": "575:7848"
     },
     "wireframe": {
       "login": "505:23778",
@@ -71,7 +127,9 @@
       "role-menu": "567:26575",
       "mobile-role-menu": "567:26773",
       "email-changed": "571:29269",
-      "mobile-verified": "571:29271"
+      "mobile-verified": "571:29271",
+      "email-settings": "576:26675",
+      "email-settings-pending": "576:26677"
     },
     "prototype": {
       "login": "509:118195",
@@ -101,17 +159,19 @@
       "role-menu": "568:142210",
       "mobile-role-menu": "568:142408",
       "email-changed": "571:144904",
-      "mobile-verified": "571:144906"
+      "mobile-verified": "571:144906",
+      "email-settings": "576:142360",
+      "email-settings-pending": "576:142362"
     },
     "audit": {
       "design": {
-        "frames": 28,
-        "descendants": 2729,
+        "frames": 30,
+        "descendants": 2774,
         "counts": {
-          "FRAME": 1070,
-          "INSTANCE": 265,
-          "TEXT": 794,
-          "VECTOR": 571,
+          "FRAME": 1079,
+          "INSTANCE": 278,
+          "TEXT": 815,
+          "VECTOR": 573,
           "RECTANGLE": 24,
           "ELLIPSE": 5
         },
@@ -357,13 +417,13 @@
         "invalidDestinations": 0
       },
       "wireframe": {
-        "frames": 28,
-        "descendants": 2729,
+        "frames": 30,
+        "descendants": 2774,
         "counts": {
-          "FRAME": 1070,
-          "INSTANCE": 265,
-          "TEXT": 794,
-          "VECTOR": 571,
+          "FRAME": 1079,
+          "INSTANCE": 278,
+          "TEXT": 815,
+          "VECTOR": 573,
           "RECTANGLE": 24,
           "ELLIPSE": 5
         },
@@ -377,13 +437,13 @@
         "invalidDestinations": 0
       },
       "prototype": {
-        "frames": 28,
-        "descendants": 2729,
+        "frames": 30,
+        "descendants": 2774,
         "counts": {
-          "FRAME": 1070,
-          "INSTANCE": 265,
-          "TEXT": 794,
-          "VECTOR": 571,
+          "FRAME": 1079,
+          "INSTANCE": 278,
+          "TEXT": 815,
+          "VECTOR": 573,
           "RECTANGLE": 24,
           "ELLIPSE": 5
         },
@@ -625,7 +685,7 @@
             "height": 57
           }
         ],
-        "connections": 72,
+        "connections": 79,
         "invalidDestinations": 0
       }
     }

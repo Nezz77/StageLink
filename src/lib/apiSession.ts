@@ -1,4 +1,4 @@
-import { ApiError, apiObject, configuredApiOrigin, createApiTransport } from './apiTransport.ts';
+import { ApiError, apiObject, configuredApiOrigin, createApiTransport, type ApiRequest } from './apiTransport.ts';
 
 export type AccountRole = 'customer' | 'artist' | 'renter' | 'admin';
 export type ApiAccount = {
@@ -6,6 +6,7 @@ export type ApiAccount = {
   activeRole: AccountRole; emailVerified: boolean; createdAt: string;
 };
 export type ApiSession = { accessToken: string; csrfToken: string; user: ApiAccount };
+export type PendingEmailChange = { email: string; expiresAt: string };
 const roles: string[] = ['customer', 'artist', 'renter', 'admin'];
 const invalid = () => new ApiError(0, 'INVALID_API_RESPONSE', 'StageLink returned an unexpected account response.');
 function account(value: unknown): ApiAccount {
@@ -27,21 +28,24 @@ function session(value: unknown): ApiSession {
   if (typeof row.accessToken !== 'string' || row.accessToken.length > 2048 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(row.accessToken)) throw invalid();
   return { accessToken: row.accessToken, csrfToken: csrf(row.csrfToken), user: account(row.user) };
 }
-const copy = (value: ApiSession): ApiSession => ({ ...value, user: { ...value.user, roles: [...value.user.roles] } });
+const copyAccount = (value: ApiAccount): ApiAccount => ({ ...value, roles: [...value.roles] });
+const copy = (value: ApiSession): ApiSession => ({ ...value, user: copyAccount(value.user) });
 const superseded = () => new ApiError(0, 'SESSION_SUPERSEDED', 'A newer sign-in action replaced this request.');
 
 export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) {
   const api = createApiTransport(rawOrigin, send);
   let current: ApiSession | null = null, epoch = 0;
-  const listeners = new Set<(value: ApiSession | null) => void>();
+  const listeners = new Set<(value: ApiAccount | null) => void>();
   function update(value: ApiSession | null) {
     current = value;
-    for (const listener of listeners) { try { listener(current ? copy(current) : null); } catch { /* One consumer cannot block another. */ } }
+    for (const listener of listeners) { try { listener(current ? copyAccount(current.user) : null); } catch { /* One consumer cannot block another. */ } }
   }
   let refreshFlight: Promise<ApiSession | null> | null = null;
   let cookieQueue: Promise<unknown> = Promise.resolve();
   const channel = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('stagelink-account:' + api.origin) : null;
-  const announce = (kind: 'changed' | 'signed-out') => channel?.postMessage({ kind });
+  function announceChange(kind: 'changed' | 'signed-out' = 'changed') {
+    try { channel?.postMessage({ kind }); } catch { /* Session commands also work without tab notifications. */ }
+  }
   function enqueue<T>(action: () => Promise<T>): Promise<T> {
     const result = cookieQueue.then(async () => {
       const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
@@ -83,28 +87,43 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     refreshFlight = flight;
     return flight;
   }
+  async function authenticated(path: string, options: ApiRequest = {}) {
+    const saved = requireSession(), version = epoch;
+    try {
+      const result = await api.request(path, { ...options, accessToken: saved.accessToken, csrfToken: saved.csrfToken });
+      check(version);
+      return result;
+    } catch (error) {
+      check(version);
+      if (error instanceof ApiError && error.status === 401) clear();
+      throw error;
+    }
+  }
   channel?.addEventListener('message', event => {
     if (event.data?.kind === 'signed-out') clear();
-    else if (event.data?.kind === 'changed') { clear(); void refreshSession().catch(() => {}); }
+    else if (event.data?.kind === 'changed') {
+      clear();
+      void refreshSession().catch(() => {});
+    }
   });
   return {
     origin: api.origin,
     snapshot: () => current ? copy(current) : null,
     dispose() { listeners.clear(); channel?.close(); clear(); },
-    subscribe(listener: (value: ApiSession | null) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    subscribe(listener: (value: ApiAccount | null) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     async signIn(email: string, password: string) {
       const version = clear();
       return enqueue(async () => {
         check(version);
         const updated = session(await api.request('auth/login', { method: 'POST', body: { email, password } }));
-        check(version); update(updated); announce('changed'); return copy(updated);
+        check(version); update(updated); announceChange(); return copy(updated);
       });
     },
     restoreSession: () => current ? Promise.resolve(copy(current)) : refreshSession(),
     refreshSession,
     async signOut() {
       const previous = current ? copy(current) : null;
-      clear(); announce('signed-out');
+      clear(); announceChange('signed-out');
       return enqueue(async () => {
         try {
           const token = csrf(apiObject(await api.request('auth/csrf')).csrfToken);
@@ -112,6 +131,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
         } catch (error) {
           if (!(error instanceof ApiError && error.status === 401)) throw error;
         }
+        announceChange();
       });
     },
     async me() {
@@ -130,21 +150,35 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
         check(version);
         if (user.activeRole !== role) throw invalid();
         if (current) update({ ...current, user });
-        announce('changed');
+        announceChange();
         return { ...user, roles: [...user.roles] };
       } catch (error) { check(version); if (error instanceof ApiError && error.status === 401) clear(); throw error; }
     },
     async requestVerification() {
-      const saved = requireSession();
-      return apiObject(await api.request('auth/email-verification', { method: 'POST', accessToken: saved.accessToken, csrfToken: saved.csrfToken }));
+      return apiObject(await authenticated('auth/email-verification', { method: 'POST' }));
+    },
+    async pendingEmailChange(signal?: AbortSignal): Promise<PendingEmailChange | null> {
+      const { pending } = apiObject(await authenticated('me/email-change', { signal }));
+      if (pending === null) return null;
+      const { email, expiresAt } = apiObject(pending);
+      if (typeof email !== 'string' || !email.includes('@') || email.length > 200 ||
+          typeof expiresAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(expiresAt) || !Number.isFinite(Date.parse(expiresAt))) throw invalid();
+      return { email, expiresAt };
+    },
+    async requestEmailChange(email: string, password: string) {
+      return apiObject(await authenticated('me/email-change', { method: 'POST', body: { email, password } }));
+    },
+    async cancelEmailChange() {
+      return apiObject(await authenticated('me/email-change/cancel', { method: 'POST' }));
     },
     async confirmEmail(token: string) {
       const result = apiObject(await api.request('auth/email-verification/confirm', { method: 'POST', body: { token } }));
-      announce('changed'); return result;
+      announceChange();
+      return result;
     },
     async confirmEmailChange(token: string) {
       const result = apiObject(await api.request('auth/email-change/confirm', { method: 'POST', body: { token } }));
-      clear(); announce('signed-out'); return result;
+      clear(); announceChange('signed-out'); return result;
     },
     async requestPasswordReset(email: string) {
       return apiObject(await api.request('auth/password-reset', { method: 'POST', body: { email } }));
@@ -157,7 +191,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     },
     async completePasswordReset(grant: string, password: string) {
       const result = apiObject(await api.request('auth/password-reset/complete', { method: 'POST', body: { grant, password } }));
-      clear(); announce('signed-out'); return result;
+      clear(); announceChange('signed-out'); return result;
     },
     async register(input: { displayName: string; email: string; password: string; role: Exclude<AccountRole, 'admin'> }) {
       const reply = apiObject(await api.request('auth/register', { method: 'POST', body: input }));
