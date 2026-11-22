@@ -1,4 +1,4 @@
-import { ApiError, apiObject, configuredApiOrigin, createApiTransport } from './apiTransport.ts';
+import { ApiError, apiObject, configuredApiOrigin, createApiTransport, type ApiRequest } from './apiTransport.ts';
 
 export type AccountRole = 'customer' | 'artist' | 'renter' | 'admin';
 export type ApiAccount = {
@@ -6,6 +6,7 @@ export type ApiAccount = {
   activeRole: AccountRole; emailVerified: boolean; createdAt: string;
 };
 export type ApiSession = { accessToken: string; csrfToken: string; user: ApiAccount };
+export type PendingEmailChange = { email: string; expiresAt: string };
 const roles: string[] = ['customer', 'artist', 'renter', 'admin'];
 const invalid = () => new ApiError(0, 'INVALID_API_RESPONSE', 'StageLink returned an unexpected account response.');
 function account(value: unknown): ApiAccount {
@@ -86,6 +87,18 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     refreshFlight = flight;
     return flight;
   }
+  async function authenticated(path: string, options: ApiRequest = {}) {
+    const saved = requireSession(), version = epoch;
+    try {
+      const result = await api.request(path, { ...options, accessToken: saved.accessToken, csrfToken: saved.csrfToken });
+      check(version);
+      return result;
+    } catch (error) {
+      check(version);
+      if (error instanceof ApiError && error.status === 401) clear();
+      throw error;
+    }
+  }
   channel?.addEventListener('message', event => {
     if (event.data?.kind === 'changed') {
       clear();
@@ -141,16 +154,21 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
       } catch (error) { check(version); if (error instanceof ApiError && error.status === 401) clear(); throw error; }
     },
     async requestVerification() {
-      const saved = requireSession(), version = epoch;
-      try {
-        const result = apiObject(await api.request('auth/email-verification', { method: 'POST', accessToken: saved.accessToken, csrfToken: saved.csrfToken }));
-        check(version);
-        return result;
-      } catch (error) {
-        check(version);
-        if (error instanceof ApiError && error.status === 401) clear();
-        throw error;
-      }
+      return apiObject(await authenticated('auth/email-verification', { method: 'POST' }));
+    },
+    async pendingEmailChange(signal?: AbortSignal): Promise<PendingEmailChange | null> {
+      const { pending } = apiObject(await authenticated('me/email-change', { signal }));
+      if (pending === null) return null;
+      const { email, expiresAt } = apiObject(pending);
+      if (typeof email !== 'string' || !email.includes('@') || email.length > 200 ||
+          typeof expiresAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(expiresAt) || !Number.isFinite(Date.parse(expiresAt))) throw invalid();
+      return { email, expiresAt };
+    },
+    async requestEmailChange(email: string, password: string) {
+      return apiObject(await authenticated('me/email-change', { method: 'POST', body: { email, password } }));
+    },
+    async cancelEmailChange() {
+      return apiObject(await authenticated('me/email-change/cancel', { method: 'POST' }));
     },
     async confirmEmail(token: string) {
       const result = apiObject(await api.request('auth/email-verification/confirm', { method: 'POST', body: { token } }));
