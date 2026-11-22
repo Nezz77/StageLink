@@ -152,3 +152,29 @@ test('independent clients coordinate cookie refresh rather than replaying the sa
   assert.ok(results.every(result => result?.user.id === user.id));
   assert.deepEqual(paths, ['/api/v1/auth/csrf', '/api/v1/auth/refresh', '/api/v1/auth/csrf', '/api/v1/auth/refresh']);
 });
+
+test('connected account subscriptions expose the public account and follow role changes and sign-out', async () => {
+  const api = createApiSession(origin, async url => {
+    if (url.pathname.endsWith('/login')) return json(saved);
+    if (url.pathname.endsWith('/active-role')) return json({ ...user, activeRole: 'artist' });
+    if (url.pathname.endsWith('/csrf')) return json({ csrfToken: saved.csrfToken });
+    return new Response(null, { status: 204 });
+  });
+  const changes = [];
+  const credentialFields = [];
+  const unsubscribe = api.subscribe(value => {
+    changes.push(value?.activeRole ?? null);
+    if (value) {
+      credentialFields.push(...Object.keys(value).filter(key => key === 'accessToken' || key === 'csrfToken'));
+      value.roles.push('admin');
+    }
+  });
+  await api.signIn(user.email, 'fixture password');
+  await api.changeRole('artist');
+  assert.deepEqual(api.snapshot().user.roles, ['customer', 'artist']);
+  await api.signOut();
+  unsubscribe();
+  await api.signIn(user.email, 'fixture password');
+  assert.deepEqual(changes, [null, 'customer', 'artist', null]);
+  assert.deepEqual(credentialFields, []);
+});

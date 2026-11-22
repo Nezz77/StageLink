@@ -27,14 +27,24 @@ function session(value: unknown): ApiSession {
   if (typeof row.accessToken !== 'string' || row.accessToken.length > 2048 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(row.accessToken)) throw invalid();
   return { accessToken: row.accessToken, csrfToken: csrf(row.csrfToken), user: account(row.user) };
 }
-const copy = (value: ApiSession): ApiSession => ({ ...value, user: { ...value.user, roles: [...value.user.roles] } });
+const copyAccount = (value: ApiAccount): ApiAccount => ({ ...value, roles: [...value.roles] });
+const copy = (value: ApiSession): ApiSession => ({ ...value, user: copyAccount(value.user) });
 const superseded = () => new ApiError(0, 'SESSION_SUPERSEDED', 'A newer sign-in action replaced this request.');
 
 export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) {
   const api = createApiTransport(rawOrigin, send);
   let current: ApiSession | null = null, epoch = 0;
+  const listeners = new Set<(value: ApiAccount | null) => void>();
+  function update(value: ApiSession | null) {
+    current = value;
+    for (const listener of listeners) { try { listener(current ? copyAccount(current.user) : null); } catch { /* One consumer cannot block another. */ } }
+  }
   let refreshFlight: Promise<ApiSession | null> | null = null;
   let cookieQueue: Promise<unknown> = Promise.resolve();
+  const channel = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('stagelink-account:' + api.origin) : null;
+  function announceChange() {
+    try { channel?.postMessage({ kind: 'changed' }); } catch { /* Session commands also work without tab notifications. */ }
+  }
   function enqueue<T>(action: () => Promise<T>): Promise<T> {
     const result = cookieQueue.then(async () => {
       const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
@@ -55,7 +65,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     return copy(current);
   }
   function check(version: number) { if (epoch !== version) throw superseded(); }
-  function clear() { epoch++; current = null; refreshFlight = null; return epoch; }
+  function clear() { epoch++; update(null); refreshFlight = null; return epoch; }
   function refreshSession(): Promise<ApiSession | null> {
     if (refreshFlight) return refreshFlight;
     const version = epoch;
@@ -65,7 +75,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
         const token = csrf(apiObject(await api.request('auth/csrf')).csrfToken);
         check(version);
         const updated = session(await api.request('auth/refresh', { method: 'POST', csrfToken: token }));
-        check(version); current = updated; return copy(updated);
+        check(version); update(updated); return copy(updated);
       } catch (error) {
         check(version);
         if (error instanceof ApiError && error.status === 401) { clear(); return null; }
@@ -76,15 +86,23 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     refreshFlight = flight;
     return flight;
   }
+  channel?.addEventListener('message', event => {
+    if (event.data?.kind === 'changed') {
+      clear();
+      void refreshSession().catch(() => {});
+    }
+  });
   return {
     origin: api.origin,
     snapshot: () => current ? copy(current) : null,
+    dispose() { listeners.clear(); channel?.close(); clear(); },
+    subscribe(listener: (value: ApiAccount | null) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     async signIn(email: string, password: string) {
       const version = clear();
       return enqueue(async () => {
         check(version);
         const updated = session(await api.request('auth/login', { method: 'POST', body: { email, password } }));
-        check(version); current = updated; return copy(updated);
+        check(version); update(updated); announceChange(); return copy(updated);
       });
     },
     restoreSession: () => current ? Promise.resolve(copy(current)) : refreshSession(),
@@ -99,6 +117,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
         } catch (error) {
           if (!(error instanceof ApiError && error.status === 401)) throw error;
         }
+        announceChange();
       });
     },
     async me() {
@@ -106,7 +125,7 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
       try {
         const user = account(await api.request('me', { accessToken: saved.accessToken }));
         check(version);
-        if (current) current = { ...current, user };
+        if (current) update({ ...current, user });
         return { ...user, roles: [...user.roles] };
       } catch (error) { check(version); if (error instanceof ApiError && error.status === 401) clear(); throw error; }
     },
@@ -116,9 +135,44 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
         const user = account(await api.request('me/active-role', { method: 'POST', body: { role }, accessToken: saved.accessToken, csrfToken: saved.csrfToken }));
         check(version);
         if (user.activeRole !== role) throw invalid();
-        if (current) current = { ...current, user };
+        if (current) update({ ...current, user });
+        announceChange();
         return { ...user, roles: [...user.roles] };
       } catch (error) { check(version); if (error instanceof ApiError && error.status === 401) clear(); throw error; }
+    },
+    async requestVerification() {
+      const saved = requireSession(), version = epoch;
+      try {
+        const result = apiObject(await api.request('auth/email-verification', { method: 'POST', accessToken: saved.accessToken, csrfToken: saved.csrfToken }));
+        check(version);
+        return result;
+      } catch (error) {
+        check(version);
+        if (error instanceof ApiError && error.status === 401) clear();
+        throw error;
+      }
+    },
+    async confirmEmail(token: string) {
+      const result = apiObject(await api.request('auth/email-verification/confirm', { method: 'POST', body: { token } }));
+      announceChange();
+      return result;
+    },
+    async confirmEmailChange(token: string) {
+      const result = apiObject(await api.request('auth/email-change/confirm', { method: 'POST', body: { token } }));
+      clear(); announceChange(); return result;
+    },
+    async requestPasswordReset(email: string) {
+      return apiObject(await api.request('auth/password-reset', { method: 'POST', body: { email } }));
+    },
+    async verifyPasswordReset(token: string) {
+      const value = apiObject(await api.request('auth/password-reset/verify', { method: 'POST', body: { token } }));
+      const grant = csrf(value.grant);
+      if (typeof value.expiresIn !== 'number' || !Number.isInteger(value.expiresIn) || value.expiresIn <= 0 || value.expiresIn > 3600) throw invalid();
+      return { grant, expiresIn: value.expiresIn };
+    },
+    async completePasswordReset(grant: string, password: string) {
+      const result = apiObject(await api.request('auth/password-reset/complete', { method: 'POST', body: { grant, password } }));
+      clear(); announceChange(); return result;
     },
     async register(input: { displayName: string; email: string; password: string; role: Exclude<AccountRole, 'admin'> }) {
       const reply = apiObject(await api.request('auth/register', { method: 'POST', body: input }));
@@ -128,3 +182,5 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
   };
 }
 export const configuredSessionApi = configuredApiOrigin ? createApiSession(configuredApiOrigin) : null;
+
+if (import.meta.hot) import.meta.hot.dispose(() => configuredSessionApi?.dispose());

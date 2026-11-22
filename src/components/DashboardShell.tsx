@@ -1,3 +1,5 @@
+import { useBackendAccount } from '../lib/BackendAccountContext';
+import { ApiError } from '../lib/apiTransport';
 import DemoReset from './DemoReset';
 import '../module4.css';
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
@@ -47,6 +49,29 @@ const identities = {
   admin: { title: 'Control room', name: 'StageLink Admin', initials: 'AD', tag: 'Platform operations', note: 'Keep the show running.' },
 };
 
+function VerifyEmailNotice() {
+  const { busy, requestVerification } = useBackendAccount();
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+  async function send() {
+    setError('');
+    setNotice('');
+    try {
+      await requestVerification();
+      setNotice('Verification email requested. Check your inbox for the latest link.');
+    } catch (issue) {
+      setError(issue instanceof ApiError ? issue.message : 'StageLink could not request a verification email. Try again.');
+    }
+  }
+  return <div className="mg-workspace-banner">
+    <strong>Verify your email</strong>
+    <p>Confirm your email before using protected StageLink features.</p>
+    <button className="btn-ghost" type="button" onClick={() => void send()} disabled={busy}>Send verification email</button>
+    {notice && <p role="status">{notice}</p>}
+    {error && <p role="alert">{error}</p>}
+  </div>;
+}
+
 export default function DashboardShell({ role, navItems, activeTab, onNavigate, onGoToLanding, onOpenChat, controls, children }: {
   role: keyof typeof identities; navItems: DashboardNav[]; activeTab: string;
   onNavigate: (tab: string) => void; onGoToLanding?: () => void; onOpenChat?: () => void; controls?: ReactNode; children: ReactNode;
@@ -88,9 +113,11 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
   const unreadMessages = role === 'admin' ? 0 :
     bookings.bookings.filter(record => visibleTo(record, role)).reduce((sum, record) => sum + unreadFor(bookings, record, role), 0) +
     dashboard.inquiries.filter(item => role === 'customer' || item.provider === role).reduce((sum, item) => sum + inquiryUnread(item, role), 0);
+  const backend = useBackendAccount();
   const profile = role === 'admin' ? null : dashboard.profiles[role];
   const identity = { ...identities[role], ...(profile ? { name: profile.name, initials: profile.name.split(/\s+/).map(part => part[0]).slice(0, 2).join('') } : {}) };
   if ((role === 'artist' || role === 'renter') && dashboard.cases.some(item => item.owner === role && item.kind === 'verification' && item.status === 'approved')) identity.tag = 'Profile reviewed in demo';
+  if (backend.connected && backend.account) { identity.name = backend.account.displayName; identity.initials = identity.name.split(/\s+/).map(part => part[0]).slice(0, 2).join(''); identity.tag = backend.account.email; }
   const contentRef = usePanelEntrance(`${role}:${activeTab}`);
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab, role]);
   return <MotionConfig reducedMotion="user">
@@ -148,7 +175,7 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
         <header className="sl-topbar">
           <div><button className="sl-topbar-label sl-topbar-home" onClick={onGoToLanding} aria-label="Go to landing page">WORKSPACE</button><span className="sl-topbar-divider">/</span><span>{navItems.find(item => item.id === activeTab)?.label ?? 'Discover'}</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="sl-demo-indicator"><i /> Demo workspace</span>
+            <span className="sl-demo-indicator"><i /> {backend.connected ? 'Signed-in preview' : 'Demo workspace'}</span>
             <DemoReset /><NotificationCenter />
             {onOpenChat && (
               <button
@@ -201,6 +228,8 @@ export default function DashboardShell({ role, navItems, activeTab, onNavigate, 
           </div>
         </header>
         <main ref={contentRef} id="dashboard-content" className="sl-main" tabIndex={-1}>
+          {backend.connected && <div className="mg-workspace-banner" role="status"><strong>Preview workspace</strong>You’re signed in. Bookings, payments and other workspace activity are still simulated.</div>}
+          {backend.account && !backend.account.emailVerified && <VerifyEmailNotice />}
           {dashboard.maintenance && <div className="mg-workspace-banner mg-maintenance-banner" role="status"><strong>Maintenance preview</strong>The demo is showing a maintenance notice. You can continue exploring the workspace.</div>}
           {dashboard.announcement && <div className="mg-workspace-banner" role="status"><strong>From the StageLink team · Demo announcement</strong>{dashboard.announcement}</div>}
 {children}</main>

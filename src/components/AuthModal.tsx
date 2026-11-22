@@ -1,4 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useBackendAccount } from '../lib/BackendAccountContext';
+import { ApiError } from '../lib/apiTransport';
+import ConnectedAccountRecovery from './ConnectedAccountRecovery';
 import AccountRecovery from './AccountRecovery';
 import { Icon } from './Icons';
 
@@ -37,6 +40,11 @@ const socialIcons = [
 ];
 
 export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModalProps) {
+  const backend = useBackendAccount();
+  const [error, setError] = useState(''), [status, setStatus] = useState('');
+  const alive = useRef(true);
+  const dialog = useRef<HTMLDivElement>(null);
+  const closeAction = useRef(onClose); closeAction.current = onClose;
   const [recovery, setRecovery] = useState(false);
   const isInitiallySignUp = initialMode.startsWith('register');
   const [rightPanelActive, setRightPanelActive] = useState(isInitiallySignUp);
@@ -56,17 +64,38 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
   );
 
   useEffect(() => {
-    requestAnimationFrame(() => setMounted(true));
-  }, []);
+    alive.current = true;
+    const frame = requestAnimationFrame(() => { setMounted(true); [...dialog.current?.querySelectorAll<HTMLInputElement>('input:not([disabled])') ?? []].find(node => !node.closest('[inert]') && node.getClientRects().length > 0)?.focus(); });
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !recovery) { event.stopPropagation(); closeAction.current(); }
+      if (event.key !== 'Tab' || recovery || !dialog.current) return;
+      const focusable = [...dialog.current.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), [tabindex="0"]')].filter(node => !node.closest('[inert]') && node.getClientRects().length > 0);
+      const first = focusable[0], last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', key);
+    return () => { alive.current = false; cancelAnimationFrame(frame); document.removeEventListener('keydown', key); };
+  }, [recovery]);
 
-  const handleSignIn = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSuccess('customer');
+  const report = (issue: unknown) => issue instanceof ApiError ? issue.message : 'Account access is unavailable. Try again.';
+  const changePanel = (signup: boolean) => { setRightPanelActive(signup); setError(''); setStatus(''); };
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault(); if (backend.busy) return;
+    if (!backend.connected) { onSuccess('customer'); return; }
+    setError(''); setStatus('');
+    try { const account = await backend.signIn(loginEmail.trim(), loginPassword); if (alive.current) setLoginPassword(''); onSuccess(account.activeRole); }
+    catch (issue) { if (alive.current) setError(report(issue)); }
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSuccess(signupRole);
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault(); if (backend.busy) return;
+    if (!backend.connected) { onSuccess(signupRole); return; }
+    setError(''); setStatus('');
+    try {
+      await backend.register({ displayName: signupName.trim(), email: signupEmail.trim(), password: signupPassword, role: signupRole });
+      if (alive.current) { setSignupPassword(''); setLoginEmail(signupEmail.trim()); setRightPanelActive(false); setStatus('If this email is eligible, a verification message will arrive. Sign in to continue.'); }
+    } catch (issue) { if (alive.current) setError(report(issue)); }
   };
 
   /* shared input style */
@@ -114,19 +143,21 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
 
   return (
     <>
-    {recovery && <AccountRecovery initialEmail={loginEmail} onClose={() => setRecovery(false)} />}
+    {recovery && (backend.connected ? <ConnectedAccountRecovery initialEmail={loginEmail} onClose={() => setRecovery(false)} /> : <AccountRecovery initialEmail={loginEmail} onClose={() => setRecovery(false)} />)}
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      ref={dialog} role="dialog" inert={recovery} aria-hidden={recovery || undefined} aria-modal="true" aria-label={rightPanelActive ? 'Create account' : 'Sign in'}
+      className="fixed inset-0 z-50 flex items-center justify-center sl-auth-backdrop"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* ── Main container ── */}
       <div
+        className="sl-auth-dialog"
         style={{
           position: 'relative',
           width: '100%',
           maxWidth: 820,
-          minHeight: 480,
+          minHeight: backend.connected ? 570 : 480,
           margin: '0 16px',
           borderRadius: 16,
           boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(124,58,237,0.15)',
@@ -139,7 +170,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
       >
         {/* Close button */}
         <button
-          onClick={onClose}
+          aria-label="Close account dialog" onClick={onClose}
           style={{
             position: 'absolute', top: 12, right: 12, zIndex: 100,
             background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%',
@@ -154,6 +185,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
 
         {/* ═══════════════ SIGN IN FORM (left side) ═══════════════ */}
         <div
+          className={`sl-auth-panel sl-auth-signin ${rightPanelActive ? 'is-hidden' : ''}`} inert={rightPanelActive} aria-hidden={rightPanelActive}
           style={{
             position: 'absolute',
             top: 0,
@@ -169,7 +201,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
             zIndex: rightPanelActive ? 1 : 5,
           }}
         >
-          <form
+          <form aria-busy={backend.busy}
             onSubmit={handleSignIn}
             style={{
               display: 'flex',
@@ -192,20 +224,21 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
             </h1>
 
             {/* Social icons */}
-            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <div hidden={backend.connected} style={{ display: backend.connected ? 'none' : 'flex', gap: 12, marginBottom: 16 }}>
               {socialIcons.map(s => (
                 <SocialIcon key={s.label} {...s} />
               ))}
             </div>
 
             <span style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
-              or use your account
+              {backend.connected ? 'Use your email and password' : 'or use your account'}
             </span>
 
             <input
               type="email"
               placeholder="Email Address"
               required
+              aria-label="Sign-in email" autoComplete="username" maxLength={200} disabled={backend.busy}
               value={loginEmail}
               onChange={e => setLoginEmail(e.target.value)}
               style={inputStyle}
@@ -216,6 +249,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               type="password"
               placeholder="Password"
               required
+              aria-label="Sign-in password" autoComplete="current-password" maxLength={128} disabled={backend.busy}
               value={loginPassword}
               onChange={e => setLoginPassword(e.target.value)}
               style={inputStyle}
@@ -237,14 +271,19 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               Forgot your password?
             </a>
 
-            <button type="submit" style={solidBtnStyle}>
-              SIGN IN
+            {error && !rightPanelActive && <p className="sl-auth-message is-error" role="alert">{error}</p>}
+            {status && !rightPanelActive && <p className="sl-auth-message" role="status">{status}</p>}
+            {!backend.connected && <p className="sl-auth-mode-note">Demo sign-in · no account is created.</p>}
+            <button type="submit" disabled={backend.busy} style={solidBtnStyle}>
+              {backend.busy ? 'SIGNING IN…' : 'SIGN IN'}
             </button>
+            <button type="button" className="sl-auth-mobile-switch" onClick={() => changePanel(true)}>Create an account</button>
           </form>
         </div>
 
         {/* ═══════════════ SIGN UP FORM (right side) ═══════════════ */}
         <div
+          className={`sl-auth-panel sl-auth-signup ${!rightPanelActive ? 'is-hidden' : ''}`} inert={!rightPanelActive} aria-hidden={!rightPanelActive}
           style={{
             position: 'absolute',
             top: 0,
@@ -260,7 +299,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
             zIndex: rightPanelActive ? 5 : 1,
           }}
         >
-          <form
+          <form aria-busy={backend.busy}
             onSubmit={handleSignUp}
             style={{
               display: 'flex',
@@ -283,19 +322,20 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
             </h1>
 
             {/* Social icons */}
-            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <div hidden={backend.connected} style={{ display: backend.connected ? 'none' : 'flex', gap: 12, marginBottom: 16 }}>
               {socialIcons.map(s => (
                 <SocialIcon key={s.label} {...s} />
               ))}
             </div>
 
             <span style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
-              or use your email for registration
+              {backend.connected ? 'Create your StageLink account' : 'or use your email for registration'}
             </span>
 
             <input
               type="text"
               placeholder="Full Name"
+              aria-label="Full name" autoComplete="name" minLength={2} maxLength={80} required={backend.connected} disabled={backend.busy}
               value={signupName}
               onChange={e => setSignupName(e.target.value)}
               style={inputStyle}
@@ -306,6 +346,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               type="email"
               placeholder="Email Address"
               required
+              aria-label="Registration email" autoComplete="email" maxLength={200} disabled={backend.busy}
               value={signupEmail}
               onChange={e => setSignupEmail(e.target.value)}
               style={inputStyle}
@@ -316,6 +357,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               type="password"
               placeholder="Password"
               required
+              aria-label="Registration password" autoComplete="new-password" minLength={backend.connected ? 12 : undefined} maxLength={128} disabled={backend.busy}
               value={signupPassword}
               onChange={e => setSignupPassword(e.target.value)}
               style={inputStyle}
@@ -333,7 +375,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
                 <button
                   key={r.value}
                   type="button"
-                  onClick={() => setSignupRole(r.value)}
+                  disabled={backend.busy} onClick={() => setSignupRole(r.value)}
                   style={{
                     flex: 1,
                     padding: '7px 0',
@@ -356,14 +398,17 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               ))}
             </div>
 
-            <button type="submit" style={solidBtnStyle}>
-              SIGN UP
+            {backend.connected && <p className="sl-auth-mode-note">Use 12–128 characters for your password.</p>}
+            {error && rightPanelActive && <p className="sl-auth-message is-error" role="alert">{error}</p>}
+            <button type="submit" disabled={backend.busy} style={solidBtnStyle}>
+              {backend.busy ? 'SUBMITTING…' : 'SIGN UP'}
             </button>
+            <button type="button" className="sl-auth-mobile-switch" onClick={() => changePanel(false)}>Already have an account? Sign in</button>
           </form>
         </div>
 
         {/* ═══════════════ SLIDING OVERLAY ═══════════════ */}
-        <div
+        <div className="sl-auth-overlay"
           style={{
             position: 'absolute',
             top: 0,
@@ -443,7 +488,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               </p>
               <button
                 style={ghostBtnStyle}
-                onClick={() => setRightPanelActive(false)}
+                onClick={() => changePanel(false)}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
                   e.currentTarget.style.transform = 'scale(1.03)';
@@ -494,7 +539,7 @@ export default function AuthModal({ initialMode, onClose, onSuccess }: AuthModal
               </p>
               <button
                 style={ghostBtnStyle}
-                onClick={() => setRightPanelActive(true)}
+                onClick={() => changePanel(true)}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
                   e.currentTarget.style.transform = 'scale(1.03)';
