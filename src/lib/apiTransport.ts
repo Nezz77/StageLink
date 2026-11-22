@@ -8,7 +8,9 @@ export function parseApiOrigin(raw: string | undefined) {
   } catch { return null; }
 }
 
-export const configuredApiOrigin = parseApiOrigin(import.meta.env?.VITE_STAGELINK_API_ORIGIN);
+const requestedOrigin = import.meta.env?.VITE_STAGELINK_API_ORIGIN;
+export const apiConnectionRequested = typeof requestedOrigin === 'string' && requestedOrigin.length > 0;
+export const configuredApiOrigin = parseApiOrigin(requestedOrigin);
 
 export class ApiError extends Error {
   readonly status: number;

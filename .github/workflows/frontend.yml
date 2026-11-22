@@ -3,7 +3,7 @@ on:
   push:
     branches: [frontend]
   pull_request:
-    branches: [frontend]
+    branches: [frontend, 'integration/**']
   workflow_dispatch:
 permissions:
   contents: read

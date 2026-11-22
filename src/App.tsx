@@ -1,3 +1,5 @@
+import { useBackendAccount } from './lib/BackendAccountContext';
+import type { AccountRole } from './lib/apiSession';
 import type { PackageChoice } from './lib/gigPackages';
 import { useState, useEffect, useCallback } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
@@ -36,14 +38,16 @@ const roleConfig: Record<Role, { label: string; color: string; badgeClass: strin
   admin: { label: 'Administrator', color: '#fb7185', badgeClass: 'badge-rose' },
 };
 
-function RoleSwitcher({ currentRole, onSwitch, inline = false }: { currentRole: Role; onSwitch: (r: Role) => void; inline?: boolean }) {
+function RoleSwitcher({ currentRole, onSwitch, inline = false, onSignIn }: { currentRole: Role; onSwitch: (r: Role) => void; inline?: boolean; onSignIn?: () => void }) {
   const [open, setOpen] = useState(false);
-  const roles: Role[] = ['visitor', 'customer', 'artist', 'renter', 'admin'];
+  const backend = useBackendAccount();
+  const roles: Role[] = backend.connected ? backend.account?.roles ?? [] : ['visitor', 'customer', 'artist', 'renter', 'admin'];
+  if (backend.connected && !backend.account) return <div className="fixed bottom-6 right-6 z-50"><button type="button" className="btn-primary" disabled={backend.checking || backend.busy} onClick={onSignIn}>{backend.checking ? 'Checking account…' : 'Sign in'}</button></div>;
   return (
     <div className={inline ? 'relative z-50 sl-inline-role' : `fixed bottom-6 right-6 z-50 ${currentRole !== 'visitor' ? 'sl-app-controls' : ''}`}>
       {open && (
         <div className={`card p-2 w-52 animate-slide-up ${inline ? 'absolute right-0 top-full mt-3' : 'mb-3'}`}>
-          <div className="text-xs text-slate-500 font-medium px-2 py-1 mb-1">Switch Role (Demo)</div>
+          <div className="text-xs text-slate-500 font-medium px-2 py-1 mb-1">{backend.connected ? backend.account?.displayName : 'Switch Role (Demo)'}</div>
           {roles.map(r => (
             <button
               key={r}
@@ -54,9 +58,11 @@ function RoleSwitcher({ currentRole, onSwitch, inline = false }: { currentRole: 
               {currentRole === r && <span className="ml-2 text-xs text-violet-500">● active</span>}
             </button>
           ))}
+          {backend.connected && <button type="button" disabled={backend.busy} className="w-full text-left px-3 py-2 text-sm text-rose-300" onClick={() => { setOpen(false); void backend.signOut().catch(() => {}); }}>Sign out</button>}
         </div>
       )}
       <button
+        type="button" disabled={backend.busy || backend.checking} aria-expanded={open} aria-label={backend.connected ? 'Account roles and sign out' : 'Switch demo role'}
         onClick={() => setOpen(!open)}
         className="btn-primary flex items-center gap-2 shadow-2xl glow-violet"
         style={{ borderRadius: 12 }}
@@ -72,7 +78,9 @@ function RoleSwitcher({ currentRole, onSwitch, inline = false }: { currentRole: 
 export default function App() {
   const [session, setSession] = useState(0);
   useEffect(() => { const reset = () => { setSession(value => value + 1); setView('main'); setPendingMarket(null); setAdminTarget(undefined); setCustomerPrompt(false); }; window.addEventListener('stagelink:reset-demo', reset); return () => window.removeEventListener('stagelink:reset-demo', reset); }, []);
-  const [role, setRole] = useState<Role>('visitor');
+  const backend = useBackendAccount();
+  const [demoRole, setDemoRole] = useState<Role>('visitor');
+  const role: Role = backend.connected ? backend.account?.activeRole ?? 'visitor' : demoRole;
   const [view, setView] = useState<View>('main');
   const [adminTarget, setAdminTarget] = useState<{ id: string; key: number } | undefined>();
   const [bookingTab, setBookingTab] = useState<'chat' | 'checkout'>('chat');
@@ -148,21 +156,35 @@ export default function App() {
   }, []);
 
   const handleLogin = (r: string) => {
-    setRole(r as Role);
+    if (!backend.connected) setDemoRole(r as Role);
     setAuthMode(null);
     setView('main');
   };
 
   const handleRoleSwitch = (r: Role) => {
-    requestDashboardNavigation(() => { setRole(r); setView('main'); });
+    requestDashboardNavigation(() => {
+      if (backend.connected) {
+        if (r === 'visitor') { void backend.signOut().catch(() => {}); return; }
+        void backend.changeRole(r as AccountRole).then(() => setView('main')).catch(() => {});
+      } else { setDemoRole(r); setView('main'); }
+    });
   };
+
+  useEffect(() => {
+    if (!backend.connected) return;
+    setSession(value => value + 1); setView('main'); setAdminTarget(undefined); setCustomerPrompt(false);
+    if (backend.account) setAuthMode(null); else setPendingMarket(null);
+  }, [backend.connected, backend.account?.id]);
+  const control = (inline = false) => <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline={inline} onSignIn={() => { setView('landing'); setAuthMode('login'); }} />;
+  const canSwitchCustomer = !backend.connected || backend.account?.roles.includes('customer');
 
   return (
     <AppearanceProvider isDark={isDark} onThemeChange={handleThemeChange}>
-    <DashboardProvider key={session} actor={role}>
+    <DashboardProvider key={`${backend.account?.id ?? 'preview'}:${session}`} actor={role}>
       <BookingProvider actor={role}>
       <MarketplaceBridge actor={role} pending={pendingMarket} onDone={marketDone} onBook={marketBook} onChat={marketChat} onNeedCustomer={intent => { setPendingMarket(intent); if (role === 'visitor') setAuthMode('login'); else setCustomerPrompt(true); }} />
-      {customerPrompt && <ConfirmDialog title="Continue as the demo customer?" confirm="Use customer demo" onClose={() => { setCustomerPrompt(false); setPendingMarket(null); }} onConfirm={() => { setCustomerPrompt(false); setRole('customer'); }}>Bookings and enquiries are created by customers. Your provider changes stay in this session.</ConfirmDialog>}
+      {customerPrompt && <ConfirmDialog title={backend.connected ? canSwitchCustomer ? 'Switch to your customer role?' : 'Customer access required' : 'Continue as the demo customer?'} confirm={canSwitchCustomer ? backend.connected ? 'Switch to customer' : 'Use customer demo' : 'Close'} onClose={() => { setCustomerPrompt(false); setPendingMarket(null); }} onConfirm={() => { setCustomerPrompt(false); if (canSwitchCustomer) handleRoleSwitch('customer'); else setPendingMarket(null); }}>{canSwitchCustomer ? 'Bookings and enquiries use your customer role.' : 'This account does not include customer access. Sign in with an account that has customer membership to book.'}</ConfirmDialog>}
+      {backend.error && <div className="sl-account-error" role="alert"><span>{backend.error}</span><button type="button" onClick={backend.retry} disabled={backend.busy || backend.checking}>Try again</button><button type="button" aria-label="Dismiss account notice" onClick={backend.dismiss}>×</button></div>}
       <LayoutGroup id="stagelink-brand">
         <AnimatePresence>
           {!isLoaded && <SplashScreen key="splash" onComplete={handleSplashComplete} />}
@@ -172,7 +194,7 @@ export default function App() {
           <div className={`theme-root min-h-screen transition-colors duration-500 ease-in-out ${view === 'booking' ? 'sl-chat-open' : ''}`} style={{ background: 'var(--color-bg)' }}>
             {/* Booking Chat accessible to customer/artist */}
             {view === 'workspace' && ['customer', 'artist', 'renter'].includes(role) ? (
-              <BookingWorkspace roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} key={workspace.key} initialSection={workspace.section} initialBookingId={workspace.id} initialServiceId={workspace.serviceId} initialPackageChoice={workspace.packageChoice} initialInquiryId={workspace.inquiryId} onBack={() => setView('main')} onGoToLanding={() => setView('landing')} />
+              <BookingWorkspace roleControl={control(true)} key={workspace.key} initialSection={workspace.section} initialBookingId={workspace.id} initialServiceId={workspace.serviceId} initialPackageChoice={workspace.packageChoice} initialInquiryId={workspace.inquiryId} onBack={() => setView('main')} onGoToLanding={() => setView('landing')} />
             ) : (role === 'customer' || role === 'artist') && view === 'booking' ? (
               <BookingChat initialTab={bookingTab} onBack={() => setView('main')} />
             ) : role === 'visitor' || view === 'landing' ? (
@@ -193,16 +215,16 @@ export default function App() {
                 )}
               </>
             ) : role === 'customer' ? (
-              <CustomerDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onOpenBooking={() => openWorkspace('bookings')} onOpenPayments={() => openWorkspace('payments')} onOpenChat={() => openWorkspace('chat')} onGoToLanding={() => setView('landing')} />
+              <CustomerDashboard roleControl={control(true)} onOpenBooking={() => openWorkspace('bookings')} onOpenPayments={() => openWorkspace('payments')} onOpenChat={() => openWorkspace('chat')} onGoToLanding={() => setView('landing')} />
             ) : role === 'artist' ? (
-              <ArtistDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
+              <ArtistDashboard roleControl={control(true)} onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : role === 'renter' ? (
-              <RenterDashboard roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
+              <RenterDashboard roleControl={control(true)} onOpenWorkspace={openWorkspace} onGoToLanding={() => setView('landing')} />
             ) : (
-              <AdminDashboard paymentTarget={adminTarget} roleControl={<RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} inline />} onGoToLanding={() => setView('landing')} />
+              <AdminDashboard paymentTarget={adminTarget} roleControl={control(true)} onGoToLanding={() => setView('landing')} />
             )}
 
-            {(role === 'visitor' || view === 'landing' || view === 'booking') && <RoleSwitcher currentRole={role} onSwitch={handleRoleSwitch} />}
+            {!authMode && !customerPrompt && (role === 'visitor' || view === 'landing' || view === 'booking') && control()}
           </div>
         )}
       </LayoutGroup>
