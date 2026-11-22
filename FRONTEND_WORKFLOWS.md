@@ -4,9 +4,11 @@
 
 Set `VITE_STAGELINK_API_ORIGIN` before building to add the **SMS preferences** link in the marketplace footer and member profile. Compose passes the same variable as a frontend build argument. Use the API's HTTPS origin on staging or a loopback origin for local testing. Configure the backend's `WEB_ORIGIN` for the deployed frontend and serve both origins on the same site.
 
-The `/account/sms-preferences` page signs in to the real StageLink account for this workflow. It keeps the access and CSRF tokens in memory, reads the masked contact and submits the account's off-only SMS action. Members can stop booking texts, promotional texts, or both. Sign-out revokes the session. The backend controls access and records the consent change, including during read-only maintenance.
+The `/account/sms-preferences` page signs in to the real StageLink account. It keeps the access and CSRF tokens in memory and shows the last four digits of verified and pending numbers. A member with a verified email can request a code for a new or replacement Sri Lankan mobile number, view its delivery status and confirm the code. Confirming a number resets both text preferences. Members can then opt into booking or promotional texts separately.
 
-Figma handoff is pending. The footer and member profile need the SMS preferences entry point. The account flow needs the signed-out, loading, masked contact, successful opt-out, expired session and API error states.
+Members can stop booking texts, promotional texts, or both, and can remove the contact or cancel pending verification. Opt-out and removal remain available during read-only maintenance. If the server detects a settings change since the page loaded, the page refreshes the contact for review. Sign-out revokes the session.
+
+Figma handoff is pending for the footer and member profile link and for the SMS account screens. Include the signed-out, loading, masked contact, verification pending and failed, replacement, consent, contact removal, expired session and API error states.
 
 The booking workspace uses the same violet/amber glass styling, dashboard shell, typography and reduced-motion preferences.
 

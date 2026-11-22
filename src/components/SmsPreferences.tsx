@@ -1,5 +1,9 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { createSmsPreferencesApi, SmsApiError, type SmsChannel, type SmsContact, type SmsSession } from '../lib/smsPreferences';
+import ConfirmDialog from './ConfirmDialog';
+import {
+  createSmsPreferencesApi, normalizeSmsNumber, SmsApiError,
+  type SmsChannel, type SmsContact, type SmsSession, type SmsTopic,
+} from '../lib/smsPreferences';
 
 type Notice = { kind: 'status' | 'alert'; message: string };
 
@@ -8,12 +12,33 @@ const stopped: Record<SmsChannel, string> = {
   marketing: 'Promotional texts are off.',
   all: 'Booking and promotional texts are off.',
 };
+const topics = [
+  { id: 'booking', label: 'Booking texts' },
+  { id: 'marketing', label: 'Promotional texts' },
+] as const;
+const deliveryStatus = new Map([
+  ['queued', 'Queued'],
+  ['sending', 'Sending'],
+  ['accepted', 'Sent to SMS provider'],
+  ['delivered', 'Delivered'],
+  ['failed', 'Delivery failed'],
+  ['unknown', 'Delivery unconfirmed'],
+  ['cancelled', 'Cancelled'],
+]);
+const actionErrors: Record<string, string> = {
+  MAINTENANCE_MODE: 'StageLink is temporarily read-only. You can still stop texts or remove your SMS contact.',
+  SMS_DISABLED: 'SMS verification is temporarily unavailable.',
+  SMS_VERIFICATION_REQUIRED: 'Verify your email address and mobile number before enabling texts.',
+  EMAIL_VERIFICATION_REQUIRED: 'Verify your email address before requesting or confirming an SMS code.',
+  SMS_CODE_INVALID: 'That code could not be confirmed. Check the code and delivery status, or request a new code.',
+};
 const field = 'rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 focus-visible:outline-2 focus-visible:outline-violet-400';
 
 export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null }) {
   const [session, setSession] = useState<SmsSession | null>(null);
   const [contact, setContact] = useState<SmsContact | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [confirmRemoval, setConfirmRemoval] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const api = apiOrigin ? createSmsPreferencesApi(apiOrigin) : null;
@@ -26,13 +51,30 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
     try {
       await action();
     } catch (error) {
-      let message = 'StageLink could not complete the request. Try again.';
-      if (error instanceof SmsApiError && error.status === 401) {
-        setSession(null);
+      let failure = error;
+      if (failure instanceof SmsApiError && failure.code === 'SMS_REVISION_CONFLICT' && api && session) {
         setContact(null);
-        message = 'Your sign-in expired. Sign in again to continue.';
+        try {
+          setContact(await api.contact(session));
+          setNotice({ kind: 'alert', message: 'Your SMS preferences changed. Review the refreshed settings before trying again.' });
+          return;
+        } catch (refreshError) {
+          failure = refreshError;
+        }
       }
-      if (error instanceof SmsApiError && error.status === 429) message = 'Too many requests. Wait a moment and try again.';
+
+      let message = 'StageLink could not complete the request. Try again.';
+      if (failure instanceof SmsApiError) {
+        if (failure.status === 401) {
+          setSession(null);
+          setContact(null);
+          message = 'Your sign-in expired. Sign in again to continue.';
+        } else if (failure.status === 429) {
+          message = 'Too many requests. Wait a moment and try again.';
+        } else {
+          message = actionErrors[failure.code] ?? message;
+        }
+      }
       setNotice({ kind: 'alert', message });
     } finally {
       busyRef.current = false;
@@ -66,6 +108,58 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
   function readPreferences() {
     if (!api || !session) return;
     void perform(async () => setContact(await api.contact(session)));
+  }
+
+  function requestCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!api || !session?.emailVerified || !contact?.enabled || busyRef.current) return;
+    const input = event.currentTarget.elements.namedItem('number') as HTMLInputElement;
+    const number = normalizeSmsNumber(input.value);
+    if (!number) {
+      setNotice({ kind: 'alert', message: 'Enter a Sri Lankan mobile number, such as 07X XXX XXXX or +94 7X XXX XXXX.' });
+      return;
+    }
+    input.value = '';
+    void perform(async () => {
+      const updated = await api.requestCode(session, contact.revision, number);
+      setContact(updated);
+      if (updated.pending) setNotice({ kind: 'status', message: 'Verification code requested.' });
+    });
+  }
+
+  function confirmCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!api || !session?.emailVerified || !contact?.pending || busyRef.current) return;
+    const challengeId = contact.pending.id;
+    const input = event.currentTarget.elements.namedItem('code') as HTMLInputElement;
+    const code = input.value.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setNotice({ kind: 'alert', message: 'Enter the six-digit verification code.' });
+      return;
+    }
+    input.value = '';
+    void perform(async () => {
+      const updated = await api.confirmCode(session, challengeId, code);
+      setContact(updated);
+      if (updated.verified) setNotice({ kind: 'status', message: 'Phone number verified. Choose which texts to receive below.' });
+    });
+  }
+
+  function enable(topic: SmsTopic) {
+    if (!api || !session?.emailVerified || !contact?.verified) return;
+    void perform(async () => {
+      setContact(await api.enable(session, contact, topic));
+      setNotice({ kind: 'status', message: topic === 'booking' ? 'Booking texts are on.' : 'Promotional texts are on.' });
+    });
+  }
+
+  function removeContact() {
+    if (!api || !session || !contact) return;
+    setConfirmRemoval(false);
+    void perform(async () => {
+      setContact(await api.remove(session, contact.revision));
+      setNotice({ kind: 'status', message: 'SMS contact removed and both text preferences turned off.' });
+    });
   }
 
   function stop(channel: SmsChannel) {
@@ -110,17 +204,76 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
               <button className="btn-ghost" type="button" disabled={busy} onClick={signOut}>Sign out</button>
             </div>
             {!contact ? <button className="btn-primary" type="button" disabled={busy} onClick={readPreferences}>{busy ? 'Loading SMS preferences…' : 'Retry loading preferences'}</button> : (
-              <div className="grid gap-4">
-                <p className="text-sm text-slate-300">{contact.verified && contact.last4 ? 'Verified phone ending in ' + contact.last4 : 'No verified SMS contact.'}</p>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div><h2 className="font-semibold">Booking texts</h2><p className="text-sm text-slate-300">{contact.bookingConsent ? 'On' : 'Off'}</p></div>
-                  <button className="btn-ghost" type="button" disabled={busy || !contact.bookingConsent} onClick={() => stop('booking')}>Stop booking texts</button>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div><h2 className="font-semibold">Promotional texts</h2><p className="text-sm text-slate-300">{contact.marketingConsent ? 'On' : 'Off'}</p></div>
-                  <button className="btn-ghost" type="button" disabled={busy || !contact.marketingConsent} onClick={() => stop('marketing')}>Stop promotional texts</button>
-                </div>
-                {contact.bookingConsent && contact.marketingConsent && <button className="btn-primary justify-self-start" type="button" disabled={busy} onClick={() => stop('all')}>Stop both types of texts</button>}
+              <div className="grid gap-5">
+                <section aria-labelledby="sms-contact-title" className="grid gap-4 border-t border-slate-800 pt-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 id="sms-contact-title" className="font-semibold">Mobile number</h2>
+                      <p className="text-sm text-slate-300">{contact.verified && contact.last4 ? 'Verified phone ending in ' + contact.last4 : 'No verified SMS contact.'}</p>
+                    </div>
+                    <button className="btn-ghost" type="button" disabled={busy} onClick={readPreferences}>Refresh status</button>
+                  </div>
+                  {!session.emailVerified && <p className="text-sm text-slate-300">Verify your email, then sign in again to verify a number or enable texts.</p>}
+                  {!contact.enabled && <p className="text-sm text-slate-300">New verification codes are temporarily unavailable.</p>}
+                  {contact.pending && (
+                    <div className="grid gap-3 rounded-xl border border-slate-700 p-4">
+                      <p className="text-sm text-slate-300">
+                        Code for number ending in {contact.pending.last4}. {deliveryStatus.get(contact.pending.status) ?? 'Delivery status unavailable'}.
+                        {' '}Expires at <time dateTime={contact.pending.expiresAt}>{new Date(contact.pending.expiresAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</time>.
+                      </p>
+                      {session.emailVerified && !['failed', 'cancelled'].includes(contact.pending.status) && (
+                        <form key={contact.pending.id} className="grid gap-3" onSubmit={confirmCode}>
+                          <label className="grid gap-2 text-sm">Six-digit code
+                            <input className={field} name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} disabled={busy} required />
+                          </label>
+                          <button className="btn-primary justify-self-start" type="submit" disabled={busy}>Verify number</button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+                  {session.emailVerified && contact.enabled && (
+                    <form className="grid gap-3" onSubmit={requestCode}>
+                      <label className="grid gap-2 text-sm">{contact.verified ? 'Replacement mobile number' : 'Sri Lankan mobile number'}
+                        <input className={field} name="number" type="tel" autoComplete="off" placeholder="07X XXX XXXX" maxLength={24} disabled={busy} required />
+                      </label>
+                      {contact.verified && <p className="text-sm text-slate-300">Confirming a replacement number turns off both text preferences.</p>}
+                      {contact.pending && <p className="text-sm text-slate-300">Requesting a new code cancels the current code.</p>}
+                      <button className="btn-ghost justify-self-start" type="submit" disabled={busy}>{contact.pending ? 'Send a new code' : 'Send verification code'}</button>
+                    </form>
+                  )}
+                  {(contact.verified || contact.pending) && (
+                    <button className="btn-ghost justify-self-start" type="button" disabled={busy} onClick={() => setConfirmRemoval(true)}>
+                      {contact.verified ? 'Remove SMS contact' : 'Cancel verification'}
+                    </button>
+                  )}
+                </section>
+                <section aria-labelledby="sms-consent-title" className="grid gap-4 border-t border-slate-800 pt-5">
+                  <h2 id="sms-consent-title" className="font-semibold">Text preferences</h2>
+                  {topics.map(({ id, label }) => {
+                    const active = id === 'booking' ? contact.bookingConsent : contact.marketingConsent;
+                    const topicLabel = label.toLowerCase();
+                    return <div key={id} className="flex flex-wrap items-center justify-between gap-3">
+                      <div><h3 className="font-medium">{label}</h3><p className="text-sm text-slate-300">{active ? 'On' : 'Off'}</p></div>
+                      {active ? (
+                        <button className="btn-ghost" type="button" disabled={busy} onClick={() => stop(id)}>Stop {topicLabel}</button>
+                      ) : (
+                        <button className="btn-ghost" type="button" disabled={busy || !session.emailVerified || !contact.verified} onClick={() => enable(id)}>Enable {topicLabel}</button>
+                      )}
+                    </div>;
+                  })}
+                  {!contact.verified && session.emailVerified && <p className="text-sm text-slate-300">Verify your mobile number to enable texts.</p>}
+                  {contact.bookingConsent && contact.marketingConsent && <button className="btn-primary justify-self-start" type="button" disabled={busy} onClick={() => stop('all')}>Stop both types of texts</button>}
+                </section>
+                {confirmRemoval && (
+                  <ConfirmDialog
+                    title={contact.verified ? 'Remove your SMS contact?' : 'Cancel this verification?'}
+                    confirm={contact.verified ? 'Remove contact' : 'Cancel verification'}
+                    onClose={() => setConfirmRemoval(false)}
+                    onConfirm={removeContact}
+                  >
+                    {contact.verified ? 'This removes your verified number, turns off both text preferences and cancels any pending code.' : 'The verification code will expire immediately.'}
+                  </ConfirmDialog>
+                )}
               </div>
             )}
           </>

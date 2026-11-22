@@ -32,7 +32,7 @@ export function apiObject(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export function createApiTransport(rawOrigin: string, send: typeof fetch = fetch) {
+export function createApiTransport(rawOrigin: string, send: typeof fetch = fetch, credentials: 'include' | 'omit' = 'include') {
   const origin = parseApiOrigin(rawOrigin);
   if (!origin) throw new Error('Configure an HTTPS StageLink API origin, or a loopback development origin.');
   return {
@@ -53,7 +53,7 @@ export function createApiTransport(rawOrigin: string, send: typeof fetch = fetch
       let response: Response;
       try {
         response = await send(url, {
-          method, headers, credentials: 'include', redirect: 'error', cache: 'no-store',
+          method, headers, credentials, redirect: 'error', cache: 'no-store',
           signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000),
           ...(writes ? { body: JSON.stringify(options.body ?? {}) } : {}),
         });
