@@ -93,3 +93,31 @@ test('SMS enrollment uses revisioned mutations and preserves the other text pref
   assert.deepEqual(await api.remove(session, enabled.revision), removed);
   assert.equal(replies.length, 0);
 });
+
+test('SMS history reads masked verification and reminder records for the signed-in member', async () => {
+  const id = 'cc570238-c517-41c0-9b6b-3bbd456fe108';
+  const time = '2026-11-22T08:10:00.000Z';
+  const verification = { id, status: 'delivered', last4: '4567', createdAt: time, confirmedAt: null };
+  const reminder = { id, status: 'queued', startsAt: time, dueAt: '2026-11-22T06:10:00.000Z', offsetHours: 2 };
+  const responses = new Map([
+    ['/api/v1/me/sms-verifications', { items: [{ ...verification, lastCode: 'INTERNAL_PROVIDER_STATE', number: '+94771234567' }] }],
+    ['/api/v1/me/booking-sms-reminders', { items: [{ ...reminder, bookingId: id, checkedAt: null }] }],
+  ]);
+  const api = createSmsPreferencesApi(origin, async (url, init) => {
+    const headers = new Headers(init.headers);
+    assert.equal(init.method, 'GET');
+    assert.equal(init.credentials, 'omit');
+    assert.equal(headers.get('Authorization'), 'Bearer ' + session.accessToken);
+    assert.equal(headers.get('X-CSRF-Token'), null);
+    assert.equal(init.body, undefined);
+    assert.ok(responses.has(url.pathname));
+    return Response.json(responses.get(url.pathname));
+  });
+
+  assert.deepEqual(await api.history(session), { verifications: [verification], reminders: [reminder] });
+  responses.set('/api/v1/me/sms-verifications', { items: [{ ...verification, last4: '+94771234567' }] });
+  await assert.rejects(api.history(session), /Unexpected SMS verification history/);
+  responses.set('/api/v1/me/sms-verifications', { items: [] });
+  responses.set('/api/v1/me/booking-sms-reminders', { items: [] });
+  assert.deepEqual(await api.history(session), { verifications: [], reminders: [] });
+});

@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import {
   createSmsPreferencesApi, normalizeSmsNumber, SmsApiError,
-  type SmsChannel, type SmsContact, type SmsSession, type SmsTopic,
+  type SmsChannel, type SmsContact, type SmsHistory, type SmsSession, type SmsTopic,
 } from '../lib/smsPreferences';
 
 type Notice = { kind: 'status' | 'alert'; message: string };
@@ -25,6 +25,56 @@ const deliveryStatus = new Map([
   ['unknown', 'Delivery unconfirmed'],
   ['cancelled', 'Cancelled'],
 ]);
+function formatDeliveryStatus(status: string) {
+  return deliveryStatus.get(status) ?? 'Delivery status unavailable';
+}
+
+const smsDateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+function SmsDate({ value }: { value: string }) {
+  return <time dateTime={value}>{smsDateFormat.format(new Date(value))}</time>;
+}
+
+function DeliveryHistory({ history }: { history: SmsHistory }) {
+  return <>
+    <p className="text-sm text-slate-300">Up to 20 recent entries per category. Times are shown in your local time.</p>
+    <div className="grid gap-2">
+      <h3 className="font-medium">Verification codes</h3>
+      {history.verifications.length === 0 ? <p className="text-sm text-slate-300">No verification messages yet.</p> : (
+        <ul className="grid gap-2">
+          {history.verifications.map(item => (
+            <li key={item.id} className="rounded-xl border border-slate-700 p-3 text-sm">
+              <div className="flex flex-wrap justify-between gap-2">
+                <span className="font-medium">Number ending in {item.last4}</span>
+                <span>{formatDeliveryStatus(item.status)}</span>
+              </div>
+              <p className="mt-1 text-slate-300">Requested <SmsDate value={item.createdAt} /></p>
+              {item.confirmedAt && <p className="text-slate-300">Verified <SmsDate value={item.confirmedAt} /></p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+    <div className="grid gap-2">
+      <h3 className="font-medium">Booking reminders</h3>
+      {history.reminders.length === 0 ? <p className="text-sm text-slate-300">No booking reminder texts yet.</p> : (
+        <ul className="grid gap-2">
+          {history.reminders.map(item => (
+            <li key={item.id} className="rounded-xl border border-slate-700 p-3 text-sm">
+              <div className="flex flex-wrap justify-between gap-2">
+                <span className="font-medium">{item.offsetHours}-hour reminder</span>
+                <span>{formatDeliveryStatus(item.status)}</span>
+              </div>
+              <p className="mt-1 text-slate-300">Scheduled for <SmsDate value={item.dueAt} /></p>
+              <p className="text-slate-300">Booking starts <SmsDate value={item.startsAt} /></p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </>;
+}
+
 const actionErrors: Record<string, string> = {
   MAINTENANCE_MODE: 'StageLink is temporarily read-only. You can still stop texts or remove your SMS contact.',
   SMS_DISABLED: 'SMS verification is temporarily unavailable.',
@@ -37,6 +87,7 @@ const field = 'rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sl
 export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null }) {
   const [session, setSession] = useState<SmsSession | null>(null);
   const [contact, setContact] = useState<SmsContact | null>(null);
+  const [history, setHistory] = useState<SmsHistory | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirmRemoval, setConfirmRemoval] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,6 +119,7 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
         if (failure.status === 401) {
           setSession(null);
           setContact(null);
+          setHistory(null);
           message = 'Your sign-in expired. Sign in again to continue.';
         } else if (failure.status === 429) {
           message = 'Too many requests. Wait a moment and try again.';
@@ -108,6 +160,14 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
   function readPreferences() {
     if (!api || !session) return;
     void perform(async () => setContact(await api.contact(session)));
+  }
+
+  function readHistory() {
+    if (!api || !session) return;
+    void perform(async () => {
+      setHistory(await api.history(session));
+      setNotice({ kind: 'status', message: 'SMS delivery history loaded.' });
+    });
   }
 
   function requestCode(event: FormEvent<HTMLFormElement>) {
@@ -176,6 +236,7 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
       await api.signOut(session);
       setSession(null);
       setContact(null);
+      setHistory(null);
       setNotice({ kind: 'status', message: 'Signed out of SMS preferences.' });
     });
   }
@@ -218,7 +279,7 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
                   {contact.pending && (
                     <div className="grid gap-3 rounded-xl border border-slate-700 p-4">
                       <p className="text-sm text-slate-300">
-                        Code for number ending in {contact.pending.last4}. {deliveryStatus.get(contact.pending.status) ?? 'Delivery status unavailable'}.
+                        Code for number ending in {contact.pending.last4}. {formatDeliveryStatus(contact.pending.status)}.
                         {' '}Expires at <time dateTime={contact.pending.expiresAt}>{new Date(contact.pending.expiresAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</time>.
                       </p>
                       {session.emailVerified && !['failed', 'cancelled'].includes(contact.pending.status) && (
@@ -263,6 +324,13 @@ export default function SmsPreferences({ apiOrigin }: { apiOrigin: string | null
                   })}
                   {!contact.verified && session.emailVerified && <p className="text-sm text-slate-300">Verify your mobile number to enable texts.</p>}
                   {contact.bookingConsent && contact.marketingConsent && <button className="btn-primary justify-self-start" type="button" disabled={busy} onClick={() => stop('all')}>Stop both types of texts</button>}
+                </section>
+                <section aria-labelledby="sms-history-title" className="grid gap-4 border-t border-slate-800 pt-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 id="sms-history-title" className="font-semibold">SMS delivery history</h2>
+                    <button className="btn-ghost" type="button" disabled={busy} onClick={readHistory}>{history ? 'Refresh history' : 'Load history'}</button>
+                  </div>
+                  {history && <DeliveryHistory history={history} />}
                 </section>
                 {confirmRemoval && (
                   <ConfirmDialog
