@@ -1,5 +1,6 @@
 import { ApiError, apiObject, configuredApiOrigin, createApiTransport, type ApiRequest } from './apiTransport.ts';
 import { parseMemberProfile, memberProfileBody, type MemberProfileInput } from './memberProfile.ts';
+import { parseProviderProfile, type ProviderInput, type ProviderKind } from './providerProfile.ts';
 
 export type AccountRole = 'customer' | 'artist' | 'renter' | 'admin';
 export type ApiAccount = {
@@ -129,6 +130,19 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
       return parseMemberProfile(await authenticated('me/profile', {
         method: 'PUT', body: memberProfileBody(input), signal,
       }));
+    },
+    async providerProfile(kind: ProviderKind, signal?: AbortSignal) {
+      return parseProviderProfile(await authenticated(`me/providers/${kind}`, { signal }), kind);
+    },
+    async saveProviderProfile(kind: ProviderKind, input: ProviderInput, signal?: AbortSignal) {
+      return parseProviderProfile(await authenticated(`me/providers/${kind}`, {
+        method: 'PUT', body: input, signal,
+      }), kind);
+    },
+    async submitProviderProfile(kind: ProviderKind, revision: number, signal?: AbortSignal) {
+      return parseProviderProfile(await authenticated(`me/providers/${kind}/submit`, {
+        method: 'POST', body: { revision }, signal,
+      }), kind);
     },
     async signOut() {
       const previous = current ? copy(current) : null;

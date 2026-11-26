@@ -6,9 +6,11 @@ import { useDashboard } from '../lib/DashboardContext';
 import { draftKey, profileErrors, type MemberRole, type Profile } from '../lib/dashboard';
 import { configuredSmsApiOrigin, smsPreferencesPath } from '../lib/smsPreferences';
 import { DashboardIntro } from './DashboardShell';
-import { Badge, Notice, Panel, useDraftGuard } from './DashboardUI';
+import { Badge, Notice, Panel, requestDashboardNavigation, useDraftGuard } from './DashboardUI';
 import { useBackendAccount } from '../lib/BackendAccountContext';
 import ConnectedMemberProfile from './ConnectedMemberProfile';
+import ConnectedProviderProfile from './ConnectedProviderProfile';
+import type { ApiAccount } from '../lib/apiSession';
 
 function DemoMemberProfile() {
   const { actor } = useBooking();
@@ -49,5 +51,22 @@ export default function MemberProfile() {
   const { connected, account } = useBackendAccount();
   if (!connected) return <DemoMemberProfile />;
   if (!account) return <Notice error>Sign in to load your profile.</Notice>;
-  return <ConnectedMemberProfile key={account.id} account={account} />;
+  return <ConnectedProfileTabs key={`${account.id}:${account.activeRole}`} account={account} />;
+}
+
+function ConnectedProfileTabs({ account }: { account: ApiAccount }) {
+  const [section, setSection] = useState<'contact' | 'provider'>('contact');
+  const kind = account.activeRole === 'artist' || account.activeRole === 'renter' ? account.activeRole : null;
+  if (!kind) return <ConnectedMemberProfile account={account} />;
+  return <>
+    <nav className="mg-actions mb-5" aria-label="Profile sections">
+      <button className={section === 'contact' ? 'btn-primary' : 'btn-ghost'} type="button" aria-current={section === 'contact' ? 'page' : undefined} onClick={() => {
+        if (section !== 'contact') requestDashboardNavigation(() => setSection('contact'));
+      }}>Private contact details</button>
+      <button className={section === 'provider' ? 'btn-primary' : 'btn-ghost'} type="button" aria-current={section === 'provider' ? 'page' : undefined} onClick={() => {
+        if (section !== 'provider') requestDashboardNavigation(() => setSection('provider'));
+      }}>{kind === 'artist' ? 'Artist profile' : 'Equipment provider profile'}</button>
+    </nav>
+    {section === 'contact' ? <ConnectedMemberProfile account={account} /> : <ConnectedProviderProfile kind={kind} account={account} />}
+  </>;
 }
