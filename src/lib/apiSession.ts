@@ -1,4 +1,5 @@
 import { ApiError, apiObject, configuredApiOrigin, createApiTransport, type ApiRequest } from './apiTransport.ts';
+import { parseMemberProfile, memberProfileBody, type MemberProfileInput } from './memberProfile.ts';
 
 export type AccountRole = 'customer' | 'artist' | 'renter' | 'admin';
 export type ApiAccount = {
@@ -121,6 +122,14 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     },
     restoreSession: () => current ? Promise.resolve(copy(current)) : refreshSession(),
     refreshSession,
+    async memberProfile(signal?: AbortSignal) {
+      return parseMemberProfile(await authenticated('me/profile', { signal }));
+    },
+    async saveMemberProfile(input: MemberProfileInput, signal?: AbortSignal) {
+      return parseMemberProfile(await authenticated('me/profile', {
+        method: 'PUT', body: memberProfileBody(input), signal,
+      }));
+    },
     async signOut() {
       const previous = current ? copy(current) : null;
       clear(); announceChange('signed-out');

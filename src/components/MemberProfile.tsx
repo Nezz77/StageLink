@@ -7,8 +7,10 @@ import { draftKey, profileErrors, type MemberRole, type Profile } from '../lib/d
 import { configuredSmsApiOrigin, smsPreferencesPath } from '../lib/smsPreferences';
 import { DashboardIntro } from './DashboardShell';
 import { Badge, Notice, Panel, useDraftGuard } from './DashboardUI';
+import { useBackendAccount } from '../lib/BackendAccountContext';
+import ConnectedMemberProfile from './ConnectedMemberProfile';
 
-export default function MemberProfile() {
+function DemoMemberProfile() {
   const { actor } = useBooking();
   const { state, dispatch } = useDashboard();
   const role = actor as MemberRole;
@@ -41,4 +43,11 @@ export default function MemberProfile() {
     </Panel>}
     {guard}
   </div>;
+}
+
+export default function MemberProfile() {
+  const { connected, account } = useBackendAccount();
+  if (!connected) return <DemoMemberProfile />;
+  if (!account) return <Notice error>Sign in to load your profile.</Notice>;
+  return <ConnectedMemberProfile key={account.id} account={account} />;
 }
