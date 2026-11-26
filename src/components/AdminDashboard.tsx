@@ -1,17 +1,20 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, CreditCard, Cpu, BrainCircuit, MessageCircle, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { BarChart3, CreditCard, Cpu, BrainCircuit, MessageCircle, ShieldCheck, TriangleAlert, UsersRound } from 'lucide-react';
 import DashboardShell from './DashboardShell';
 import AdminPayments from './AdminPayments';
 import AdminAIEngine from './AdminAIEngine';
 import AdminAnalytics from './AdminAnalytics';
 import AdminReviewDesk from './AdminReviewDesk';
+import ProviderProfileReview from './ProviderProfileReview';
 import SystemControls from './SystemControls';
 import { requestDashboardNavigation } from './DashboardUI';
 import { useDashboard } from '../lib/DashboardContext';
 import { terminalCase } from '../lib/dashboard';
+import { useBackendAccount } from '../lib/BackendAccountContext';
 
 export default function AdminDashboard({ onGoToLanding, roleControl, paymentTarget }: { paymentTarget?: { id: string; key: number }; onGoToLanding?: () => void; roleControl?: ReactNode }) {
   const { state } = useDashboard();
+  const { account } = useBackendAccount();
   const [activeTab, setActiveTab] = useState(paymentTarget ? 'payments' : 'analytics');
   const [paymentId, setPaymentId] = useState(paymentTarget?.id);
   useEffect(() => { if (paymentTarget) { setPaymentId(paymentTarget.id); setActiveTab('payments'); } }, [paymentTarget]);
@@ -21,6 +24,7 @@ export default function AdminDashboard({ onGoToLanding, roleControl, paymentTarg
   const nav = [
     { id: 'payments', icon: CreditCard, label: 'Payments' }, { id: 'analytics', icon: BarChart3, label: 'Analytics' },
     { id: 'verification', icon: ShieldCheck, label: 'Verification', count: pending('verification') },
+    ...(account?.activeRole === 'admin' ? [{ id: 'provider-reviews', icon: UsersRound, label: 'Provider profiles' }] : []),
     { id: 'disputes', icon: TriangleAlert, label: 'Disputes', count: pending('disputes') },
     { id: 'ai-engine', icon: BrainCircuit, label: 'AI Engine' }, { id: 'system', icon: Cpu, label: 'System' }, { id: 'support', icon: MessageCircle, label: 'Support', count: pending('support') },
   ];
@@ -30,5 +34,6 @@ export default function AdminDashboard({ onGoToLanding, roleControl, paymentTarg
     {(activeTab === 'verification' || activeTab === 'disputes' || activeTab === 'support') && <AdminReviewDesk key={activeTab} kind={activeTab} onPayment={openPayment} />}
     {activeTab === 'ai-engine' && <AdminAIEngine />}
     {activeTab === 'system' && <SystemControls />}
+    {activeTab === 'provider-reviews' && account?.activeRole === 'admin' && <ProviderProfileReview account={account} />}
   </DashboardShell>;
 }
