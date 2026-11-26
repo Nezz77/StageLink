@@ -1,6 +1,7 @@
 import { ApiError, apiObject, configuredApiOrigin, createApiTransport, type ApiRequest } from './apiTransport.ts';
 import { parseMemberProfile, memberProfileBody, type MemberProfileInput } from './memberProfile.ts';
 import { parseProviderProfile, parseProviderSubmissions, type ProviderInput, type ProviderKind } from './providerProfile.ts';
+import { parsePayoutDestination, type PayoutDestinationInput } from './payoutDestination.ts';
 
 export type AccountRole = 'customer' | 'artist' | 'renter' | 'admin';
 export type ApiAccount = {
@@ -146,6 +147,12 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     },
     async pendingProviderProfiles(signal?: AbortSignal) {
       return parseProviderSubmissions(await authenticated('admin/onboarding', { signal }));
+    },
+    async payoutDestination(signal?: AbortSignal) {
+      return parsePayoutDestination(await authenticated('me/payout-destination', { signal }));
+    },
+    async savePayoutDestination(input: PayoutDestinationInput, signal?: AbortSignal) {
+      return parsePayoutDestination(await authenticated('me/payout-destination', { method: 'PUT', body: input, signal }));
     },
     async reviewProviderProfile(userId: string, kind: ProviderKind, decision: { revision: number; approved: boolean; reason: string }, signal?: AbortSignal) {
       const { message } = apiObject(await authenticated(`admin/providers/${userId}/${kind}/decision`, {

@@ -7,7 +7,17 @@ import { draftKey } from '../lib/dashboard';
 import { DashboardIntro } from './DashboardShell';
 import ConfirmDialog from './ConfirmDialog';
 import { Badge, Notice, Panel, useDraftGuard } from './DashboardUI';
+import { useBackendAccount } from '../lib/BackendAccountContext';
+import ConnectedPayoutDestination from './ConnectedPayoutDestination';
+
 export default function PayoutAccount() {
+ const {connected,account}=useBackendAccount();
+ if(!connected)return <DemoPayoutAccount />;
+ if(!account)return <Notice error>Sign in to manage your payout destination.</Notice>;
+ return <ConnectedPayoutDestination key={account.id} emailVerified={account.emailVerified} />;
+}
+
+function DemoPayoutAccount() {
  const {actor}=useBooking();const role=actor as ProviderRole;const {state,dispatch}=useDashboard();
  const account=state.payoutAccounts[role],draft=state.drafts[draftKey(role,'bank')];
  const [form,setForm]=useState(()=>({...account,...draft})),[dirty,setDirty]=useState(false),[confirm,setConfirm]=useState(false),[notice,setNotice]=useState(draft?'Saved account draft restored.':''),[errors,setErrors]=useState<Partial<Record<keyof BankAccount,string>>>({});
