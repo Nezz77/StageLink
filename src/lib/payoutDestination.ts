@@ -14,6 +14,8 @@ export type PayoutDestination = Pick<PayoutDestinationInput, 'holder' | 'bank' |
   reviewReason: string | null;
   updatedAt: string;
 };
+export type PayoutSubmission = PayoutDestination & { userId: string; displayName: string; kind: 'payout' };
+const invalidDestination = () => new ApiError(0, 'INVALID_API_RESPONSE', 'StageLink returned an unexpected payout destination.');
 
 export function parsePayoutDestination(value: unknown): PayoutDestination | null {
   const { destination } = apiObject(value);
@@ -26,7 +28,21 @@ export function parsePayoutDestination(value: unknown): PayoutDestination | null
       (status !== 'pending' && status !== 'approved' && status !== 'rejected') ||
       (reviewReason !== null && (typeof reviewReason !== 'string' || reviewReason.length > 2000)) ||
       typeof updatedAt !== 'string' || !Number.isFinite(Date.parse(updatedAt))) {
-    throw new ApiError(0, 'INVALID_API_RESPONSE', 'StageLink returned an unexpected payout destination.');
+    throw invalidDestination();
   }
   return { holder, bank, branch, revision, accountLast4, status, reviewReason, updatedAt };
+}
+
+export function parsePayoutSubmissions(value: unknown): PayoutSubmission[] {
+  const { payouts } = apiObject(value);
+  if (!Array.isArray(payouts) || payouts.length > 25) throw invalidDestination();
+  return payouts.map(value => {
+    const { userId, displayName, destination } = apiObject(value);
+    const saved = parsePayoutDestination({ destination });
+    if (!saved || saved.status !== 'pending' || typeof displayName !== 'string' || displayName.length > 120 ||
+        typeof userId !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(userId)) {
+      throw invalidDestination();
+    }
+    return { ...saved, userId, displayName, kind: 'payout' };
+  });
 }

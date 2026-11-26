@@ -1,7 +1,7 @@
 import { ApiError, apiObject, configuredApiOrigin, createApiTransport, type ApiRequest } from './apiTransport.ts';
 import { parseMemberProfile, memberProfileBody, type MemberProfileInput } from './memberProfile.ts';
 import { parseProviderProfile, parseProviderSubmissions, type ProviderInput, type ProviderKind } from './providerProfile.ts';
-import { parsePayoutDestination, type PayoutDestinationInput } from './payoutDestination.ts';
+import { parsePayoutDestination, parsePayoutSubmissions, type PayoutDestinationInput } from './payoutDestination.ts';
 
 export type AccountRole = 'customer' | 'artist' | 'renter' | 'admin';
 export type ApiAccount = {
@@ -153,6 +153,16 @@ export function createApiSession(rawOrigin: string, send: typeof fetch = fetch) 
     },
     async savePayoutDestination(input: PayoutDestinationInput, signal?: AbortSignal) {
       return parsePayoutDestination(await authenticated('me/payout-destination', { method: 'PUT', body: input, signal }));
+    },
+    async pendingPayoutDestinations(signal?: AbortSignal) {
+      return parsePayoutSubmissions(await authenticated('admin/onboarding', { signal }));
+    },
+    async reviewPayoutDestination(userId: string, decision: { revision: number; approved: boolean; reason: string }, signal?: AbortSignal) {
+      const { message } = apiObject(await authenticated(`admin/payout-destinations/${userId}/decision`, {
+        method: 'POST', body: decision, signal,
+      }));
+      if (typeof message !== 'string' || !message || message.length > 500) throw invalid();
+      return message;
     },
     async reviewProviderProfile(userId: string, kind: ProviderKind, decision: { revision: number; approved: boolean; reason: string }, signal?: AbortSignal) {
       const { message } = apiObject(await authenticated(`admin/providers/${userId}/${kind}/decision`, {

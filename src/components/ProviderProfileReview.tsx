@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { configuredSessionApi, type ApiAccount } from '../lib/apiSession';
 import { ApiError } from '../lib/apiTransport';
 import type { ProviderSubmission } from '../lib/providerProfile';
+import type { PayoutSubmission } from '../lib/payoutDestination';
 import ConfirmDialog from './ConfirmDialog';
 import { DashboardIntro } from './DashboardShell';
 import { Badge, Empty, Notice, Panel, requestDashboardNavigation, useDraftGuard } from './DashboardUI';
@@ -9,12 +10,13 @@ import { Badge, Empty, Notice, Panel, requestDashboardNavigation, useDraftGuard 
 const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const rate = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'LKR' });
-const key = (item: ProviderSubmission) => item.userId + ':' + item.kind;
+type Submission = ProviderSubmission | PayoutSubmission;
+const key = (item: Submission) => item.userId + ':' + item.kind;
 const message = (issue: unknown) => issue instanceof ApiError ? issue.message : 'The review request could not be completed. Try again.';
 
-export default function ProviderProfileReview({ account }: { account: ApiAccount }) {
+export default function ProviderProfileReview({ account, payout = false }: { account: ApiAccount; payout?: boolean }) {
   const api = configuredSessionApi;
-  const [queue, setQueue] = useState<ProviderSubmission[]>([]);
+  const [queue, setQueue] = useState<Submission[]>([]);
   const [selection, setSelection] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [confirmation, setConfirmation] = useState<boolean | null>(null);
@@ -33,7 +35,7 @@ export default function ProviderProfileReview({ account }: { account: ApiAccount
     setLoading(true);
     setError('');
     try {
-      const items = await api.pendingProviderProfiles(controller.signal);
+      const items = payout ? await api.pendingPayoutDestinations(controller.signal) : await api.pendingProviderProfiles(controller.signal);
       if (!controller.signal.aborted) {
         setQueue(items);
         setSelection(previous => items.some(item => key(item) === previous) ? previous : null);
@@ -45,7 +47,7 @@ export default function ProviderProfileReview({ account }: { account: ApiAccount
       if (operation.current === controller) operation.current = null;
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, [api]);
+  }, [api, payout]);
 
   useEffect(() => {
     void load();
@@ -67,9 +69,10 @@ export default function ProviderProfileReview({ account }: { account: ApiAccount
     setError('');
     setNotice('');
     try {
-      const result = await api.reviewProviderProfile(item.userId, item.kind, {
-        revision: item.revision, approved, reason: explanation,
-      }, controller.signal);
+      const decision = { revision: item.revision, approved, reason: explanation };
+      const result = item.kind === 'payout'
+        ? await api.reviewPayoutDestination(item.userId, decision, controller.signal)
+        : await api.reviewProviderProfile(item.userId, item.kind, decision, controller.signal);
       if (!controller.signal.aborted) {
         setNotice(result);
         setQueue(previous => previous.filter(candidate => key(candidate) !== key(item)));
@@ -99,12 +102,12 @@ export default function ProviderProfileReview({ account }: { account: ApiAccount
   if (!api) return <Notice error>Provider review is unavailable.</Notice>;
   const reviewingOwnProfile = selected?.userId === account.id;
   return <div className="mg-page" aria-busy={busy || loading}>
-    <DashboardIntro eyebrow="PUBLICATION REVIEW" title="Provider" emphasis="profiles" description="Review the public information submitted by artists and equipment providers." />
+    <DashboardIntro eyebrow={payout ? 'BANK ACCOUNT REVIEW' : 'PUBLICATION REVIEW'} title={payout ? 'Payout' : 'Provider'} emphasis={payout ? 'destinations' : 'profiles'} description={payout ? 'Review submitted payout destinations.' : 'Review the public information submitted by artists and equipment providers.'} />
     <Notice error>{error}</Notice>
     <Notice>{notice}</Notice>
     <button className="btn-ghost" type="button" disabled={busy || loading} onClick={() => requestDashboardNavigation(() => { void load(); })}>Refresh submissions</button>
     {loading && <p role="status">Loading pending submissions…</p>}
-    {!loading && !error && !queue.length && <Empty title="No profiles awaiting review" />}
+    {!loading && !error && !queue.length && <Empty title={payout ? 'No destinations awaiting review' : 'No profiles awaiting review'} />}
     {!loading && queue.length > 0 && <div className="mg-review-layout">
       <Panel title="Awaiting review">
         <div className="mg-case-list">{queue.map(item => <button key={key(item)} type="button" disabled={busy} aria-pressed={selection === key(item)} className={selection === key(item) ? 'selected' : ''} onClick={() => {
@@ -112,21 +115,26 @@ export default function ProviderProfileReview({ account }: { account: ApiAccount
           requestDashboardNavigation(() => { setSelection(key(item)); setReason(''); setError(''); setNotice(''); });
         }}>
           <strong>{item.displayName}</strong>
-          <p>{item.kind === 'artist' ? 'Artist' : 'Equipment provider'} · {item.city}</p>
+          <p>{item.kind === 'payout' ? `${item.bank} · Account ending ${item.accountLast4}` : `${item.kind === 'artist' ? 'Artist' : 'Equipment provider'} · ${item.city}`}</p>
         </button>)}</div>
-        {queue.length === 25 && <p>Showing the first 25 pending profiles. Refresh to see further submissions after reviewing these.</p>}
+        {queue.length === 25 && <p>Showing the first 25 submissions. Refresh after reviewing them to see more.</p>}
       </Panel>
-      {selected ? <Panel title={selected.displayName} eyebrow="SUBMITTED PROFILE">
+      {selected ? <Panel title={selected.displayName} eyebrow={payout ? 'SUBMITTED DESTINATION' : 'SUBMITTED PROFILE'}>
         <Badge value="pending">Under review</Badge>
-        <p>{selected.city} · {selected.serviceRadiusKm} km service radius</p>
-        <p className="break-words whitespace-pre-wrap">{selected.bio}</p>
-        {'category' in selected.details ? <>
+        {selected.kind === 'payout' ? <>
+          <p>{selected.holder} · {selected.bank}</p>
+          <p>{selected.branch} · Account ending {selected.accountLast4}</p>
+        </> : <>
+          <p>{selected.city} · {selected.serviceRadiusKm} km service radius</p>
+          <p className="break-words whitespace-pre-wrap">{selected.bio}</p>
+          {'category' in selected.details ? <>
           <p>{selected.details.category} · {selected.details.genres.join(', ')}</p>
           <p>{selected.details.experienceYears} years of experience · {rate.format(selected.details.baseRateMinor / 100)} starting rate</p>
         </> : <>
           <p>{selected.details.equipmentCategories.join(', ')} · {selected.details.deliveryOffered ? 'Delivery offered' : 'Collection only'}</p>
           <p className="break-words whitespace-pre-wrap">{selected.details.rentalTerms}</p>
           <ul>{selected.details.operatingHours.map(({day, opens, closes}) => <li key={day}>{dayNames[day]} {opens && closes ? opens + '–' + closes : 'closed'}</li>)}</ul>
+          </>}
         </>}
         <p>Revision {selected.revision} · <time dateTime={selected.updatedAt}>{dateFormat.format(new Date(selected.updatedAt))}</time></p>
         {!account.emailVerified && <Notice>Verify your email before deciding on submissions.</Notice>}
@@ -135,17 +143,19 @@ export default function ProviderProfileReview({ account }: { account: ApiAccount
           <label className="mg-field">Decision reason<textarea value={reason} required minLength={10} maxLength={2000} rows={4} disabled={busy || reviewingOwnProfile || !account.emailVerified} onChange={event => setReason(event.target.value)} /></label>
           <div className="mg-actions">
             <button className="btn-ghost" value="changes" disabled={busy || reviewingOwnProfile || !account.emailVerified}>Request changes</button>
-            <button className="btn-primary" value="approve" disabled={busy || reviewingOwnProfile || !account.emailVerified}>Approve profile</button>
+            <button className="btn-primary" value="approve" disabled={busy || reviewingOwnProfile || !account.emailVerified}>{payout ? 'Approve destination' : 'Approve profile'}</button>
           </div>
         </form>
-      </Panel> : <Empty title="Select a profile to review" />}
+      </Panel> : <Empty title={payout ? 'Select a destination to review' : 'Select a profile to review'} />}
     </div>}
     {confirmation !== null && selected && <ConfirmDialog
-      title={confirmation ? 'Approve this profile?' : 'Request profile changes?'}
+      title={confirmation
+        ? (payout ? 'Approve this destination?' : 'Approve this profile?')
+        : (payout ? 'Request destination changes?' : 'Request profile changes?')}
       confirm={confirmation ? 'Confirm approval' : 'Send decision'}
       onClose={() => setConfirmation(null)}
       onConfirm={() => void decide(confirmation)}
-    >{confirmation ? 'The approved profile will appear publicly.' : 'The provider will see your reason and can submit a new revision.'}</ConfirmDialog>}
+    >{confirmation ? (payout ? 'This records approval of the destination. Payout execution is a separate step.' : 'The approved profile will appear publicly.') : 'The provider will see your reason and can submit a new revision.'}</ConfirmDialog>}
     {draftGuard}
   </div>;
 }
