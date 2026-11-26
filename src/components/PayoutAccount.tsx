@@ -7,7 +7,17 @@ import { draftKey } from '../lib/dashboard';
 import { DashboardIntro } from './DashboardShell';
 import ConfirmDialog from './ConfirmDialog';
 import { Badge, Notice, Panel, useDraftGuard } from './DashboardUI';
+import { useBackendAccount } from '../lib/BackendAccountContext';
+import ConnectedPayoutDestination from './ConnectedPayoutDestination';
+
 export default function PayoutAccount() {
+ const {connected,account}=useBackendAccount();
+ if(!connected)return <DemoPayoutAccount />;
+ if(!account)return <Notice error>Sign in to manage your payout destination.</Notice>;
+ return <ConnectedPayoutDestination key={account.id} emailVerified={account.emailVerified} />;
+}
+
+function DemoPayoutAccount() {
  const {actor}=useBooking();const role=actor as ProviderRole;const {state,dispatch}=useDashboard();
  const account=state.payoutAccounts[role],draft=state.drafts[draftKey(role,'bank')];
  const [form,setForm]=useState(()=>({...account,...draft})),[dirty,setDirty]=useState(false),[confirm,setConfirm]=useState(false),[notice,setNotice]=useState(draft?'Saved account draft restored.':''),[errors,setErrors]=useState<Partial<Record<keyof BankAccount,string>>>({});
@@ -18,4 +28,4 @@ function AccountReview({role}:{role:ProviderRole}) {
  const {state,dispatch}=useDashboard();const account=state.payoutAccounts[role];const [reason,setReason]=useState(''),[confirm,setConfirm]=useState<boolean|null>(null),[error,setError]=useState('');
  return <article className="mg-row"><div><h3>{account.holder}</h3><p>{maskAccount(account)} · {account.branch}</p><Badge value={account.status}/>{account.status==='pending'?<><label className="mg-field">Account review reason<textarea aria-label={`Account review reason for ${role}`} rows={2} value={reason} maxLength={2000} onChange={e=>setReason(e.target.value)}/></label><div className="mg-actions">{[false,true].map(approved=><button key={String(approved)} className={approved?'btn-primary':'btn-ghost'} onClick={()=>{if(reason.trim().length<10){setError('Explain the decision in at least 10 characters.');return;}setError('');setConfirm(approved);}}>{approved?'Verify':'Reject'} {role} account</button>)}</div><Notice error>{error}</Notice></>:<p>{account.reason}</p>}</div>{confirm!==null&&<ConfirmDialog title={confirm?'Verify payout destination?':'Reject payout destination?'} confirm={confirm?'Confirm account verification':'Confirm account rejection'} onClose={()=>setConfirm(null)} onConfirm={()=>{if(!dispatch({type:'review_bank',provider:role,approved:confirm,reason}))setError('The account changed. Review its latest status.');setConfirm(null);setReason('');}}>{confirm?'This enables admin transfers to the displayed demo destination.':'Transfers stay paused until the provider submits an account that passes review.'}</ConfirmDialog>}</article>;
 }
-export function PayoutAccountReview() {const {actor}=useBooking();if(actor!=='admin')return null;return <div className="mg-page"><Panel title="Payout destinations" eyebrow="BANK ACCOUNT REVIEW"><p>Review submitted changes before releasing money. These destinations are simulated.</p><AccountReview role="artist"/><AccountReview role="renter"/></Panel></div>;}
+export function PayoutAccountReview() {const {actor}=useBooking();const {connected}=useBackendAccount();if(actor!=='admin'||connected)return null;return <div className="mg-page"><Panel title="Payout destinations" eyebrow="BANK ACCOUNT REVIEW"><p>Review submitted changes before releasing money. These destinations are simulated.</p><AccountReview role="artist"/><AccountReview role="renter"/></Panel></div>;}

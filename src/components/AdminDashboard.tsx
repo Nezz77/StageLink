@@ -24,7 +24,10 @@ export default function AdminDashboard({ onGoToLanding, roleControl, paymentTarg
   const nav = [
     { id: 'payments', icon: CreditCard, label: 'Payments' }, { id: 'analytics', icon: BarChart3, label: 'Analytics' },
     { id: 'verification', icon: ShieldCheck, label: 'Verification', count: pending('verification') },
-    ...(account?.activeRole === 'admin' ? [{ id: 'provider-reviews', icon: UsersRound, label: 'Provider profiles' }] : []),
+    ...(account?.activeRole === 'admin' ? [
+      { id: 'provider-reviews', icon: UsersRound, label: 'Provider profiles' },
+      { id: 'payout-destinations', icon: CreditCard, label: 'Payout destinations' },
+    ] : []),
     { id: 'disputes', icon: TriangleAlert, label: 'Disputes', count: pending('disputes') },
     { id: 'ai-engine', icon: BrainCircuit, label: 'AI Engine' }, { id: 'system', icon: Cpu, label: 'System' }, { id: 'support', icon: MessageCircle, label: 'Support', count: pending('support') },
   ];
@@ -35,5 +38,6 @@ export default function AdminDashboard({ onGoToLanding, roleControl, paymentTarg
     {activeTab === 'ai-engine' && <AdminAIEngine />}
     {activeTab === 'system' && <SystemControls />}
     {activeTab === 'provider-reviews' && account?.activeRole === 'admin' && <ProviderProfileReview account={account} />}
+    {activeTab === 'payout-destinations' && account?.activeRole === 'admin' && <ProviderProfileReview account={account} payout />}
   </DashboardShell>;
 }
