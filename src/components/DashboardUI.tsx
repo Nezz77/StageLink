@@ -6,7 +6,7 @@ import '../management.css';
 export function requestDashboardNavigation(run: () => void) {
   if (window.dispatchEvent(new CustomEvent('stagelink:before-navigation', { detail: run, cancelable: true }))) run();
 }
-export function useDraftGuard(dirty: boolean) {
+export function useDraftGuard(dirty: boolean, message = 'Your latest edits are not saved. Go back to save them or use Save for later before leaving.') {
   const [pending, setPending] = useState<{ run: () => void } | null>(null);
   useEffect(() => {
     if (!dirty) return;
@@ -16,7 +16,7 @@ export function useDraftGuard(dirty: boolean) {
     window.addEventListener('beforeunload', unload);
     return () => { window.removeEventListener('stagelink:before-navigation', guard); window.removeEventListener('beforeunload', unload); };
   }, [dirty]);
-  return pending && <ConfirmDialog title="Leave without saving?" confirm="Discard changes" onClose={() => setPending(null)} onConfirm={() => { const run = pending.run; setPending(null); run(); }}>Your latest edits are not saved. Go back to save them or use Save for later before leaving.</ConfirmDialog>;
+  return pending && <ConfirmDialog title="Leave without saving?" confirm="Discard changes" onClose={() => setPending(null)} onConfirm={() => { const run = pending.run; setPending(null); run(); }}>{message}</ConfirmDialog>;
 }
 export function Panel({ title, eyebrow, children, action, className = '' }: { title?: string; eyebrow?: string; children: ReactNode; action?: ReactNode; className?: string }) {
   return <section className={`mg-panel ${className}`}>
