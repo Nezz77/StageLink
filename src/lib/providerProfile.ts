@@ -36,6 +36,7 @@ export type ProviderProfile = ProviderInput & {
   approvedRevision: number | null;
   updatedAt: string;
 };
+export type ProviderSubmission = Pick<ProviderProfile, 'kind' | 'revision' | 'displayName' | 'bio' | 'city' | 'serviceRadiusKm' | 'details' | 'updatedAt'> & { userId: string };
 const invalid = () => new ApiError(0, 'INVALID_API_RESPONSE', 'StageLink returned an unexpected provider profile.');
 const integer = (n: unknown, min: number, max: number): n is number =>
   typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
@@ -85,6 +86,22 @@ export function parseProviderProfile(value: unknown, kind: ProviderKind): Provid
       typeof updatedAt !== 'string' || !Number.isFinite(Date.parse(updatedAt))) throw invalid();
   return { revision, displayName, bio, city, serviceRadiusKm, address, latitude, longitude, kind,
     details: kind === 'artist' ? artist(details) : renter(details), reviewStatus, reviewReason, approvedRevision, updatedAt };
+}
+
+export function parseProviderSubmissions(value: unknown): ProviderSubmission[] {
+  const { providers } = apiObject(value);
+  if (!Array.isArray(providers) || providers.length > 25) throw invalid();
+  return providers.map(item => {
+    const { userId, kind, revision, displayName, bio, city, serviceRadiusKm, details, updatedAt } = apiObject(item);
+    if (typeof userId !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(userId) ||
+        !oneOf(kind, ['artist', 'renter'] as const) || !integer(revision, 1, 2147483646) ||
+        !short(displayName, 120) || !short(bio, 2000) || !short(city, 100) ||
+        !integer(serviceRadiusKm, 1, 500) || typeof updatedAt !== 'string' || !Number.isFinite(Date.parse(updatedAt))) {
+      throw invalid();
+    }
+    return { userId, kind, revision, displayName, bio, city, serviceRadiusKm, updatedAt,
+      details: kind === 'artist' ? artist(details) : renter(details) };
+  });
 }
 
 export function lkrToMinor(value: string) {
